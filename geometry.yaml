@@ -1,0 +1,72 @@
+type: "DOUBLE_WISHBONE"
+name: "test"
+version: "0.0.1"
+units: "millimeters"
+
+hard_points:
+  lower_wishbone:
+    inboard_front:
+      x: 150
+      y: 500
+      z: 0
+    inboard_rear:
+      x: -150
+      y: 550
+      z: 0
+    outboard:
+      x: 0
+      y: 900
+      z: 0
+  upper_wishbone:
+    inboard_front:
+      x: 125
+      y: 550
+      z: 275
+    inboard_rear:
+      x: -175
+      y: 550
+      z: 275
+    outboard:
+      x: -25
+      y: 750
+      z: 300
+  rocker:
+    axis_front:
+      x: 50
+      y: 400
+      z: 325
+    axis_rear:
+      x: -50
+      y: 400
+      z: 325
+    pushrod_mount:
+      x: 0
+      y: 475
+      z: 325
+  pushrod:
+    inboard:
+      x: 0
+      y: 475
+      z: 325
+    outboard:
+      x: -20
+      y: 875
+      z: 75
+  wheel_axle:
+    inner:
+      x: -20
+      y: 700
+      z: 150
+    outer:
+      x: 20
+      y: 700
+      z: 150
+
+configuration:
+  wheel:
+    diameter: 457.2
+    width: 230.0
+  alignment:
+    static_camber: -3.0
+    static_toe: 0.0
+    static_caster: 5.0
