@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
+from typing import Union
 
 import numpy as np
 
@@ -28,6 +29,13 @@ class WishbonePoints:
     inboard_front: Point3D
     inboard_rear: Point3D
     outboard: Point3D
+
+
+@dataclass
+class StrutPoints:
+    body_mount: Point3D  # Top mounting point to chassis.
+    lower_mount: Point3D  # Lower mounting point to upright.
+    guide_mount: Point3D  # Additional guiding point for strut orientation.
 
 
 @dataclass
@@ -69,9 +77,18 @@ class AlignmentConfig:
 
 
 @dataclass
-class HardPoints:
+class DoubleWishboneHardPoints:
     lower_wishbone: WishbonePoints
     upper_wishbone: WishbonePoints
+    rocker: RockerPoints
+    pushrod: PushrodPoints
+    wheel_axle: WheelAxlePoints
+
+
+@dataclass
+class MacPhersonHardPoints:
+    lower_wishbone: WishbonePoints
+    strut: StrutPoints
     rocker: RockerPoints
     pushrod: PushrodPoints
     wheel_axle: WheelAxlePoints
@@ -89,5 +106,18 @@ class SuspensionGeometry:
     name: str
     version: str
     units: Units
-    hard_points: HardPoints
+    hard_points: Union[DoubleWishboneHardPoints, MacPhersonHardPoints]
     configuration: SuspensionConfig
+
+    def validate(self) -> bool:
+        if self.type == GeometryType.DOUBLE_WISHBONE:
+            if not isinstance(self.hard_points, DoubleWishboneHardPoints):
+                raise ValueError(
+                    "Invalid hard points type for double wishbone suspension"
+                )
+        elif self.type == GeometryType.MACPHERSON_STRUT:
+            if not isinstance(self.hard_points, MacPhersonHardPoints):
+                raise ValueError(
+                    "Invalid hard points type for MacPherson strut suspension"
+                )
+        return True
