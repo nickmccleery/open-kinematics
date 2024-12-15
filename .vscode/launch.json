@@ -8,9 +8,9 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "args": [],
-            "env": {
-                "PYTHONPATH": "${workspaceFolder}/src:${env:PYTHONPATH}"
-            }
+            // "env": {
+            //     "PYTHONPATH": "${workspaceFolder}/src:${env:PYTHONPATH}"
+            // }
         },
     ]
 }
