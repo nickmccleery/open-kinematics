@@ -70,7 +70,7 @@ class WheelConfig:
 
 
 @dataclass
-class AlignmentConfig:
+class StaticSetupConfig:
     static_camber: float
     static_toe: float
     static_caster: float
@@ -97,7 +97,7 @@ class MacPhersonHardPoints:
 @dataclass
 class SuspensionConfig:
     wheel: WheelConfig
-    alignment: AlignmentConfig
+    static_setup: StaticSetupConfig
 
 
 @dataclass
