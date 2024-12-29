@@ -37,7 +37,7 @@ def load_geometry(file_path: Path, geometry_class: Type[T] = SuspensionGeometry)
             yaml_data = yaml.safe_load(f)
 
         if yaml_data is None:
-            raise exc.InvalidGeometryFileContents("Empty YAML file")
+            raise exc.InvalidGeometryFileContents("Geometry file is empty.")
 
         geometry = GeometrySchema().load(yaml_data)
         if not isinstance(geometry, geometry_class):
@@ -45,9 +45,9 @@ def load_geometry(file_path: Path, geometry_class: Type[T] = SuspensionGeometry)
 
         return geometry
 
+    except yaml.YAMLError as e:
+        raise exc.GeometryFileError(f"Error parsing geometry file: {e}")
     except ValidationError as e:
         raise exc.InvalidGeometryFileContents(f"Error validating geometry: {e}")
-    except yaml.YAMLError as e:
-        raise exc.InvalidGeometryFileContents(f"Error parsing YAML: {e}")
     except (IOError, OSError) as e:
         raise exc.GeometryFileError(f"Error reading geometry file: {e}")

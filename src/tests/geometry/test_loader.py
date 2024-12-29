@@ -15,7 +15,21 @@ def valid_yaml_file():
 
 
 @pytest.fixture
-def invalid_yaml_file(tmp_path: Path):
+def empty_geometry_file(tmp_path: Path):
+    empty_file = tmp_path / "empty_geometry.yaml"
+    empty_file.touch()
+    return empty_file
+
+
+@pytest.fixture
+def invalid_yaml_geometry_file(tmp_path: Path):
+    file_path = tmp_path / "invalid_geometry.yaml"
+    file_path.write_text('""')
+    return file_path
+
+
+@pytest.fixture
+def invalid_geometry_file(tmp_path: Path):
     data = {"invalid_attribute": "value"}
     file_path = tmp_path / "invalid_geometry.yaml"
     with open(file_path, "w") as f:
@@ -28,11 +42,16 @@ def test_load_geometry_valid(valid_yaml_file):
     assert isinstance(result, SuspensionGeometry)
 
 
+def test_load_geometry_empty(empty_geometry_file):
+    with pytest.raises(exc.InvalidGeometryFileContents):
+        load_geometry(empty_geometry_file)
+
+
 def test_load_geometry_not_found(tmp_path: Path):
     with pytest.raises(exc.GeometryFileNotFound):
         load_geometry(tmp_path / "file_not_found.yaml")
 
 
-def test_load_geometry_invalid(invalid_yaml_file):
+def test_load_geometry_invalid(invalid_geometry_file):
     with pytest.raises(exc.InvalidGeometryFileContents):
-        load_geometry(invalid_yaml_file)
+        load_geometry(invalid_geometry_file)
