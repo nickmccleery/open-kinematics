@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from kinematics.geometry.exceptions import InvalidGeometryFileContents
+import kinematics.geometry.exceptions as exc
 from kinematics.geometry.loader import load_geometry
 from kinematics.geometry.schemas import SuspensionGeometry
 
@@ -28,6 +28,11 @@ def test_load_geometry_valid(valid_yaml_file):
     assert isinstance(result, SuspensionGeometry)
 
 
+def test_load_geometry_not_found(tmp_path: Path):
+    with pytest.raises(exc.GeometryFileNotFound):
+        load_geometry(tmp_path / "file_not_found.yaml")
+
+
 def test_load_geometry_invalid(invalid_yaml_file):
-    with pytest.raises(InvalidGeometryFileContents):
+    with pytest.raises(exc.InvalidGeometryFileContents):
         load_geometry(invalid_yaml_file)
