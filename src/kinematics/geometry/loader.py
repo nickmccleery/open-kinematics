@@ -1,23 +1,27 @@
 from pathlib import Path
-from typing import Type, TypeVar
+from typing import Dict, Type, Union, cast
 
 import yaml
 from marshmallow.exceptions import ValidationError
 from marshmallow_dataclass import class_schema
 
 import kinematics.geometry.exceptions as exc
-from kinematics.geometry.schemas import SuspensionGeometry
+from kinematics.geometry.schemas import DoubleWishboneGeometry, MacPhersonGeometry
 
-T = TypeVar("T", bound=SuspensionGeometry)
+GeometryType = Union[DoubleWishboneGeometry, MacPhersonGeometry]
+
+GEOMETRY_TYPES: Dict[str, Type[GeometryType]] = {
+    "DOUBLE_WISHBONE": DoubleWishboneGeometry,
+    "MACPHERSON_STRUT": MacPhersonGeometry,
+}
 
 
-def load_geometry(file_path: Path, geometry_class: Type[T] = SuspensionGeometry) -> T:
+def load_geometry(file_path: Path) -> GeometryType:
     """
     Load suspension geometry from a YAML file.
 
     Args:
         file_path: Path to the YAML geometry file.
-        geometry_class: Class type for the geometry (defaults to SuspensionGeometry)
 
     Returns:
         Loaded and validated geometry object
@@ -26,22 +30,32 @@ def load_geometry(file_path: Path, geometry_class: Type[T] = SuspensionGeometry)
         exc.GeometryFileNotFound: If the file doesn't exist.
         exc.InvalidGeometryFileContents: If the file contents are invalid.
         exc.GeometryFileError: For general file handling errors.
+        exc.UnsupportedGeometryType: If the geometry type is not recognized.
     """
     if not file_path.exists():
         raise exc.GeometryFileNotFound(f"Geometry file not found: {file_path}")
 
-    GeometrySchema = class_schema(geometry_class)
-
     try:
+        # Initial validation.
         with open(file_path, "r") as f:
             yaml_data = yaml.safe_load(f)
 
         if yaml_data is None:
             raise exc.InvalidGeometryFileContents("Geometry file is empty.")
 
-        geometry = GeometrySchema().load(yaml_data)
-        if not isinstance(geometry, geometry_class):
-            raise TypeError(f"Loaded data is not of type {geometry_class.__name__}")
+        if "type" not in yaml_data:
+            raise exc.InvalidGeometryFileContents("Geometry type not specified in file")
+
+        geometry_type_key = yaml_data.pop("type")
+        if geometry_type_key not in GEOMETRY_TYPES:
+            raise exc.UnsupportedGeometryType(
+                f"Unsupported geometry type: {geometry_type_key}"
+            )
+
+        # Actual geometry loading.
+        geometry_type = GEOMETRY_TYPES[geometry_type_key]
+        GeometrySchema = class_schema(geometry_type)
+        geometry = cast(GeometryType, GeometrySchema().load(yaml_data))
 
         return geometry
 

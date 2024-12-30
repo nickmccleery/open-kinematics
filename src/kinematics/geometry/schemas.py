@@ -1,13 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Union
 
 import numpy as np
-
-
-class GeometryType(Enum):
-    DOUBLE_WISHBONE = "DOUBLE_WISHBONE"
-    MACPHERSON_STRUT = "MACPHERSON_STRUT"
 
 
 class Units(Enum):
@@ -77,12 +71,41 @@ class StaticSetupConfig:
 
 
 @dataclass
+class SuspensionConfig:
+    wheel: WheelConfig
+    static_setup: StaticSetupConfig
+
+
+@dataclass
+class SuspensionGeometry:
+    """
+    Base class for all suspension geometry types.
+    """
+
+    name: str
+    version: str
+    units: Units
+    configuration: SuspensionConfig
+
+    def validate(self) -> bool:
+        raise NotImplementedError("Subclasses must implement validate()")
+
+
+@dataclass
 class DoubleWishboneHardPoints:
     lower_wishbone: WishbonePoints
     upper_wishbone: WishbonePoints
     rocker: RockerPoints
     pushrod: PushrodPoints
     wheel_axle: WheelAxlePoints
+
+
+@dataclass
+class DoubleWishboneGeometry(SuspensionGeometry):
+    hard_points: DoubleWishboneHardPoints
+
+    def validate(self) -> bool:
+        return True
 
 
 @dataclass
@@ -95,29 +118,8 @@ class MacPhersonHardPoints:
 
 
 @dataclass
-class SuspensionConfig:
-    wheel: WheelConfig
-    static_setup: StaticSetupConfig
-
-
-@dataclass
-class SuspensionGeometry:
-    type: GeometryType
-    name: str
-    version: str
-    units: Units
-    hard_points: Union[DoubleWishboneHardPoints, MacPhersonHardPoints]
-    configuration: SuspensionConfig
+class MacPhersonGeometry(SuspensionGeometry):
+    hard_points: MacPhersonHardPoints
 
     def validate(self) -> bool:
-        if self.type == GeometryType.DOUBLE_WISHBONE:
-            if not isinstance(self.hard_points, DoubleWishboneHardPoints):
-                raise ValueError(
-                    "Invalid hard points type for double wishbone suspension"
-                )
-        elif self.type == GeometryType.MACPHERSON_STRUT:
-            if not isinstance(self.hard_points, MacPhersonHardPoints):
-                raise ValueError(
-                    "Invalid hard points type for MacPherson strut suspension"
-                )
         return True

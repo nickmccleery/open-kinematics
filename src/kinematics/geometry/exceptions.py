@@ -47,3 +47,12 @@ class InvalidGeometryFileContents(GeometryError):
             code=GeometryErrorCode.INVALID_FILE_CONTENTS,
             detail=detail,
         )
+
+
+class UnsupportedGeometryType(GeometryError):
+    def __init__(self, message: Optional[str] = None, detail: Optional[str] = None):
+        super().__init__(
+            message=message or "Unsupported geometry type.",
+            code=GeometryErrorCode.INVALID_FILE_CONTENTS,
+            detail=detail,
+        )
