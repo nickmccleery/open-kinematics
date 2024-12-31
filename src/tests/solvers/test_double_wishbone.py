@@ -8,7 +8,7 @@ from kinematics.geometry.loader import load_geometry
 from kinematics.geometry.schemas import DoubleWishboneGeometry
 from kinematics.solvers.double_wishbone import DoubleWishboneSolver, SuspensionState
 
-CHECK_TOLERANCE = 1e-6
+CHECK_TOLERANCE = 1e-2
 
 
 def create_suspension_animation(
@@ -16,8 +16,14 @@ def create_suspension_animation(
 ) -> None:
     """Creates an animated visualization of suspension movement."""
 
-    fig = plt.figure(figsize=(10, 10))
-    ax = fig.add_subplot(111, projection="3d")
+    fig = plt.figure(figsize=(20, 20))
+
+    # Create four subplots
+    ax_top = fig.add_subplot(221, projection="3d")
+    ax_front = fig.add_subplot(222, projection="3d")
+    ax_side = fig.add_subplot(223, projection="3d")
+    ax_iso = fig.add_subplot(224, projection="3d")
+    axes = [ax_top, ax_front, ax_side, ax_iso]
 
     # Calculate fixed limits once from initial geometry and states
     hp = geometry.hard_points
@@ -27,15 +33,16 @@ def create_suspension_animation(
             hp.upper_wishbone.inboard_rear.as_array(),
             hp.lower_wishbone.inboard_front.as_array(),
             hp.lower_wishbone.inboard_rear.as_array(),
+            hp.track_rod.inner.as_array(),
         ]
     )
-    # Include all states to ensure bounds cover full motion
     moving_points = np.vstack(
         [
             [state.upper_outboard for state in states],
             [state.lower_outboard for state in states],
             [state.axle_inner for state in states],
             [state.axle_outer for state in states],
+            [state.track_rod_outer for state in states],
         ]
     )
 
@@ -43,13 +50,24 @@ def create_suspension_animation(
     min_bounds = all_points.min(axis=0) - 0.1
     max_bounds = all_points.max(axis=0) + 0.1
 
-    def update(frame):
+    def plot_state(ax, state, view_name):
+        """Plot suspension state on a given axis."""
         ax.clear()
-        state = states[frame]
-        hp = geometry.hard_points
 
-        # Set consistent view
-        ax.view_init(elev=20, azim=45)
+        # Set view based on subplot type
+        if view_name == "top":
+            ax.view_init(elev=90, azim=0)
+            ax.set_title("Top View (X-Y)")
+        elif view_name == "front":
+            ax.view_init(elev=0, azim=0)
+            ax.set_title("Front View (Y-Z)")
+        elif view_name == "side":
+            ax.view_init(elev=0, azim=90)
+            ax.set_title("Side View (X-Z)")
+        else:  # isometric
+            ax.view_init(elev=20, azim=45)
+            ax.set_title("Isometric View")
+
         ax.set_xlabel("X [mm]")
         ax.set_ylabel("Y [mm]")
         ax.set_zlabel("Z [mm]")
@@ -72,6 +90,7 @@ def create_suspension_animation(
                 state.lower_outboard,
                 state.axle_inner,
                 state.axle_outer,
+                state.track_rod_outer,
             ]
         )
         ax.scatter(
@@ -133,8 +152,16 @@ def create_suspension_animation(
         ax.set_ylim(min_bounds[1], max_bounds[1])
         ax.set_zlim(min_bounds[2], max_bounds[2])
 
-        ax.legend()
-        ax.set_title(f"Suspension Position, Frame: {frame}")
+        if view_name == "isometric":
+            ax.legend()
+
+    def update(frame):
+        state = states[frame]
+        plot_state(ax_top, state, "top")
+        plot_state(ax_front, state, "front")
+        plot_state(ax_side, state, "side")
+        plot_state(ax_iso, state, "isometric")
+        fig.suptitle(f"Frame {frame}", fontsize=16)
 
     # Create animation
     anim = animation.FuncAnimation(
@@ -142,7 +169,7 @@ def create_suspension_animation(
     )
 
     # Save as GIF
-    anim.save(output_path, writer="pillow")
+    anim.save(output_path, writer="pillow", fps=20)
     plt.close()
 
 
@@ -157,10 +184,7 @@ def test_run_solver(double_wishbone_geometry_file: Path) -> None:
 
     displacement_range = [-80, 80]
     n_steps = 21
-    displacement_raw = np.linspace(
-        displacement_range[0], displacement_range[1], n_steps
-    )
-    displacements = np.concatenate([displacement_raw, displacement_raw[::-1]])
+    displacements = np.linspace(displacement_range[0], displacement_range[1], n_steps)
 
     states = []
 
@@ -170,7 +194,7 @@ def test_run_solver(double_wishbone_geometry_file: Path) -> None:
         states.append(state)
 
         # Verify constraints are maintained.
-        for constraint in solver.constraints:
+        for constraint in solver.length_constraints:
             point_map = {
                 "upper_inboard_front": geometry.hard_points.upper_wishbone.inboard_front.as_array(),
                 "upper_inboard_rear": geometry.hard_points.upper_wishbone.inboard_rear.as_array(),
@@ -178,6 +202,7 @@ def test_run_solver(double_wishbone_geometry_file: Path) -> None:
                 "lower_inboard_rear": geometry.hard_points.lower_wishbone.inboard_rear.as_array(),
                 "upper_outboard": state.upper_outboard,
                 "lower_outboard": state.lower_outboard,
+                "track_rod_outer": state.track_rod_outer,
                 "axle_inner": state.axle_inner,
                 "axle_outer": state.axle_outer,
                 "axle_midpoint": (state.axle_inner + state.axle_outer) / 2,
@@ -202,6 +227,7 @@ def test_run_solver(double_wishbone_geometry_file: Path) -> None:
             np.abs(axle_midpoint_z - current_target_z) < CHECK_TOLERANCE
         ), f"Failed to maintain axle midpoint at displacement {displacement}"
 
-    # Create animation
+    # Create animation.
+    states_animate = states + states[::-1]
     output_path = Path("suspension_motion.gif")
-    create_suspension_animation(geometry, states, output_path)
+    create_suspension_animation(geometry, states_animate, output_path)

@@ -33,26 +33,13 @@ class StrutPoints:
 
 
 @dataclass
-class RockerPoints:
-    axis_front: Point3D
-    axis_rear: Point3D
-    pushrod_mount: Point3D
-
-    def get_axis_vector(self) -> np.ndarray:
-        front = self.axis_front.as_array()
-        rear = self.axis_rear.as_array()
-        axis = rear - front
-        return axis / np.linalg.norm(axis)
-
-
-@dataclass
-class PushrodPoints:
-    inboard: Point3D
-    outboard: Point3D
-
-
-@dataclass
 class WheelAxlePoints:
+    inner: Point3D
+    outer: Point3D
+
+
+@dataclass
+class TrackRodPoints:
     inner: Point3D
     outer: Point3D
 
@@ -72,6 +59,7 @@ class StaticSetupConfig:
 
 @dataclass
 class SuspensionConfig:
+    steered: bool
     wheel: WheelConfig
     static_setup: StaticSetupConfig
 
@@ -95,8 +83,7 @@ class SuspensionGeometry:
 class DoubleWishboneHardPoints:
     lower_wishbone: WishbonePoints
     upper_wishbone: WishbonePoints
-    rocker: RockerPoints
-    pushrod: PushrodPoints
+    track_rod: TrackRodPoints
     wheel_axle: WheelAxlePoints
 
 
@@ -112,8 +99,6 @@ class DoubleWishboneGeometry(SuspensionGeometry):
 class MacPhersonHardPoints:
     lower_wishbone: WishbonePoints
     strut: StrutPoints
-    rocker: RockerPoints
-    pushrod: PushrodPoints
     wheel_axle: WheelAxlePoints
 
 
