@@ -9,12 +9,6 @@ from kinematics.geometry.schemas import SuspensionGeometry
 
 
 @pytest.fixture
-def valid_yaml_file():
-    file_path = Path(__file__).parent / "geometry.yaml"
-    return file_path
-
-
-@pytest.fixture
 def empty_geometry_file(tmp_path: Path):
     empty_file = tmp_path / "empty_geometry.yaml"
     empty_file.touch()
@@ -37,8 +31,8 @@ def invalid_geometry_file(tmp_path: Path):
     return file_path
 
 
-def test_load_geometry_valid(valid_yaml_file):
-    result = load_geometry(valid_yaml_file)
+def test_load_geometry_valid(double_wishbone_geometry_file):
+    result = load_geometry(double_wishbone_geometry_file)
     assert isinstance(result, SuspensionGeometry)
 
 
