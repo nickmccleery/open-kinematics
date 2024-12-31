@@ -55,11 +55,11 @@ hard_points:
   wheel_axle:
     inner:
       x: -20
-      y: 700
+      y: 800
       z: 150
     outer:
       x: 20
-      y: 700
+      y: 1000
       z: 150
 
 configuration:

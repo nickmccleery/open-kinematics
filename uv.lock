@@ -494,6 +494,7 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "marshmallow-dataclass" },
+    { name = "matplotlib" },
     { name = "numpy" },
     { name = "pytest-dotenv" },
     { name = "python-dotenv" },
@@ -511,6 +512,7 @@ plot = [
 [package.metadata]
 requires-dist = [
     { name = "marshmallow-dataclass", specifier = ">=8.7.1" },
+    { name = "matplotlib", specifier = ">=3.10.0" },
     { name = "matplotlib", marker = "extra == 'plot'", specifier = ">=3.10.0" },
     { name = "numpy", specifier = ">=2.2.0" },
     { name = "pyqt5", marker = "extra == 'plot'", specifier = ">=5.15.11" },

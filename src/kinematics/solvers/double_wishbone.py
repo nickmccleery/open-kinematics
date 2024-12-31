@@ -218,7 +218,7 @@ class DoubleWishboneSolver:
             current_length = np.linalg.norm(p1 - p2)
             residuals.append(current_length - constraint.length)
 
-        # Target position constraint
+        # Target position constraint.
         initial_midpoint = (
             self.initial_state.axle_inner + self.initial_state.axle_outer
         ) / 2
