@@ -5,8 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from kinematics.geometry.loader import load_geometry
-from kinematics.geometry.schemas import DoubleWishboneGeometry
-from kinematics.geometry.utils import build_point_lookup
+from kinematics.geometry.schemas import DoubleWishboneGeometry, PointID
 from kinematics.solvers.double_wishbone import DoubleWishboneSolver, SuspensionState
 
 CHECK_TOLERANCE = 1e-2
@@ -177,46 +176,50 @@ def create_suspension_animation(
 def test_run_solver(double_wishbone_geometry_file: Path) -> None:
     """Tests the double wishbone solver through its range of motion."""
     geometry = load_geometry(double_wishbone_geometry_file)
-    point_lookup = build_point_lookup(geometry)
 
     if not isinstance(geometry, DoubleWishboneGeometry):
         raise ValueError("Invalid geometry type")
 
-    solver = DoubleWishboneSolver(geometry=geometry, point_lookup=point_lookup)
+    solver = DoubleWishboneSolver(geometry=geometry)
 
+    # Create displacement sweep
     displacement_range = [-80, 80]
     n_steps = 21
-    displacements = np.linspace(displacement_range[0], displacement_range[1], n_steps)
+    displacements = list(
+        np.linspace(displacement_range[0], displacement_range[1], n_steps)
+    )
 
-    states = []
+    # Solve for all positions
+    states = solver.solve_sweep(displacements)
 
-    for displacement in displacements:
-        state = solver.solve_positions(displacement)
-        assert isinstance(state, SuspensionState)
-        states.append(state)
-
-        # Verify constraints are maintained.
+    # Verify constraints are maintained
+    for state, displacement in zip(states, displacements):
+        # Verify length constraints
         for constraint in solver.length_constraints:
-            p1 = point_lookup[constraint.p1].as_array()
-            p2 = point_lookup[constraint.p2].as_array()
+            p1 = state.points[constraint.p1].as_array()
+            p2 = state.points[constraint.p2].as_array()
             current_length = np.linalg.norm(p1 - p2)
 
-            # Check that constraint length is maintained within tolerance.
             assert np.abs(current_length - constraint.distance) < CHECK_TOLERANCE, (
                 f"Constraint violation at displacement {displacement}: "
                 f"{constraint.p1} to {constraint.p2}"
             )
 
-        # Verify axle midpoint moves by approximately the requested displacement.
-        current_target_z = solver.initial_state.axle_inner[2] + displacement
-        axle_midpoint = (state.axle_inner + state.axle_outer) / 2
-        axle_midpoint_z = axle_midpoint[2]
+        # Verify axle midpoint z position
+        axle_inner = state.points[PointID.AXLE_INBOARD].as_array()
+        axle_outer = state.points[PointID.AXLE_OUTBOARD].as_array()
+        axle_midpoint = (axle_inner + axle_outer) / 2
+        initial_midpoint = (
+            solver.initial_state.points[PointID.AXLE_INBOARD].as_array()
+            + solver.initial_state.points[PointID.AXLE_OUTBOARD].as_array()
+        ) / 2
+        target_z = initial_midpoint[2] + displacement
 
         assert (
-            np.abs(axle_midpoint_z - current_target_z) < CHECK_TOLERANCE
+            np.abs(axle_midpoint[2] - target_z) < CHECK_TOLERANCE
         ), f"Failed to maintain axle midpoint at displacement {displacement}"
 
-    # Create animation.
+    # Create animation
     states_animate = states + states[::-1]
     output_path = Path("suspension_motion.gif")
     create_suspension_animation(geometry, states_animate, output_path)

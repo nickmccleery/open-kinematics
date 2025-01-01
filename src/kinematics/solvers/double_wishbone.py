@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 import numpy as np
 from scipy.optimize import least_squares
 
@@ -41,22 +43,17 @@ class SuspensionState:
 
 
 class DoubleWishboneSolver:
-    """
-    Solves for suspension point positions throughout the range of motion.
-    """
+    """Solves for suspension point positions throughout the range of motion."""
 
-    def __init__(
-        self, geometry: DoubleWishboneGeometry, point_lookup: dict[PointID, Point3D]
-    ):
-        """
-        Initializes the solver with a specific suspension geometry.
-        """
+    def __init__(self, geometry: DoubleWishboneGeometry):
+        """Initializes the solver with a specific suspension geometry."""
         self.geometry = geometry
-        self.point_lookup = point_lookup
+        self.points = get_all_points(self.geometry.hard_points)
+        self.initial_state = SuspensionState.from_geometry(self.points)
+        self.current_state = deepcopy(self.initial_state)
+        self.current_z = 0.0
         self.length_constraints = self.compute_distance_constraints()
         self.orientation_constraints = self.compute_orientation_constraints()
-        self.initial_state = self.compute_initial_state()
-        self.target_z_displacement = 0.0
 
     def compute_orientation_constraints(self) -> list[VectorOrientationConstraint]:
         """Computes orientation constraints from the initial geometry."""
@@ -156,10 +153,14 @@ class DoubleWishboneSolver:
             z=axle_midpoint_xyz[2],
             id=PointID.AXLE_MIDPOINT,
         )
-        self.point_lookup[axle_midpoint.id] = axle_midpoint
 
-        make_constraint(axle_midpoint, hp.upper_wishbone.outboard)
-        make_constraint(axle_midpoint, hp.lower_wishbone.outboard)
+        # Add this to points and state.
+        # self.points.append(axle_midpoint)
+        # self.initial_state.points[PointID.AXLE_MIDPOINT] = axle_midpoint
+        # self.current_state.points[PointID.AXLE_MIDPOINT] = axle_midpoint
+
+        # make_constraint(axle_midpoint, hp.upper_wishbone.outboard)
+        # make_constraint(axle_midpoint, hp.lower_wishbone.outboard)
 
         return constraints
 
@@ -168,29 +169,39 @@ class DoubleWishboneSolver:
         points = get_all_points(self.geometry.hard_points)
         return SuspensionState.from_geometry(points)
 
-    def solve_positions(self, z_displacement: float) -> SuspensionState:
-        """Solves for the suspension state at a given vertical displacement."""
-        self.target_z_displacement = z_displacement
+    def solve_sweep(self, displacements: list[float]) -> list[SuspensionState]:
+        """Solves suspension positions through a sweep of displacements."""
+        states = []
+        for z_displacement in displacements:
+            initial_guess = self.current_state.free_array
+            initial_guess[2::3] += z_displacement - self.current_z  # Correct delta
 
-        initial_guess = self.initial_state.free_array
-        initial_guess[2::3] += z_displacement  # Apply z displacement to all points.
-
-        result = least_squares(
-            self.compute_residuals, initial_guess, method="lm", ftol=FTOL, xtol=XTOL
-        )
-
-        if not result.success:
-            raise RuntimeError(
-                f"Failed to solve suspension position for displacement {z_displacement}m."
+            result = least_squares(
+                self.compute_residuals,
+                initial_guess,
+                method="lm",
+                ftol=FTOL,
+                xtol=XTOL,
+                args=(z_displacement,),
             )
 
-        new_state = SuspensionState(self.initial_state.points.copy())
-        new_state.update_from_array(result.x)
-        return new_state
+            if not result.success:
+                raise RuntimeError(
+                    f"Failed to solve for displacement {z_displacement}m"
+                )
 
-    def compute_residuals(self, state_array: np.ndarray) -> np.ndarray:
-        """Computes constraint residuals for the current suspension state."""
-        state = SuspensionState(self.initial_state.points.copy())
+            self.current_state = SuspensionState(self.current_state.points.copy())
+            self.current_state.update_from_array(result.x)
+            self.current_z = z_displacement  # Need to update this!
+            states.append(self.current_state)
+
+        return states
+
+    def compute_residuals(
+        self, state_array: np.ndarray, target_dz: float
+    ) -> np.ndarray:
+        """Computes constraint residuals for current suspension state."""
+        state = SuspensionState(self.current_state.points.copy())
         state.update_from_array(state_array)
 
         residuals = []
@@ -219,14 +230,18 @@ class DoubleWishboneSolver:
             residuals.append(current_angle - constraint.angle)
 
         # Target position constraint
-        axle_inner_id = state.points[PointID.AXLE_INBOARD].as_array()
-        axle_outer_id = state.points[PointID.AXLE_OUTBOARD].as_array()
+        axle_inboard = state.points[PointID.AXLE_INBOARD].as_array()
+        axle_outboard = state.points[PointID.AXLE_OUTBOARD].as_array()
+        current_midpoint = (axle_inboard + axle_outboard) / 2
+
         initial_midpoint = (
             self.initial_state.points[PointID.AXLE_INBOARD].as_array()
             + self.initial_state.points[PointID.AXLE_OUTBOARD].as_array()
         ) / 2
-        current_midpoint = (axle_inner_id + axle_outer_id) / 2
-        target_z = initial_midpoint[2] + self.target_z_displacement
-        residuals.append(current_midpoint[2] - target_z)
+
+        current_z = current_midpoint[2]
+        target_z = initial_midpoint[2] + target_dz
+
+        residuals.append(current_z - target_z)
 
         return np.array(residuals)
