@@ -1,19 +1,20 @@
 from pathlib import Path
-from typing import Dict, Type, Union, cast
+from typing import cast
 
 import yaml
 from marshmallow.exceptions import ValidationError
 from marshmallow_dataclass import class_schema
 
 import kinematics.geometry.exceptions as exc
-from kinematics.geometry.schemas import DoubleWishboneGeometry, MacPhersonGeometry
+from kinematics.geometry.schemas import GEOMETRY_TYPES, GeometryType, PointID
+from kinematics.geometry.utils import get_all_points
 
-GeometryType = Union[DoubleWishboneGeometry, MacPhersonGeometry]
 
-GEOMETRY_TYPES: Dict[str, Type[GeometryType]] = {
-    "DOUBLE_WISHBONE": DoubleWishboneGeometry,
-    "MACPHERSON_STRUT": MacPhersonGeometry,
-}
+def validate_geometry(geometry: GeometryType) -> None:
+    points = get_all_points(geometry.hard_points)
+    for point in points:
+        if point.id is PointID.NOT_ASSIGNED:
+            raise ValidationError("Found unrecognized point ID in geometry.")
 
 
 def load_geometry(file_path: Path) -> GeometryType:
@@ -56,6 +57,9 @@ def load_geometry(file_path: Path) -> GeometryType:
         geometry_type = GEOMETRY_TYPES[geometry_type_key]
         GeometrySchema = class_schema(geometry_type)
         geometry = cast(GeometryType, GeometrySchema().load(yaml_data))
+
+        # Validate the geometry.
+        validate_geometry(geometry)
 
         return geometry
 

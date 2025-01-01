@@ -177,12 +177,12 @@ def create_suspension_animation(
 def test_run_solver(double_wishbone_geometry_file: Path) -> None:
     """Tests the double wishbone solver through its range of motion."""
     geometry = load_geometry(double_wishbone_geometry_file)
-    map = build_point_lookup(geometry)
+    point_lookup = build_point_lookup(geometry)
 
     if not isinstance(geometry, DoubleWishboneGeometry):
         raise ValueError("Invalid geometry type")
 
-    solver = DoubleWishboneSolver(geometry)
+    solver = DoubleWishboneSolver(geometry=geometry, point_lookup=point_lookup)
 
     displacement_range = [-80, 80]
     n_steps = 21
@@ -197,27 +197,14 @@ def test_run_solver(double_wishbone_geometry_file: Path) -> None:
 
         # Verify constraints are maintained.
         for constraint in solver.length_constraints:
-            point_map = {
-                "upper_inboard_front": geometry.hard_points.upper_wishbone.inboard_front.as_array(),
-                "upper_inboard_rear": geometry.hard_points.upper_wishbone.inboard_rear.as_array(),
-                "lower_inboard_front": geometry.hard_points.lower_wishbone.inboard_front.as_array(),
-                "lower_inboard_rear": geometry.hard_points.lower_wishbone.inboard_rear.as_array(),
-                "upper_outboard": state.upper_outboard,
-                "lower_outboard": state.lower_outboard,
-                "track_rod_outer": state.track_rod_outer,
-                "axle_inner": state.axle_inner,
-                "axle_outer": state.axle_outer,
-                "axle_midpoint": (state.axle_inner + state.axle_outer) / 2,
-            }
-
-            p1 = point_map[constraint.point1_name]
-            p2 = point_map[constraint.point2_name]
+            p1 = point_lookup[constraint.p1].as_array()
+            p2 = point_lookup[constraint.p2].as_array()
             current_length = np.linalg.norm(p1 - p2)
 
             # Check that constraint length is maintained within tolerance.
-            assert np.abs(current_length - constraint.length) < CHECK_TOLERANCE, (
+            assert np.abs(current_length - constraint.distance) < CHECK_TOLERANCE, (
                 f"Constraint violation at displacement {displacement}: "
-                f"{constraint.point1_name} to {constraint.point2_name}"
+                f"{constraint.p1} to {constraint.p2}"
             )
 
         # Verify axle midpoint moves by approximately the requested displacement.

@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum, IntEnum
+from typing import Type, Union
 
 import numpy as np
 
@@ -9,6 +10,8 @@ class Units(Enum):
 
 
 class PointID(IntEnum):
+    NOT_ASSIGNED = 0
+
     LOWER_WISHBONE_INBOARD_FRONT = 1
     LOWER_WISHBONE_INBOARD_REAR = 2
     LOWER_WISHBONE_OUTBOARD = 3
@@ -25,9 +28,10 @@ class PointID(IntEnum):
 
     AXLE_INBOARD = 11
     AXLE_OUTBOARD = 12
+    AXLE_MIDPOINT = 13
 
-    STRUT_INBOARD = 11
-    STRUT_OUTBOARD = 12
+    STRUT_INBOARD = 14
+    STRUT_OUTBOARD = 15
 
 
 @dataclass
@@ -35,7 +39,8 @@ class Point3D:
     x: float
     y: float
     z: float
-    id: PointID | None = None
+    fixed: bool = False
+    id: PointID = PointID.NOT_ASSIGNED
 
     def as_array(self) -> np.ndarray:
         return np.array([self.x, self.y, self.z])
@@ -48,6 +53,9 @@ class LowerWishbonePoints:
     outboard: Point3D
 
     def __post_init__(self):
+        self.inboard_front.fixed = True
+        self.inboard_rear.fixed = True
+
         self.inboard_front.id = PointID.LOWER_WISHBONE_INBOARD_FRONT
         self.inboard_rear.id = PointID.LOWER_WISHBONE_INBOARD_REAR
         self.outboard.id = PointID.LOWER_WISHBONE_OUTBOARD
@@ -60,6 +68,9 @@ class UpperWishbonePoints:
     outboard: Point3D
 
     def __post_init__(self):
+        self.inboard_front.fixed = True
+        self.inboard_rear.fixed = True
+
         self.inboard_front.id = PointID.UPPER_WISHBONE_INBOARD_FRONT
         self.inboard_rear.id = PointID.UPPER_WISHBONE_INBOARD_REAR
         self.outboard.id = PointID.UPPER_WISHBONE_OUTBOARD
@@ -71,6 +82,8 @@ class StrutPoints:
     outboard: Point3D
 
     def __post_init__(self):
+        self.inboard.fixed = True
+
         self.inboard.id = PointID.STRUT_INBOARD
         self.outboard.id = PointID.STRUT_OUTBOARD
 
@@ -159,3 +172,11 @@ class MacPhersonGeometry(SuspensionGeometry):
 
     def validate(self) -> bool:
         return True
+
+
+GeometryType = Union[DoubleWishboneGeometry, MacPhersonGeometry]
+
+GEOMETRY_TYPES: dict[str, Type[GeometryType]] = {
+    "DOUBLE_WISHBONE": DoubleWishboneGeometry,
+    "MACPHERSON_STRUT": MacPhersonGeometry,
+}
