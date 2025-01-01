@@ -6,6 +6,7 @@ import numpy as np
 
 from kinematics.geometry.loader import load_geometry
 from kinematics.geometry.schemas import DoubleWishboneGeometry
+from kinematics.geometry.utils import build_point_lookup
 from kinematics.solvers.double_wishbone import DoubleWishboneSolver, SuspensionState
 
 CHECK_TOLERANCE = 1e-2
@@ -176,6 +177,7 @@ def create_suspension_animation(
 def test_run_solver(double_wishbone_geometry_file: Path) -> None:
     """Tests the double wishbone solver through its range of motion."""
     geometry = load_geometry(double_wishbone_geometry_file)
+    map = build_point_lookup(geometry)
 
     if not isinstance(geometry, DoubleWishboneGeometry):
         raise ValueError("Invalid geometry type")
