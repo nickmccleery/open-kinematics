@@ -164,6 +164,51 @@ def create_suspension_animation(
         if view_name == "isometric":
             ax.legend()
 
+    def print_state_points(state: SuspensionState, frame: int, file_path: str) -> None:
+        """Print a formatted table of point positions for the current frame."""
+        points_of_interest = {
+            "Upper Outboard": PointID.UPPER_WISHBONE_OUTBOARD,
+            "Lower Outboard": PointID.LOWER_WISHBONE_OUTBOARD,
+            "Axle Inboard": PointID.AXLE_INBOARD,
+            "Axle Outboard": PointID.AXLE_OUTBOARD,
+            "Trackrod Inboard": PointID.TRACKROD_INBOARD,
+            "Trackrod Outboard": PointID.TRACKROD_OUTBOARD,
+        }
+
+        with open(file_path, "a") as file:
+            if frame == 0:
+                file.write("\nPoint Positions Table:\n")
+                file.write(
+                    f"{'Frame':<6} {'Point':<20} {'X':>10} {'Y':>10} {'Z':>10}\n"
+                )
+                file.write("-" * 60 + "\n")
+
+            for name, point_id in points_of_interest.items():
+                point = state.points[point_id].as_array()
+                file.write(
+                    f"{frame:<6} {name:<20} {point[0]:>10.2f} {point[1]:>10.2f} {point[2]:>10.2f}\n"
+                )
+
+            # Add a blank line between frames
+            file.write("\n")
+
+            # At last frame, print fixed points for reference
+            if frame == len(states) - 1:
+                file.write("\nFixed Points Reference:\n")
+                file.write("-" * 60 + "\n")
+                hp = geometry.hard_points
+                fixed_points = {
+                    "UW Inboard Front": hp.upper_wishbone.inboard_front,
+                    "UW Inboard Rear": hp.upper_wishbone.inboard_rear,
+                    "LW Inboard Front": hp.lower_wishbone.inboard_front,
+                    "LW Inboard Rear": hp.lower_wishbone.inboard_rear,
+                }
+                for name, point in fixed_points.items():
+                    pos = point.as_array()
+                    file.write(
+                        f"{'--':<6} {name:<20} {pos[0]:>10.2f} {pos[1]:>10.2f} {pos[2]:>10.2f}\n"
+                    )
+
     def update(frame):
         state = states[frame]
         plot_state(ax_top, state, "top")
@@ -171,6 +216,7 @@ def create_suspension_animation(
         plot_state(ax_side, state, "side")
         plot_state(ax_iso, state, "isometric")
         fig.suptitle(f"Frame {frame}", fontsize=16)
+        print_state_points(state, frame, "point_positions.txt")
 
     # Create animation
     anim = animation.FuncAnimation(

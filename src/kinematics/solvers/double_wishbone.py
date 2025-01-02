@@ -96,27 +96,6 @@ class DoubleWishboneSolver:
         )
         constraints.append(axle_to_upright)
 
-        # Upper balljoint-TRE to kingpin axis orientation constraint
-        p1 = hp.upper_wishbone.outboard.as_array()
-        p2 = hp.track_rod.outer.as_array()
-        v1 = p2 - p1
-
-        p1 = hp.upper_wishbone.outboard.as_array()
-        p2 = hp.lower_wishbone.outboard.as_array()
-        v2 = p2 - p1
-
-        v1 = v1 / np.linalg.norm(v1)
-        v2 = v2 / np.linalg.norm(v2)
-
-        theta = np.arccos(np.clip(np.dot(v1, v2), -1.0, 1.0))
-
-        upper_tre_to_axle = VectorOrientationConstraint(
-            v1=(hp.upper_wishbone.outboard.id, hp.track_rod.outer.id),
-            v2=(hp.wheel_axle.outer.id, hp.wheel_axle.inner.id),
-            angle=theta,
-        )
-        constraints.append(upper_tre_to_axle)
-
         return constraints
 
     def compute_distance_constraints(self) -> list[PointPointDistanceConstraint]:
@@ -153,6 +132,10 @@ class DoubleWishboneSolver:
         # Trackrod constraints
         make_constraint(hp.upper_wishbone.outboard, hp.track_rod.outer)
         make_constraint(hp.lower_wishbone.outboard, hp.track_rod.outer)
+
+        # Axle to TRE constraints
+        make_constraint(hp.wheel_axle.inner, hp.track_rod.outer)
+        make_constraint(hp.wheel_axle.outer, hp.track_rod.outer)
 
         return constraints
 
