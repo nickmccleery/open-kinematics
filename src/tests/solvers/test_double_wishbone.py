@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from kinematics.geometry.loader import load_geometry
-from kinematics.geometry.schemas import DoubleWishboneGeometry
+from kinematics.geometry.schemas import DoubleWishboneGeometry, PointID
 from kinematics.solvers.double_wishbone import DoubleWishboneSolver, SuspensionState
 
 CHECK_TOLERANCE = 1e-2
@@ -15,7 +15,6 @@ def create_suspension_animation(
     geometry: DoubleWishboneGeometry, states: list[SuspensionState], output_path: Path
 ) -> None:
     """Creates an animated visualization of suspension movement."""
-
     fig = plt.figure(figsize=(20, 20))
 
     # Create four subplots
@@ -23,7 +22,7 @@ def create_suspension_animation(
     ax_front = fig.add_subplot(222, projection="3d")
     ax_side = fig.add_subplot(223, projection="3d")
     ax_iso = fig.add_subplot(224, projection="3d")
-    axes = [ax_top, ax_front, ax_side, ax_iso]
+    # axes = [ax_top, ax_front, ax_side, ax_iso]
 
     # Calculate fixed limits once from initial geometry and states
     hp = geometry.hard_points
@@ -33,24 +32,28 @@ def create_suspension_animation(
             hp.upper_wishbone.inboard_rear.as_array(),
             hp.lower_wishbone.inboard_front.as_array(),
             hp.lower_wishbone.inboard_rear.as_array(),
-            hp.track_rod.inner.as_array(),
-        ]
-    )
-    moving_points = np.vstack(
-        [
-            [state.upper_outboard for state in states],
-            [state.lower_outboard for state in states],
-            [state.axle_inner for state in states],
-            [state.axle_outer for state in states],
-            [state.track_rod_outer for state in states],
         ]
     )
 
+    # Modified to use points dictionary
+    def get_state_points(state: SuspensionState) -> np.ndarray:
+        return np.array(
+            [
+                state.points[PointID.UPPER_WISHBONE_OUTBOARD].as_array(),
+                state.points[PointID.LOWER_WISHBONE_OUTBOARD].as_array(),
+                state.points[PointID.AXLE_INBOARD].as_array(),
+                state.points[PointID.AXLE_OUTBOARD].as_array(),
+                state.points[PointID.TRACKROD_INBOARD].as_array(),
+                state.points[PointID.TRACKROD_OUTBOARD].as_array(),
+            ]
+        )
+
+    moving_points = np.vstack([get_state_points(state) for state in states])
     all_points = np.vstack([inboard_points, moving_points])
-    min_bounds = all_points.min(axis=0) - 0.1
-    max_bounds = all_points.max(axis=0) + 0.1
+    min_bounds = all_points.min(axis=0) - 100
+    max_bounds = all_points.max(axis=0) + 100
 
-    def plot_state(ax, state, view_name):
+    def plot_state(ax, state: SuspensionState, view_name: str) -> None:
         """Plot suspension state on a given axis."""
         ax.clear()
 
@@ -83,16 +86,8 @@ def create_suspension_animation(
             label="Inboard Points",
         )
 
-        # Plot moving points
-        moving_points = np.array(
-            [
-                state.upper_outboard,
-                state.lower_outboard,
-                state.axle_inner,
-                state.axle_outer,
-                state.track_rod_outer,
-            ]
-        )
+        # Get current moving points from state
+        moving_points = get_state_points(state)
         ax.scatter(
             moving_points[:, 0],
             moving_points[:, 1],
@@ -104,46 +99,60 @@ def create_suspension_animation(
         )
 
         # Draw upper wishbone legs
+        upper_outboard = state.points[PointID.UPPER_WISHBONE_OUTBOARD].as_array()
         ax.plot(
-            [hp.upper_wishbone.inboard_front.x, state.upper_outboard[0]],
-            [hp.upper_wishbone.inboard_front.y, state.upper_outboard[1]],
-            [hp.upper_wishbone.inboard_front.z, state.upper_outboard[2]],
+            [hp.upper_wishbone.inboard_front.x, upper_outboard[0]],
+            [hp.upper_wishbone.inboard_front.y, upper_outboard[1]],
+            [hp.upper_wishbone.inboard_front.z, upper_outboard[2]],
             "k-",
         )
         ax.plot(
-            [hp.upper_wishbone.inboard_rear.x, state.upper_outboard[0]],
-            [hp.upper_wishbone.inboard_rear.y, state.upper_outboard[1]],
-            [hp.upper_wishbone.inboard_rear.z, state.upper_outboard[2]],
+            [hp.upper_wishbone.inboard_rear.x, upper_outboard[0]],
+            [hp.upper_wishbone.inboard_rear.y, upper_outboard[1]],
+            [hp.upper_wishbone.inboard_rear.z, upper_outboard[2]],
             "k-",
         )
 
         # Draw lower wishbone legs
+        lower_outboard = state.points[PointID.LOWER_WISHBONE_OUTBOARD].as_array()
         ax.plot(
-            [hp.lower_wishbone.inboard_front.x, state.lower_outboard[0]],
-            [hp.lower_wishbone.inboard_front.y, state.lower_outboard[1]],
-            [hp.lower_wishbone.inboard_front.z, state.lower_outboard[2]],
+            [hp.lower_wishbone.inboard_front.x, lower_outboard[0]],
+            [hp.lower_wishbone.inboard_front.y, lower_outboard[1]],
+            [hp.lower_wishbone.inboard_front.z, lower_outboard[2]],
             "k-",
         )
         ax.plot(
-            [hp.lower_wishbone.inboard_rear.x, state.lower_outboard[0]],
-            [hp.lower_wishbone.inboard_rear.y, state.lower_outboard[1]],
-            [hp.lower_wishbone.inboard_rear.z, state.lower_outboard[2]],
+            [hp.lower_wishbone.inboard_rear.x, lower_outboard[0]],
+            [hp.lower_wishbone.inboard_rear.y, lower_outboard[1]],
+            [hp.lower_wishbone.inboard_rear.z, lower_outboard[2]],
             "k-",
         )
 
         # Draw upright (connecting upper and lower ball joints)
         ax.plot(
-            [state.upper_outboard[0], state.lower_outboard[0]],
-            [state.upper_outboard[1], state.lower_outboard[1]],
-            [state.upper_outboard[2], state.lower_outboard[2]],
+            [upper_outboard[0], lower_outboard[0]],
+            [upper_outboard[1], lower_outboard[1]],
+            [upper_outboard[2], lower_outboard[2]],
             "k-",
         )
 
         # Draw wheel axle
+        axle_inner = state.points[PointID.AXLE_INBOARD].as_array()
+        axle_outer = state.points[PointID.AXLE_OUTBOARD].as_array()
         ax.plot(
-            [state.axle_inner[0], state.axle_outer[0]],
-            [state.axle_inner[1], state.axle_outer[1]],
-            [state.axle_inner[2], state.axle_outer[2]],
+            [axle_inner[0], axle_outer[0]],
+            [axle_inner[1], axle_outer[1]],
+            [axle_inner[2], axle_outer[2]],
+            "k-",
+        )
+
+        # Draw track rod
+        track_rod_inner = state.points[PointID.TRACKROD_INBOARD].as_array()
+        track_rod_outer = state.points[PointID.TRACKROD_OUTBOARD].as_array()
+        ax.plot(
+            [track_rod_inner[0], track_rod_outer[0]],
+            [track_rod_inner[1], track_rod_outer[1]],
+            [track_rod_inner[2], track_rod_outer[2]],
             "k-",
         )
 
@@ -155,6 +164,51 @@ def create_suspension_animation(
         if view_name == "isometric":
             ax.legend()
 
+    def print_state_points(state: SuspensionState, frame: int, file_path: str) -> None:
+        """Print a formatted table of point positions for the current frame."""
+        points_of_interest = {
+            "Upper Outboard": PointID.UPPER_WISHBONE_OUTBOARD,
+            "Lower Outboard": PointID.LOWER_WISHBONE_OUTBOARD,
+            "Axle Inboard": PointID.AXLE_INBOARD,
+            "Axle Outboard": PointID.AXLE_OUTBOARD,
+            "Trackrod Inboard": PointID.TRACKROD_INBOARD,
+            "Trackrod Outboard": PointID.TRACKROD_OUTBOARD,
+        }
+
+        with open(file_path, "a") as file:
+            if frame == 0:
+                file.write("\nPoint Positions Table:\n")
+                file.write(
+                    f"{'Frame':<6} {'Point':<20} {'X':>10} {'Y':>10} {'Z':>10}\n"
+                )
+                file.write("-" * 60 + "\n")
+
+            for name, point_id in points_of_interest.items():
+                point = state.points[point_id].as_array()
+                file.write(
+                    f"{frame:<6} {name:<20} {point[0]:>10.2f} {point[1]:>10.2f} {point[2]:>10.2f}\n"
+                )
+
+            # Add a blank line between frames
+            file.write("\n")
+
+            # At last frame, print fixed points for reference
+            if frame == len(states) - 1:
+                file.write("\nFixed Points Reference:\n")
+                file.write("-" * 60 + "\n")
+                hp = geometry.hard_points
+                fixed_points = {
+                    "UW Inboard Front": hp.upper_wishbone.inboard_front,
+                    "UW Inboard Rear": hp.upper_wishbone.inboard_rear,
+                    "LW Inboard Front": hp.lower_wishbone.inboard_front,
+                    "LW Inboard Rear": hp.lower_wishbone.inboard_rear,
+                }
+                for name, point in fixed_points.items():
+                    pos = point.as_array()
+                    file.write(
+                        f"{'--':<6} {name:<20} {pos[0]:>10.2f} {pos[1]:>10.2f} {pos[2]:>10.2f}\n"
+                    )
+
     def update(frame):
         state = states[frame]
         plot_state(ax_top, state, "top")
@@ -162,6 +216,7 @@ def create_suspension_animation(
         plot_state(ax_side, state, "side")
         plot_state(ax_iso, state, "isometric")
         fig.suptitle(f"Frame {frame}", fontsize=16)
+        print_state_points(state, frame, "point_positions.txt")
 
     # Create animation
     anim = animation.FuncAnimation(
@@ -180,54 +235,46 @@ def test_run_solver(double_wishbone_geometry_file: Path) -> None:
     if not isinstance(geometry, DoubleWishboneGeometry):
         raise ValueError("Invalid geometry type")
 
-    solver = DoubleWishboneSolver(geometry)
+    solver = DoubleWishboneSolver(geometry=geometry)
 
+    # Create displacement sweep
     displacement_range = [-80, 80]
     n_steps = 21
-    displacements = np.linspace(displacement_range[0], displacement_range[1], n_steps)
+    displacements = list(
+        np.linspace(displacement_range[0], displacement_range[1], n_steps)
+    )
 
-    states = []
+    # Solve for all positions
+    states = solver.solve_sweep(displacements)
 
-    for displacement in displacements:
-        state = solver.solve_positions(displacement)
-        assert isinstance(state, SuspensionState)
-        states.append(state)
-
-        # Verify constraints are maintained.
+    # Verify constraints are maintained
+    for state, displacement in zip(states, displacements):
+        # Verify length constraints
         for constraint in solver.length_constraints:
-            point_map = {
-                "upper_inboard_front": geometry.hard_points.upper_wishbone.inboard_front.as_array(),
-                "upper_inboard_rear": geometry.hard_points.upper_wishbone.inboard_rear.as_array(),
-                "lower_inboard_front": geometry.hard_points.lower_wishbone.inboard_front.as_array(),
-                "lower_inboard_rear": geometry.hard_points.lower_wishbone.inboard_rear.as_array(),
-                "upper_outboard": state.upper_outboard,
-                "lower_outboard": state.lower_outboard,
-                "track_rod_outer": state.track_rod_outer,
-                "axle_inner": state.axle_inner,
-                "axle_outer": state.axle_outer,
-                "axle_midpoint": (state.axle_inner + state.axle_outer) / 2,
-            }
-
-            p1 = point_map[constraint.point1_name]
-            p2 = point_map[constraint.point2_name]
+            p1 = state.points[constraint.p1].as_array()
+            p2 = state.points[constraint.p2].as_array()
             current_length = np.linalg.norm(p1 - p2)
 
-            # Check that constraint length is maintained within tolerance.
-            assert np.abs(current_length - constraint.length) < CHECK_TOLERANCE, (
+            assert np.abs(current_length - constraint.distance) < CHECK_TOLERANCE, (
                 f"Constraint violation at displacement {displacement}: "
-                f"{constraint.point1_name} to {constraint.point2_name}"
+                f"{constraint.p1} to {constraint.p2}"
             )
 
-        # Verify axle midpoint moves by approximately the requested displacement.
-        current_target_z = solver.initial_state.axle_inner[2] + displacement
-        axle_midpoint = (state.axle_inner + state.axle_outer) / 2
-        axle_midpoint_z = axle_midpoint[2]
+        # Verify axle midpoint z position
+        axle_inner = state.points[PointID.AXLE_INBOARD].as_array()
+        axle_outer = state.points[PointID.AXLE_OUTBOARD].as_array()
+        axle_midpoint = (axle_inner + axle_outer) / 2
+        initial_midpoint = (
+            solver.initial_state.points[PointID.AXLE_INBOARD].as_array()
+            + solver.initial_state.points[PointID.AXLE_OUTBOARD].as_array()
+        ) / 2
+        target_z = initial_midpoint[2] + displacement
 
         assert (
-            np.abs(axle_midpoint_z - current_target_z) < CHECK_TOLERANCE
+            np.abs(axle_midpoint[2] - target_z) < CHECK_TOLERANCE
         ), f"Failed to maintain axle midpoint at displacement {displacement}"
 
-    # Create animation.
+    # Create animation
     states_animate = states + states[::-1]
     output_path = Path("suspension_motion.gif")
     create_suspension_animation(geometry, states_animate, output_path)
