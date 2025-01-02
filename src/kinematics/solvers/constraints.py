@@ -23,9 +23,9 @@ class VectorOrientationConstraint(NamedTuple):
     angle: float
 
 
-class LinearMotionConstraint(NamedTuple):
+class FixedAxisConstraint(NamedTuple):
     """
-    Describes a linear motion constraint for a point along a given axis.
+    Describes a constraint that fixes a point on a specified axis.
     """
 
     point_id: PointID

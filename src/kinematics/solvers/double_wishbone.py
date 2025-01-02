@@ -6,7 +6,7 @@ from scipy.optimize import least_squares
 from kinematics.geometry.schemas import DoubleWishboneGeometry, Point3D, PointID
 from kinematics.geometry.utils import get_all_points
 from kinematics.solvers.constraints import (
-    LinearMotionConstraint,
+    FixedAxisConstraint,
     PointPointDistanceConstraint,
     VectorOrientationConstraint,
 )
@@ -184,7 +184,7 @@ class DoubleWishboneSolver:
 
         return states
 
-    def compute_linear_constraints(self) -> list[LinearMotionConstraint]:
+    def compute_linear_constraints(self) -> list[FixedAxisConstraint]:
         """Computes linear motion constraints for track rod inner point."""
         hp = self.geometry.hard_points
         constraints = []
@@ -192,13 +192,13 @@ class DoubleWishboneSolver:
         # Track rod inner point should only move in Y direction
         # Constrain X and Z position
         constraints.append(
-            LinearMotionConstraint(
+            FixedAxisConstraint(
                 point_id=hp.track_rod.inner.id, axis="x", value=hp.track_rod.inner.x
             )
         )
 
         constraints.append(
-            LinearMotionConstraint(
+            FixedAxisConstraint(
                 point_id=hp.track_rod.inner.id, axis="z", value=hp.track_rod.inner.z
             )
         )
