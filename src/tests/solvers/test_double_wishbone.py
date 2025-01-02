@@ -6,6 +6,7 @@ import numpy as np
 
 from kinematics.geometry.loader import load_geometry
 from kinematics.geometry.schemas import DoubleWishboneGeometry, PointID
+from kinematics.solvers.constraints import PointPointDistanceConstraint
 from kinematics.solvers.double_wishbone import DoubleWishboneSolver, SuspensionState
 
 CHECK_TOLERANCE = 1e-2
@@ -246,8 +247,8 @@ def test_run_solver(double_wishbone_geometry_file: Path) -> None:
     solver = DoubleWishboneSolver(geometry=geometry)
 
     # Create displacement sweep
-    displacement_range = [-80, 80]
-    n_steps = 21
+    displacement_range = [-100, 100]
+    n_steps = 26
     displacements = list(
         np.linspace(displacement_range[0], displacement_range[1], n_steps)
     )
@@ -257,8 +258,11 @@ def test_run_solver(double_wishbone_geometry_file: Path) -> None:
 
     # Verify constraints are maintained
     for state, displacement in zip(states, displacements):
+        length_constraints = [
+            x for x in solver.constraints if isinstance(x, PointPointDistanceConstraint)
+        ]
         # Verify length constraints
-        for constraint in solver.length_constraints:
+        for constraint in length_constraints:
             p1 = state.points[constraint.p1].as_array()
             p2 = state.points[constraint.p2].as_array()
             current_length = np.linalg.norm(p1 - p2)
