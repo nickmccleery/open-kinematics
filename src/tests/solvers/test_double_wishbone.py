@@ -32,7 +32,6 @@ def create_suspension_animation(
             hp.upper_wishbone.inboard_rear.as_array(),
             hp.lower_wishbone.inboard_front.as_array(),
             hp.lower_wishbone.inboard_rear.as_array(),
-            hp.track_rod.inner.as_array(),
         ]
     )
 
@@ -44,14 +43,15 @@ def create_suspension_animation(
                 state.points[PointID.LOWER_WISHBONE_OUTBOARD].as_array(),
                 state.points[PointID.AXLE_INBOARD].as_array(),
                 state.points[PointID.AXLE_OUTBOARD].as_array(),
+                state.points[PointID.TRACKROD_INBOARD].as_array(),
                 state.points[PointID.TRACKROD_OUTBOARD].as_array(),
             ]
         )
 
     moving_points = np.vstack([get_state_points(state) for state in states])
     all_points = np.vstack([inboard_points, moving_points])
-    min_bounds = all_points.min(axis=0) - 0.1
-    max_bounds = all_points.max(axis=0) + 0.1
+    min_bounds = all_points.min(axis=0) - 100
+    max_bounds = all_points.max(axis=0) + 100
 
     def plot_state(ax, state: SuspensionState, view_name: str) -> None:
         """Plot suspension state on a given axis."""
@@ -147,11 +147,12 @@ def create_suspension_animation(
         )
 
         # Draw track rod
+        track_rod_inner = state.points[PointID.TRACKROD_INBOARD].as_array()
         track_rod_outer = state.points[PointID.TRACKROD_OUTBOARD].as_array()
         ax.plot(
-            [hp.track_rod.inner.x, track_rod_outer[0]],
-            [hp.track_rod.inner.y, track_rod_outer[1]],
-            [hp.track_rod.inner.z, track_rod_outer[2]],
+            [track_rod_inner[0], track_rod_outer[0]],
+            [track_rod_inner[1], track_rod_outer[1]],
+            [track_rod_inner[2], track_rod_outer[2]],
             "k-",
         )
 

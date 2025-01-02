@@ -147,6 +147,9 @@ class DoubleWishboneSolver:
         make_constraint(hp.wheel_axle.outer, hp.upper_wishbone.outboard)
         make_constraint(hp.wheel_axle.outer, hp.lower_wishbone.outboard)
 
+        # Trackrod length constraint
+        make_constraint(hp.track_rod.inner, hp.track_rod.outer)
+
         # Trackrod constraints
         make_constraint(hp.upper_wishbone.outboard, hp.track_rod.outer)
         make_constraint(hp.lower_wishbone.outboard, hp.track_rod.outer)
