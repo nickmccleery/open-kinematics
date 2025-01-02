@@ -6,6 +6,7 @@ from scipy.optimize import least_squares
 from kinematics.geometry.schemas import DoubleWishboneGeometry, Point3D, PointID
 from kinematics.geometry.utils import get_all_points
 from kinematics.solvers.constraints import (
+    LinearMotionConstraint,
     PointPointDistanceConstraint,
     VectorOrientationConstraint,
 )
@@ -67,6 +68,7 @@ class DoubleWishboneSolver:
         # Compute constraints
         self.length_constraints = self.compute_distance_constraints()
         self.orientation_constraints = self.compute_orientation_constraints()
+        self.linear_constraints = self.compute_linear_constraints()
 
     def compute_orientation_constraints(self) -> list[VectorOrientationConstraint]:
         """Computes orientation constraints from the initial geometry."""
@@ -127,53 +129,31 @@ class DoubleWishboneSolver:
             length = float(np.linalg.norm(p1.as_array() - p2.as_array()))
             constraints.append(PointPointDistanceConstraint(p1.id, p2.id, length))
 
-        # Wishbone inboard to outboard constraints.
+        # Wishbone inboard to outboard constraints
         make_constraint(hp.upper_wishbone.inboard_front, hp.upper_wishbone.outboard)
         make_constraint(hp.upper_wishbone.inboard_rear, hp.upper_wishbone.outboard)
         make_constraint(hp.lower_wishbone.inboard_front, hp.lower_wishbone.outboard)
         make_constraint(hp.lower_wishbone.inboard_rear, hp.lower_wishbone.outboard)
 
-        # Upright length constraint (distance between upper and lower ball joints).
+        # Upright length constraint
         make_constraint(hp.upper_wishbone.outboard, hp.lower_wishbone.outboard)
 
-        # Axle length constraint.
+        # Axle length constraint
         make_constraint(hp.wheel_axle.inner, hp.wheel_axle.outer)
 
-        # Axle end to end constraints.
-        make_constraint(hp.wheel_axle.inner, hp.wheel_axle.outer)
-
-        # Axle to ball joint constraints.
+        # Axle to ball joint constraints
         make_constraint(hp.wheel_axle.inner, hp.upper_wishbone.outboard)
         make_constraint(hp.wheel_axle.inner, hp.lower_wishbone.outboard)
         make_constraint(hp.wheel_axle.outer, hp.upper_wishbone.outboard)
         make_constraint(hp.wheel_axle.outer, hp.lower_wishbone.outboard)
 
-        # Trackrod constraints.
+        # Trackrod constraints
         make_constraint(hp.upper_wishbone.outboard, hp.track_rod.outer)
         make_constraint(hp.lower_wishbone.outboard, hp.track_rod.outer)
 
-        # Axle to track rod constraints.
+        # Axle to track rod constraints
         make_constraint(hp.wheel_axle.inner, hp.track_rod.outer)
         make_constraint(hp.wheel_axle.outer, hp.track_rod.outer)
-
-        # Add axle midpoint constraints.
-        axle_midpoint_xyz = (
-            hp.wheel_axle.inner.as_array() + hp.wheel_axle.outer.as_array()
-        ) / 2
-        axle_midpoint = Point3D(
-            x=axle_midpoint_xyz[0],
-            y=axle_midpoint_xyz[1],
-            z=axle_midpoint_xyz[2],
-            id=PointID.AXLE_MIDPOINT,
-        )
-
-        # Add this to points and state.
-        # self.points.append(axle_midpoint)
-        # self.initial_state.points[PointID.AXLE_MIDPOINT] = axle_midpoint
-        # self.current_state.points[PointID.AXLE_MIDPOINT] = axle_midpoint
-
-        # make_constraint(axle_midpoint, hp.upper_wishbone.outboard)
-        # make_constraint(axle_midpoint, hp.lower_wishbone.outboard)
 
         return constraints
 
@@ -222,6 +202,30 @@ class DoubleWishboneSolver:
 
         return states
 
+    def compute_linear_constraints(self) -> list[LinearMotionConstraint]:
+        """Computes linear motion constraints for track rod inner point."""
+        hp = self.geometry.hard_points
+        constraints = []
+
+        # Track rod inner point should only move in Y direction
+        # Constrain X position
+        initial_x = hp.track_rod.inner.x
+        constraints.append(
+            LinearMotionConstraint(
+                point_id=hp.track_rod.inner.id, axis="x", value=initial_x
+            )
+        )
+
+        # Constrain Z position
+        initial_z = hp.track_rod.inner.z
+        constraints.append(
+            LinearMotionConstraint(
+                point_id=hp.track_rod.inner.id, axis="z", value=initial_z
+            )
+        )
+
+        return constraints
+
     def compute_residuals(
         self, state_array: np.ndarray, target_dz: float
     ) -> np.ndarray:
@@ -254,6 +258,12 @@ class DoubleWishboneSolver:
 
             current_angle = np.arccos(np.clip(np.dot(v1, v2), -1.0, 1.0))
             residuals.append(current_angle - constraint.angle)
+
+        # Linear motion constraints
+        for constraint in self.linear_constraints:
+            point = state.points[constraint.point_id]
+            point_coord = getattr(point, constraint.axis)
+            residuals.append(point_coord - constraint.value)
 
         # Target position constraint - using pre-calculated initial midpoint
         current_axle_inboard = state.points[PointID.AXLE_INBOARD].as_array()

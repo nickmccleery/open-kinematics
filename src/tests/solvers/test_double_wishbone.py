@@ -15,7 +15,6 @@ def create_suspension_animation(
     geometry: DoubleWishboneGeometry, states: list[SuspensionState], output_path: Path
 ) -> None:
     """Creates an animated visualization of suspension movement."""
-
     fig = plt.figure(figsize=(20, 20))
 
     # Create four subplots
@@ -36,21 +35,25 @@ def create_suspension_animation(
             hp.track_rod.inner.as_array(),
         ]
     )
-    moving_points = np.vstack(
-        [
-            [state.upper_outboard for state in states],
-            [state.lower_outboard for state in states],
-            [state.axle_inner for state in states],
-            [state.axle_outer for state in states],
-            [state.track_rod_outer for state in states],
-        ]
-    )
 
+    # Modified to use points dictionary
+    def get_state_points(state: SuspensionState) -> np.ndarray:
+        return np.array(
+            [
+                state.points[PointID.UPPER_WISHBONE_OUTBOARD].as_array(),
+                state.points[PointID.LOWER_WISHBONE_OUTBOARD].as_array(),
+                state.points[PointID.AXLE_INBOARD].as_array(),
+                state.points[PointID.AXLE_OUTBOARD].as_array(),
+                state.points[PointID.TRACKROD_OUTBOARD].as_array(),
+            ]
+        )
+
+    moving_points = np.vstack([get_state_points(state) for state in states])
     all_points = np.vstack([inboard_points, moving_points])
     min_bounds = all_points.min(axis=0) - 0.1
     max_bounds = all_points.max(axis=0) + 0.1
 
-    def plot_state(ax, state, view_name):
+    def plot_state(ax, state: SuspensionState, view_name: str) -> None:
         """Plot suspension state on a given axis."""
         ax.clear()
 
@@ -83,16 +86,8 @@ def create_suspension_animation(
             label="Inboard Points",
         )
 
-        # Plot moving points
-        moving_points = np.array(
-            [
-                state.upper_outboard,
-                state.lower_outboard,
-                state.axle_inner,
-                state.axle_outer,
-                state.track_rod_outer,
-            ]
-        )
+        # Get current moving points from state
+        moving_points = get_state_points(state)
         ax.scatter(
             moving_points[:, 0],
             moving_points[:, 1],
@@ -104,46 +99,59 @@ def create_suspension_animation(
         )
 
         # Draw upper wishbone legs
+        upper_outboard = state.points[PointID.UPPER_WISHBONE_OUTBOARD].as_array()
         ax.plot(
-            [hp.upper_wishbone.inboard_front.x, state.upper_outboard[0]],
-            [hp.upper_wishbone.inboard_front.y, state.upper_outboard[1]],
-            [hp.upper_wishbone.inboard_front.z, state.upper_outboard[2]],
+            [hp.upper_wishbone.inboard_front.x, upper_outboard[0]],
+            [hp.upper_wishbone.inboard_front.y, upper_outboard[1]],
+            [hp.upper_wishbone.inboard_front.z, upper_outboard[2]],
             "k-",
         )
         ax.plot(
-            [hp.upper_wishbone.inboard_rear.x, state.upper_outboard[0]],
-            [hp.upper_wishbone.inboard_rear.y, state.upper_outboard[1]],
-            [hp.upper_wishbone.inboard_rear.z, state.upper_outboard[2]],
+            [hp.upper_wishbone.inboard_rear.x, upper_outboard[0]],
+            [hp.upper_wishbone.inboard_rear.y, upper_outboard[1]],
+            [hp.upper_wishbone.inboard_rear.z, upper_outboard[2]],
             "k-",
         )
 
         # Draw lower wishbone legs
+        lower_outboard = state.points[PointID.LOWER_WISHBONE_OUTBOARD].as_array()
         ax.plot(
-            [hp.lower_wishbone.inboard_front.x, state.lower_outboard[0]],
-            [hp.lower_wishbone.inboard_front.y, state.lower_outboard[1]],
-            [hp.lower_wishbone.inboard_front.z, state.lower_outboard[2]],
+            [hp.lower_wishbone.inboard_front.x, lower_outboard[0]],
+            [hp.lower_wishbone.inboard_front.y, lower_outboard[1]],
+            [hp.lower_wishbone.inboard_front.z, lower_outboard[2]],
             "k-",
         )
         ax.plot(
-            [hp.lower_wishbone.inboard_rear.x, state.lower_outboard[0]],
-            [hp.lower_wishbone.inboard_rear.y, state.lower_outboard[1]],
-            [hp.lower_wishbone.inboard_rear.z, state.lower_outboard[2]],
+            [hp.lower_wishbone.inboard_rear.x, lower_outboard[0]],
+            [hp.lower_wishbone.inboard_rear.y, lower_outboard[1]],
+            [hp.lower_wishbone.inboard_rear.z, lower_outboard[2]],
             "k-",
         )
 
         # Draw upright (connecting upper and lower ball joints)
         ax.plot(
-            [state.upper_outboard[0], state.lower_outboard[0]],
-            [state.upper_outboard[1], state.lower_outboard[1]],
-            [state.upper_outboard[2], state.lower_outboard[2]],
+            [upper_outboard[0], lower_outboard[0]],
+            [upper_outboard[1], lower_outboard[1]],
+            [upper_outboard[2], lower_outboard[2]],
             "k-",
         )
 
         # Draw wheel axle
+        axle_inner = state.points[PointID.AXLE_INBOARD].as_array()
+        axle_outer = state.points[PointID.AXLE_OUTBOARD].as_array()
         ax.plot(
-            [state.axle_inner[0], state.axle_outer[0]],
-            [state.axle_inner[1], state.axle_outer[1]],
-            [state.axle_inner[2], state.axle_outer[2]],
+            [axle_inner[0], axle_outer[0]],
+            [axle_inner[1], axle_outer[1]],
+            [axle_inner[2], axle_outer[2]],
+            "k-",
+        )
+
+        # Draw track rod
+        track_rod_outer = state.points[PointID.TRACKROD_OUTBOARD].as_array()
+        ax.plot(
+            [hp.track_rod.inner.x, track_rod_outer[0]],
+            [hp.track_rod.inner.y, track_rod_outer[1]],
+            [hp.track_rod.inner.z, track_rod_outer[2]],
             "k-",
         )
 

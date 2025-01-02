@@ -1,4 +1,4 @@
-from typing import NamedTuple, Tuple
+from typing import Literal, NamedTuple, Tuple
 
 from kinematics.geometry.schemas import PointID
 
@@ -21,3 +21,11 @@ class VectorOrientationConstraint(NamedTuple):
     v1: Tuple[PointID, PointID]
     v2: Tuple[PointID, PointID]
     angle: float
+
+
+class LinearMotionConstraint(NamedTuple):
+    """Constrains a point to maintain a specific coordinate value along an axis."""
+
+    point_id: PointID
+    axis: Literal["x", "y", "z"]  # Can only be 'x', 'y', or 'z'
+    value: float  # The coordinate value to maintain
