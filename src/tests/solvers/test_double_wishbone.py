@@ -6,8 +6,9 @@ import numpy as np
 
 from kinematics.geometry.loader import load_geometry
 from kinematics.geometry.schemas import DoubleWishboneGeometry, PointID
+from kinematics.solvers.common import SuspensionState
 from kinematics.solvers.constraints import PointPointDistanceConstraint
-from kinematics.solvers.double_wishbone import DoubleWishboneSolver, SuspensionState
+from kinematics.solvers.double_wishbone import DoubleWishboneSolver
 
 CHECK_TOLERANCE = 1e-2
 
