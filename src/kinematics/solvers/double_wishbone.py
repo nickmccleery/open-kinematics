@@ -154,10 +154,6 @@ class DoubleWishboneSolver:
         make_constraint(hp.upper_wishbone.outboard, hp.track_rod.outer)
         make_constraint(hp.lower_wishbone.outboard, hp.track_rod.outer)
 
-        # Axle to track rod constraints
-        make_constraint(hp.wheel_axle.inner, hp.track_rod.outer)
-        make_constraint(hp.wheel_axle.outer, hp.track_rod.outer)
-
         return constraints
 
     def compute_initial_state(self) -> SuspensionState:
@@ -211,19 +207,16 @@ class DoubleWishboneSolver:
         constraints = []
 
         # Track rod inner point should only move in Y direction
-        # Constrain X position
-        initial_x = hp.track_rod.inner.x
+        # Constrain X and Z position
         constraints.append(
             LinearMotionConstraint(
-                point_id=hp.track_rod.inner.id, axis="x", value=initial_x
+                point_id=hp.track_rod.inner.id, axis="x", value=hp.track_rod.inner.x
             )
         )
 
-        # Constrain Z position
-        initial_z = hp.track_rod.inner.z
         constraints.append(
             LinearMotionConstraint(
-                point_id=hp.track_rod.inner.id, axis="z", value=initial_z
+                point_id=hp.track_rod.inner.id, axis="z", value=hp.track_rod.inner.z
             )
         )
 

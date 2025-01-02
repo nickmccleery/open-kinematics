@@ -104,7 +104,7 @@ class TrackRodPoints:
     outer: Point3D
 
     def __post_init__(self):
-        self.inner.fixed = False
+        # self.inner.fixed = True
 
         self.inner.id = PointID.TRACKROD_INBOARD
         self.outer.id = PointID.TRACKROD_OUTBOARD

@@ -22,7 +22,7 @@ def create_suspension_animation(
     ax_front = fig.add_subplot(222, projection="3d")
     ax_side = fig.add_subplot(223, projection="3d")
     ax_iso = fig.add_subplot(224, projection="3d")
-    axes = [ax_top, ax_front, ax_side, ax_iso]
+    # axes = [ax_top, ax_front, ax_side, ax_iso]
 
     # Calculate fixed limits once from initial geometry and states
     hp = geometry.hard_points

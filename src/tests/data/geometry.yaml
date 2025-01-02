@@ -42,10 +42,10 @@ hard_points:
   track_rod:
     inner:
       x: 0
-      y: 500
+      y: 200
       z: 100
     outer:
-      x: 0
+      x: 80
       y: 700
       z: 100
 configuration:
