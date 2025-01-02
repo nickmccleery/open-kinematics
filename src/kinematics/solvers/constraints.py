@@ -24,8 +24,10 @@ class VectorOrientationConstraint(NamedTuple):
 
 
 class LinearMotionConstraint(NamedTuple):
-    """Constrains a point to maintain a specific coordinate value along an axis."""
+    """
+    Describes a linear motion constraint for a point along a given axis.
+    """
 
     point_id: PointID
-    axis: Literal["x", "y", "z"]  # Can only be 'x', 'y', or 'z'
-    value: float  # The coordinate value to maintain
+    axis: Literal["x", "y", "z"]
+    value: float

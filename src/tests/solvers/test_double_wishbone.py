@@ -15,14 +15,14 @@ def create_suspension_animation(
     geometry: DoubleWishboneGeometry, states: list[SuspensionState], output_path: Path
 ) -> None:
     """Creates an animated visualization of suspension movement."""
-    fig = plt.figure(figsize=(20, 20))
+    fig = plt.figure(figsize=(12, 10))
+    gs = fig.add_gridspec(2, 2, hspace=0.1, wspace=0.1)
 
     # Create four subplots
-    ax_top = fig.add_subplot(221, projection="3d")
-    ax_front = fig.add_subplot(222, projection="3d")
-    ax_side = fig.add_subplot(223, projection="3d")
-    ax_iso = fig.add_subplot(224, projection="3d")
-    # axes = [ax_top, ax_front, ax_side, ax_iso]
+    ax_top = fig.add_subplot(gs[0, 0], projection="3d")
+    ax_front = fig.add_subplot(gs[0, 1], projection="3d")
+    ax_side = fig.add_subplot(gs[1, 0], projection="3d")
+    ax_iso = fig.add_subplot(gs[1, 1], projection="3d")
 
     # Calculate fixed limits once from initial geometry and states
     hp = geometry.hard_points
@@ -82,7 +82,7 @@ def create_suspension_animation(
             inboard_points[:, 2],
             color="red",
             marker="o",
-            s=50,
+            s=30,
             label="Inboard Points",
         )
 
@@ -94,7 +94,7 @@ def create_suspension_animation(
             moving_points[:, 2],
             color="blue",
             marker="o",
-            s=50,
+            s=30,
             label="Outboard Points",
         )
 
@@ -219,6 +219,14 @@ def create_suspension_animation(
         print_state_points(state, frame, "point_positions.txt")
 
     # Create animation
+    plt.subplots_adjust(
+        left=0.05,  # Move left edge closer to figure edge
+        right=0.95,  # Move right edge closer to figure edge
+        bottom=0.05,  # Move bottom edge closer to figure edge
+        top=0.95,  # Move top edge closer to figure edge
+        wspace=0.1,  # Reduce horizontal space between subplots
+        hspace=0.1,  # Reduce vertical space between subplots
+    )
     anim = animation.FuncAnimation(
         fig, update, frames=len(states), interval=100, blit=False
     )
