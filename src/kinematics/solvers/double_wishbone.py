@@ -19,8 +19,9 @@ class SuspensionState:
 
     def __init__(self, points: dict[PointID, Point3D]):
         """Initialize with mapping of point IDs to Point3D objects."""
-        self.points = points
-        self.free_points = {id: p for id, p in points.items() if not p.fixed}
+        # Create a deep copy of points to ensure independence
+        self.points = deepcopy(points)
+        self.free_points = {id: p for id, p in self.points.items() if not p.fixed}
 
     @property
     def free_array(self) -> np.ndarray:
@@ -31,15 +32,15 @@ class SuspensionState:
         """Updates free point positions from array."""
         i = 0
         for point in self.free_points.values():
-            point.x = arr[i]
-            point.y = arr[i + 1]
-            point.z = arr[i + 2]
+            point.x = float(arr[i])
+            point.y = float(arr[i + 1])
+            point.z = float(arr[i + 2])
             i += 3
 
     @classmethod
     def from_geometry(cls, points: list[Point3D]) -> "SuspensionState":
         """Creates initial state from list of geometry points."""
-        return cls({p.id: p for p in points})
+        return cls({p.id: deepcopy(p) for p in points})
 
 
 class DoubleWishboneSolver:
@@ -50,8 +51,20 @@ class DoubleWishboneSolver:
         self.geometry = geometry
         self.points = get_all_points(self.geometry.hard_points)
         self.initial_state = SuspensionState.from_geometry(self.points)
+
+        # Calculate and store initial axle midpoint
+        initial_axle_inboard = self.initial_state.points[
+            PointID.AXLE_INBOARD
+        ].as_array()
+        initial_axle_outboard = self.initial_state.points[
+            PointID.AXLE_OUTBOARD
+        ].as_array()
+        self.initial_axle_midpoint = (initial_axle_inboard + initial_axle_outboard) / 2
+
+        # Create a fresh copy for current state
         self.current_state = deepcopy(self.initial_state)
-        self.current_z = 0.0
+
+        # Compute constraints
         self.length_constraints = self.compute_distance_constraints()
         self.orientation_constraints = self.compute_orientation_constraints()
 
@@ -172,9 +185,17 @@ class DoubleWishboneSolver:
     def solve_sweep(self, displacements: list[float]) -> list[SuspensionState]:
         """Solves suspension positions through a sweep of displacements."""
         states = []
+
+        # Reset current state to initial state at the start of sweep
+        self.current_state = deepcopy(self.initial_state)
+
         for z_displacement in displacements:
-            initial_guess = self.current_state.free_array
-            initial_guess[2::3] += z_displacement - self.current_z  # Correct delta
+            # Create a fresh copy of the current state for this iteration
+            iteration_state = deepcopy(self.current_state)
+
+            # Prepare initial guess
+            initial_guess = iteration_state.free_array.copy()
+            initial_guess[2::3] += z_displacement
 
             result = least_squares(
                 self.compute_residuals,
@@ -190,10 +211,14 @@ class DoubleWishboneSolver:
                     f"Failed to solve for displacement {z_displacement}m"
                 )
 
-            self.current_state = SuspensionState(self.current_state.points.copy())
-            self.current_state.update_from_array(result.x)
-            self.current_z = z_displacement  # Need to update this!
-            states.append(self.current_state)
+            # Update the iteration state with results
+            iteration_state.update_from_array(result.x)
+
+            # Store a deep copy of the solved state
+            states.append(deepcopy(iteration_state))
+
+            # Update current state for next iteration
+            self.current_state = iteration_state
 
         return states
 
@@ -201,7 +226,8 @@ class DoubleWishboneSolver:
         self, state_array: np.ndarray, target_dz: float
     ) -> np.ndarray:
         """Computes constraint residuals for current suspension state."""
-        state = SuspensionState(self.current_state.points.copy())
+        # Create a fresh state object for residual computation
+        state = SuspensionState(self.current_state.points)
         state.update_from_array(state_array)
 
         residuals = []
@@ -229,19 +255,12 @@ class DoubleWishboneSolver:
             current_angle = np.arccos(np.clip(np.dot(v1, v2), -1.0, 1.0))
             residuals.append(current_angle - constraint.angle)
 
-        # Target position constraint
-        axle_inboard = state.points[PointID.AXLE_INBOARD].as_array()
-        axle_outboard = state.points[PointID.AXLE_OUTBOARD].as_array()
-        current_midpoint = (axle_inboard + axle_outboard) / 2
+        # Target position constraint - using pre-calculated initial midpoint
+        current_axle_inboard = state.points[PointID.AXLE_INBOARD].as_array()
+        current_axle_outboard = state.points[PointID.AXLE_OUTBOARD].as_array()
+        current_axle_midpoint = (current_axle_inboard + current_axle_outboard) / 2
 
-        initial_midpoint = (
-            self.initial_state.points[PointID.AXLE_INBOARD].as_array()
-            + self.initial_state.points[PointID.AXLE_OUTBOARD].as_array()
-        ) / 2
-
-        current_z = current_midpoint[2]
-        target_z = initial_midpoint[2] + target_dz
-
-        residuals.append(current_z - target_z)
+        target_z = self.initial_axle_midpoint[2] + target_dz
+        residuals.append(current_axle_midpoint[2] - target_z)
 
         return np.array(residuals)
