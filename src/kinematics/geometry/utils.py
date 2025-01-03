@@ -9,3 +9,11 @@ def get_all_points(obj) -> list[Point3D]:
         for value in obj.__dict__.values():
             points.extend(get_all_points(value))
     return points
+
+
+def compute_midpoint(p1: Point3D, p2: Point3D) -> Point3D:
+    return Point3D(
+        (p1.x + p2.x) / 2,
+        (p1.y + p2.y) / 2,
+        (p1.z + p2.z) / 2,
+    )

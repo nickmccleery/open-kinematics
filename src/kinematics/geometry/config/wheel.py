@@ -5,3 +5,4 @@ from dataclasses import dataclass
 class WheelConfig:
     diameter: float
     width: float
+    offset: float

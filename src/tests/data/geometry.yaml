@@ -53,6 +53,7 @@ configuration:
   wheel:
     diameter: 457.2
     width: 230.0
+    offset: 50
   static_setup:
     static_camber: -3.0
     static_toe: 0.0

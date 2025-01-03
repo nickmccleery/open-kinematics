@@ -1,6 +1,12 @@
+from copy import deepcopy
+
 import numpy as np
 
-from kinematics.geometry.points.base import Point3D
+from kinematics.geometry.points.base import DerivedPoint3D, Point3D
+from kinematics.geometry.points.collections import AxleMidPoint, WheelCenterPoint
+from kinematics.geometry.points.ids import PointID
+from kinematics.geometry.types.base import CoordinateAxis
+from kinematics.geometry.types.double_wishbone import DoubleWishboneGeometry
 from kinematics.solvers.common import BaseSolver
 from kinematics.solvers.constraints import (
     BaseConstraint,
@@ -8,10 +14,33 @@ from kinematics.solvers.constraints import (
     PointPointDistanceConstraint,
     VectorOrientationConstraint,
 )
+from kinematics.solvers.targets import AxisDisplacementTarget, MotionTarget
 
 
 class DoubleWishboneSolver(BaseSolver):
-    """Solver for double wishbone suspension geometry."""
+    def __init__(self, geometry: DoubleWishboneGeometry):
+        super().__init__(geometry)
+
+    def create_derived_points(self) -> dict[PointID, DerivedPoint3D]:
+        derived_points = {
+            PointID.AXLE_MIDPOINT: AxleMidPoint(
+                deps=[PointID.AXLE_INBOARD, PointID.AXLE_OUTBOARD]
+            ),
+            PointID.WHEEL_CENTER: WheelCenterPoint(
+                deps=[PointID.AXLE_OUTBOARD, PointID.AXLE_INBOARD],
+                wheel_offset=self.geometry.configuration.wheel.offset,
+            ),
+        }
+        return derived_points
+
+    def create_motion_target(
+        self, derived_points: dict[PointID, DerivedPoint3D]
+    ) -> MotionTarget:
+        return AxisDisplacementTarget(
+            point_id=PointID.AXLE_MIDPOINT,
+            axis=CoordinateAxis.Z,
+            reference_point=deepcopy(derived_points[PointID.AXLE_MIDPOINT]),
+        )
 
     def initialize_constraints(self) -> list[BaseConstraint]:
         """Initialize all constraints specific to double wishbone geometry."""

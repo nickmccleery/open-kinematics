@@ -6,13 +6,13 @@ import numpy as np
 
 from kinematics.geometry.points.ids import PointID
 from kinematics.geometry.types.double_wishbone import DoubleWishboneGeometry
-from kinematics.solvers.common import SuspensionState
+from kinematics.solvers.common import KinematicState
 
 CHECK_TOLERANCE = 1e-2
 
 
 def create_suspension_animation(
-    geometry: DoubleWishboneGeometry, states: list[SuspensionState], output_path: Path
+    geometry: DoubleWishboneGeometry, states: list[KinematicState], output_path: Path
 ) -> None:
     """Creates an animated visualization of suspension movement."""
     fig = plt.figure(figsize=(12, 10))
@@ -36,7 +36,7 @@ def create_suspension_animation(
     )
 
     # Modified to use points dictionary
-    def get_state_points(state: SuspensionState) -> np.ndarray:
+    def get_state_points(state: KinematicState) -> np.ndarray:
         return np.array(
             [
                 state.points[PointID.UPPER_WISHBONE_OUTBOARD].as_array(),
@@ -53,7 +53,7 @@ def create_suspension_animation(
     min_bounds = all_points.min(axis=0) - 100
     max_bounds = all_points.max(axis=0) + 100
 
-    def plot_state(ax, state: SuspensionState, view_name: str) -> None:
+    def plot_state(ax, state: KinematicState, view_name: str) -> None:
         """Plot suspension state on a given axis."""
         ax.clear()
 
@@ -164,7 +164,7 @@ def create_suspension_animation(
         if view_name == "isometric":
             ax.legend()
 
-    def print_state_points(state: SuspensionState, frame: int, file_path: str) -> None:
+    def print_state_points(state: KinematicState, frame: int, file_path: str) -> None:
         """Print a formatted table of point positions for the current frame."""
         points_of_interest = {
             "Upper Outboard": PointID.UPPER_WISHBONE_OUTBOARD,

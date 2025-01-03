@@ -1,13 +1,14 @@
 from copy import deepcopy
-from typing import Dict, Iterator
+from typing import Iterator
 
 import numpy as np
 from scipy.optimize import least_squares
 
-from kinematics.geometry.points.base import Point3D
+from kinematics.geometry.points.base import DerivedPoint3D, Point3D
 from kinematics.geometry.points.ids import PointID
 from kinematics.geometry.utils import get_all_points
 from kinematics.solvers.constraints import BaseConstraint
+from kinematics.solvers.targets import MotionTarget
 
 FTOL = 1e-8  # Convergence tolerance for function value.
 XTOL = 1e-8  # Convergence tolerance for independent variables.
@@ -39,7 +40,7 @@ class PointSet:
 
     def update_from_array(self, arr: np.ndarray) -> None:
         """
-        Update point positions from a flat array."
+        Update point positions from a flat array.
         """
         i = 0
         for point in self.points.values():
@@ -49,18 +50,13 @@ class PointSet:
             i += 3
 
 
-class SuspensionState:
-    """
-    Represents the state of the suspension system.
-
-    Attributes:
-        points (dict[PointID, Point3D]): A dictionary mapping point identifiers to their
-                                         3D coordinates.
-        free_points (PointSet): A set of points that are not fixed.
-        fixed_points (PointSet): A set of points that are fixed.
-    """
-
-    def __init__(self, points: Dict[PointID, Point3D]):
+class KinematicState:
+    def __init__(
+        self,
+        points: dict[PointID, Point3D],
+        derived_points: dict[PointID, DerivedPoint3D] | None = None,
+        motion_target: MotionTarget | None = None,
+    ):
         self.points = deepcopy(points)
         self.free_points = PointSet(
             {id: p for id, p in self.points.items() if not p.fixed}
@@ -68,54 +64,100 @@ class SuspensionState:
         self.fixed_points = PointSet(
             {id: p for id, p in self.points.items() if p.fixed}
         )
+        self.derived_points = derived_points or {}
+        self.motion_target = motion_target
+
+        self.update_derived_points()
+
+    def update_derived_points(self) -> None:
+        """Update positions of all derived points."""
+        for point in self.derived_points.values():
+            point.update(self.points)
+
+    def update_free_points(self, arr: np.ndarray) -> None:
+        """Update free point positions and recompute derived points."""
+        self.free_points.update_from_array(arr)
+        self.update_derived_points()
 
     @classmethod
-    def from_geometry(cls, points: list[Point3D]) -> "SuspensionState":
-        """
-        Create an initial state from a list of hardpoints.
-        """
-        return cls({p.id: deepcopy(p) for p in points})
+    def from_geometry(
+        cls,
+        points: list[Point3D],
+        derived_points: dict[PointID, DerivedPoint3D] | None = None,
+        motion_target: MotionTarget | None = None,
+    ) -> "KinematicState":
+        """Create an initial state from a list of hardpoints."""
+        return cls(
+            {p.id: deepcopy(p) for p in points},
+            derived_points=derived_points,
+            motion_target=motion_target,
+        )
+
+    def get_point_position(self, point_id: PointID) -> np.ndarray:
+        if point_id in self.derived_points:
+            return self.derived_points[point_id].as_array()
+        return self.points[point_id].as_array()
+
+    def compute_target_residual(self, displacement: float) -> float:
+        if not self.motion_target:
+            raise ValueError("No motion target set.")
+
+        current_pos = self.get_point_position(self.motion_target.point_id)
+        target = self.motion_target.get_target_value(
+            reference_point=self.motion_target.reference_point,
+            displacement=displacement,
+        )
+        error = (
+            current_pos[self.motion_target.axis]
+            - target.as_array()[self.motion_target.axis]
+        )
+        return error
 
 
 class BaseSolver:
     def __init__(self, geometry):
+        # Store geometry and compute points.
         self.geometry = geometry
-        self.points = get_all_points(self.geometry.hard_points)
-        self.initial_state = SuspensionState.from_geometry(self.points)
+        self.all_points = get_all_points(self.geometry.hard_points)
 
-        # Calculate and store initial axle midpoint.
-        initial_axle_inboard = self.initial_state.points[
-            PointID.AXLE_INBOARD
-        ].as_array()
-        initial_axle_outboard = self.initial_state.points[
-            PointID.AXLE_OUTBOARD
-        ].as_array()
-        self.initial_axle_midpoint = (initial_axle_inboard + initial_axle_outboard) / 2
+        # Create initial state with derived points and motion target.
+        initial_state = KinematicState.from_geometry(
+            self.all_points,
+            derived_points=self.create_derived_points(),
+            motion_target=None,  # Will be created after derived points exist
+        )
 
-        # Create a fresh copy for current state.
-        self.current_state = deepcopy(self.initial_state)
+        # Create and store motion target using computed derived points.
+        motion_target = self.create_motion_target(initial_state.derived_points)
+        initial_state.motion_target = motion_target
 
-        # Initialize all constraints.
+        # Store initial and current state; use deepcopy so they're independent.
+        self.initial_state = deepcopy(initial_state)
+        self.current_state = deepcopy(initial_state)
+
+        # Initialize constraints.
         self.constraints = self.initialize_constraints()
+
+    def create_derived_points(self) -> dict[PointID, DerivedPoint3D]:
+        raise NotImplementedError
+
+    def create_motion_target(
+        self, derived_points: dict[PointID, DerivedPoint3D]
+    ) -> MotionTarget:
+        raise NotImplementedError
 
     def initialize_constraints(self) -> list[BaseConstraint]:
         raise NotImplementedError(
             "Derived solvers must implement initialize_constraints."
         )
 
-    def solve_sweep(self, displacements: list[float]) -> list[SuspensionState]:
+    def solve_sweep(self, displacements: list[float]) -> list[KinematicState]:
         states = []
 
-        # Reset current state to initial state at the start of sweep.
-        self.current_state = deepcopy(self.initial_state)
-
-        for z_displacement in displacements:
-            # Create a fresh copy of the current state for this iteration.
+        for displacement in displacements:
             iteration_state = deepcopy(self.current_state)
-
-            # Prepare initial guess.
             initial_guess = iteration_state.free_points.as_array().copy()
-            initial_guess[2::3] += z_displacement
+            initial_guess[2::3] += displacement
 
             result = least_squares(
                 self.compute_residuals,
@@ -123,21 +165,14 @@ class BaseSolver:
                 method="lm",
                 ftol=FTOL,
                 xtol=XTOL,
-                args=(z_displacement,),
+                args=(displacement,),
             )
 
             if not result.success:
-                raise RuntimeError(
-                    f"Failed to solve for displacement {z_displacement}m."
-                )
+                raise RuntimeError(f"Failed to solve for displacement {displacement}m.")
 
-            # Update the iteration state with results.
             iteration_state.free_points.update_from_array(result.x)
-
-            # Store a deep copy of the solved state.
             states.append(deepcopy(iteration_state))
-
-            # Update current state for next iteration.
             self.current_state = iteration_state
 
         return states
@@ -147,21 +182,14 @@ class BaseSolver:
         state_array: np.ndarray,
         target_dz: float,
     ) -> np.ndarray:
-        # Create a fresh state object for residual computation.
-        state = SuspensionState(self.current_state.points)
+        state = deepcopy(self.current_state)
         state.free_points.update_from_array(state_array)
+        state.update_derived_points()
 
-        # Compute residuals for all constraints.
         residuals = [
             constraint.compute_residual(state.points) for constraint in self.constraints
         ]
+        target_residual = state.compute_target_residual(target_dz)
 
-        # Add target position constraint.
-        current_axle_inboard = state.points[PointID.AXLE_INBOARD].as_array()
-        current_axle_outboard = state.points[PointID.AXLE_OUTBOARD].as_array()
-        current_axle_midpoint = (current_axle_inboard + current_axle_outboard) / 2
-
-        target_z = self.initial_axle_midpoint[2] + target_dz
-        residuals.append(current_axle_midpoint[2] - target_z)
-
+        residuals.append(target_residual)
         return np.array(residuals)
