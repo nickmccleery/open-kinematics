@@ -24,3 +24,5 @@ class PointID(IntEnum):
 
     STRUT_INBOARD = 14
     STRUT_OUTBOARD = 15
+
+    WHEEL_CENTER = 16

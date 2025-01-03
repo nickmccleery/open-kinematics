@@ -15,3 +15,18 @@ class Point3D:
 
     def as_array(self) -> np.ndarray:
         return np.array([self.x, self.y, self.z])
+
+
+@dataclass
+class DerivedPoint3D:
+    x: float
+    y: float
+    z: float
+    id: PointID
+    deps: list[PointID]
+
+    def update(self, points: dict[PointID, Point3D]) -> None:
+        raise NotImplementedError
+
+    def as_array(self) -> np.ndarray:
+        return np.array([self.x, self.y, self.z])
