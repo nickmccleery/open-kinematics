@@ -65,7 +65,6 @@ class KinematicState:
         self,
         points: dict[PointID, Point3D],
         derived_points: dict[PointID, DerivedPoint3D],
-        motion_target: MotionTarget,
     ):
         self.points = deepcopy(points)
         self.free_points = PointSet(
@@ -75,9 +74,11 @@ class KinematicState:
             {id: p for id, p in self.points.items() if p.fixed}
         )
         self.derived_points = derived_points or {}
-        self.motion_target = motion_target
 
         self.update_derived_points()
+
+    def set_motion_target(self, motion_target: MotionTarget) -> None:
+        self.motion_target = motion_target
 
     def update_derived_points(self) -> None:
         for point in self.derived_points.values():
@@ -92,12 +93,10 @@ class KinematicState:
         cls,
         points: list[Point3D],
         derived_points: dict[PointID, DerivedPoint3D],
-        motion_target: MotionTarget,
     ) -> "KinematicState":
         return cls(
-            {p.id: deepcopy(p) for p in points},
+            {p.id: p for p in points},
             derived_points=derived_points,
-            motion_target=motion_target,
         )
 
     def get_point_position(self, point_id: PointID) -> np.ndarray:
@@ -131,12 +130,11 @@ class BaseSolver:
         initial_state = KinematicState.from_geometry(
             self.all_points,
             derived_points=self.create_derived_points(),
-            motion_target=None,  # Will be created after derived points exist.
         )
 
         # Create and store motion target using computed derived points.
         motion_target = self.create_motion_target(initial_state.derived_points)
-        initial_state.motion_target = motion_target
+        initial_state.set_motion_target(motion_target)
 
         # Store initial and current state; use deepcopy so they're independent.
         self.initial_state = deepcopy(initial_state)
