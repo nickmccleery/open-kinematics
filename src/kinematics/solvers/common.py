@@ -50,11 +50,22 @@ class PointSet:
 
 
 class KinematicState:
+    """
+    Represents the kinematic state of a system.
+
+    Attributes:
+        points (dict[PointID, Point3D]): A dictionary of point IDs to 3D points.
+        free_points (PointSet): A set of points that are not fixed.
+        fixed_points (PointSet): A set of points that are fixed.
+        derived_points (dict[PointID, DerivedPoint3D]): A dictionary of derived point IDs to derived 3D points.
+        motion_target (MotionTarget): The target motion state.
+    """
+
     def __init__(
         self,
         points: dict[PointID, Point3D],
-        derived_points: dict[PointID, DerivedPoint3D] | None = None,
-        motion_target: MotionTarget | None = None,
+        derived_points: dict[PointID, DerivedPoint3D],
+        motion_target: MotionTarget,
     ):
         self.points = deepcopy(points)
         self.free_points = PointSet(
@@ -69,12 +80,10 @@ class KinematicState:
         self.update_derived_points()
 
     def update_derived_points(self) -> None:
-        """Update positions of all derived points."""
         for point in self.derived_points.values():
             point.update(self.points)
 
     def update_free_points(self, arr: np.ndarray) -> None:
-        """Update free point positions and recompute derived points."""
         self.free_points.update_from_array(arr)
         self.update_derived_points()
 
@@ -82,10 +91,9 @@ class KinematicState:
     def from_geometry(
         cls,
         points: list[Point3D],
-        derived_points: dict[PointID, DerivedPoint3D] | None = None,
-        motion_target: MotionTarget | None = None,
+        derived_points: dict[PointID, DerivedPoint3D],
+        motion_target: MotionTarget,
     ) -> "KinematicState":
-        """Create an initial state from a list of hardpoints."""
         return cls(
             {p.id: deepcopy(p) for p in points},
             derived_points=derived_points,
@@ -123,7 +131,7 @@ class BaseSolver:
         initial_state = KinematicState.from_geometry(
             self.all_points,
             derived_points=self.create_derived_points(),
-            motion_target=None,  # Will be created after derived points exist
+            motion_target=None,  # Will be created after derived points exist.
         )
 
         # Create and store motion target using computed derived points.
