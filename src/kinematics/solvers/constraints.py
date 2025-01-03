@@ -1,9 +1,10 @@
-from typing import Literal, Tuple
+from typing import Tuple
 
 import numpy as np
 
 from kinematics.geometry.points.base import Point3D
 from kinematics.geometry.points.ids import PointID
+from kinematics.geometry.types.base import CoordinateAxis
 
 
 class BaseConstraint:
@@ -128,7 +129,7 @@ class FixedAxisConstraint(BaseConstraint):
     def __init__(
         self,
         point_id: PointID,
-        axis: Literal["x", "y", "z"],
+        axis: CoordinateAxis,
         value: float,
     ):
         self.point_id = point_id
@@ -137,5 +138,5 @@ class FixedAxisConstraint(BaseConstraint):
 
     def compute_residual(self, points: dict[PointID, Point3D]) -> float:
         point = points[self.point_id]
-        point_coord = getattr(point, self.axis)
+        point_coord = point.as_array()[self.axis]
         return point_coord - self.value

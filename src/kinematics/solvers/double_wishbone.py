@@ -56,7 +56,6 @@ class DoubleWishboneSolver(BaseSolver):
         constraints = []
 
         def make_constraint(p1: Point3D, p2: Point3D):
-            """Creates a constraint between two points."""
             length = float(np.linalg.norm(p1.as_array() - p2.as_array()))
             constraints.append(PointPointDistanceConstraint(p1.id, p2.id, length))
 
@@ -96,26 +95,26 @@ class DoubleWishboneSolver(BaseSolver):
         hp = self.geometry.hard_points
         constraints = []
 
-        # Upright to axle orientation constraint.
-        initial_upright = (
-            hp.upper_wishbone.outboard.as_array()
-            - hp.lower_wishbone.outboard.as_array()
-        )
-        initial_axle = hp.wheel_axle.outer.as_array() - hp.wheel_axle.inner.as_array()
+        def make_constraint(v1: tuple[Point3D, Point3D], v2: tuple[Point3D, Point3D]):
+            v1_vec = v1[1].as_array() - v1[0].as_array()
+            v2_vec = v2[1].as_array() - v2[0].as_array()
 
-        initial_upright = initial_upright / np.linalg.norm(initial_upright)
-        initial_axle = initial_axle / np.linalg.norm(initial_axle)
+            v1_vec = v1_vec / np.linalg.norm(v1_vec)
+            v2_vec = v2_vec / np.linalg.norm(v2_vec)
 
-        initial_angle = np.arccos(
-            np.clip(np.dot(initial_upright, initial_axle), -1.0, 1.0)
-        )
+            theta = np.arccos(np.clip(np.dot(v1_vec, v2_vec), -1.0, 1.0))
 
-        axle_to_upright = VectorOrientationConstraint(
-            v1=(hp.upper_wishbone.outboard.id, hp.lower_wishbone.outboard.id),
-            v2=(hp.wheel_axle.inner.id, hp.wheel_axle.outer.id),
-            angle=initial_angle,
+            constraints.append(
+                VectorOrientationConstraint(
+                    v1=(v1[0].id, v1[1].id), v2=(v2[0].id, v2[1].id), angle=theta
+                )
+            )
+
+        # Kingpin axis to axle orientation constraint.
+        make_constraint(
+            (hp.upper_wishbone.outboard, hp.lower_wishbone.outboard),
+            (hp.wheel_axle.inner, hp.wheel_axle.outer),
         )
-        constraints.append(axle_to_upright)
 
         return constraints
 
@@ -124,17 +123,20 @@ class DoubleWishboneSolver(BaseSolver):
         hp = self.geometry.hard_points
         constraints = []
 
-        # Track rod inner point should only move in Y direction.
-        # Constrain X and Z position.
+        # Track rod inner point should only move in Y direction; constrain X and Z.
         constraints.append(
             FixedAxisConstraint(
-                point_id=hp.track_rod.inner.id, axis="x", value=hp.track_rod.inner.x
+                point_id=hp.track_rod.inner.id,
+                axis=CoordinateAxis.X,
+                value=hp.track_rod.inner.x,
             )
         )
 
         constraints.append(
             FixedAxisConstraint(
-                point_id=hp.track_rod.inner.id, axis="z", value=hp.track_rod.inner.z
+                point_id=hp.track_rod.inner.id,
+                axis=CoordinateAxis.Z,
+                value=hp.track_rod.inner.z,
             )
         )
 
