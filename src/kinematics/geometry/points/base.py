@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 
@@ -18,15 +18,8 @@ class Point3D:
 
 
 @dataclass
-class DerivedPoint3D:
-    x: float
-    y: float
-    z: float
-    id: PointID
-    deps: list[PointID]
+class DerivedPoint3D(Point3D):
+    deps: list[PointID] = field(default_factory=list)
 
     def update(self, points: dict[PointID, Point3D]) -> None:
         raise NotImplementedError
-
-    def as_array(self) -> np.ndarray:
-        return np.array([self.x, self.y, self.z])

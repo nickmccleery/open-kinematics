@@ -101,12 +101,17 @@ class KinematicState:
     def compute_target_residual(self, displacement: float) -> float:
         if not self.motion_target:
             raise ValueError("No motion target set.")
+
         current_pos = self.get_point_position(self.motion_target.point_id)
         target = self.motion_target.get_target_value(
-            reference_position=self.motion_target.reference_position,
+            reference_point=self.motion_target.reference_point,
             displacement=displacement,
         )
-        return current_pos[self.motion_target.axis] - target
+        error = (
+            current_pos[self.motion_target.axis]
+            - target.as_array()[self.motion_target.axis]
+        )
+        return error
 
 
 class BaseSolver:
@@ -116,14 +121,21 @@ class BaseSolver:
         derived_points: dict[PointID, DerivedPoint3D],
         motion_target: MotionTarget,
     ):
+        # Compute state.
         self.geometry = geometry
         self.all_points = get_all_points(self.geometry.hard_points)
-        self.initial_state = KinematicState.from_geometry(
+        initial_state = KinematicState.from_geometry(
             self.all_points,
             derived_points=derived_points,
             motion_target=motion_target,
         )
-        self.current_state = deepcopy(self.initial_state)
+
+        # Store initial and current state; use deepcopy so that our initial and
+        # current states are independent.
+        self.initial_state = deepcopy(initial_state)
+        self.current_state = deepcopy(initial_state)
+
+        # Initialize constraints.
         self.constraints = self.initialize_constraints()
 
     def initialize_constraints(self) -> list[BaseConstraint]:
@@ -133,7 +145,6 @@ class BaseSolver:
 
     def solve_sweep(self, displacements: list[float]) -> list[KinematicState]:
         states = []
-        self.current_state = deepcopy(self.initial_state)
 
         for displacement in displacements:
             iteration_state = deepcopy(self.current_state)
@@ -163,17 +174,14 @@ class BaseSolver:
         state_array: np.ndarray,
         target_dz: float,
     ) -> np.ndarray:
-        state = KinematicState(
-            self.current_state.points,
-            derived_points=self.current_state.derived_points,
-            motion_target=self.current_state.motion_target,
-        )
+        state = deepcopy(self.current_state)
         state.free_points.update_from_array(state_array)
         state.update_derived_points()
 
         residuals = [
             constraint.compute_residual(state.points) for constraint in self.constraints
         ]
-        residuals.append(state.compute_target_residual(target_dz))
+        target_residual = state.compute_target_residual(target_dz)
 
+        residuals.append(target_residual)
         return np.array(residuals)
