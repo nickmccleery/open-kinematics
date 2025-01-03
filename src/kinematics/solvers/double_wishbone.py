@@ -1,6 +1,6 @@
 import numpy as np
 
-from kinematics.geometry.schemas import Point3D
+from kinematics.geometry.points.base import Point3D
 from kinematics.solvers.common import BaseSolver
 from kinematics.solvers.constraints import (
     BaseConstraint,

@@ -2,7 +2,8 @@ from typing import Literal, Tuple
 
 import numpy as np
 
-from kinematics.geometry.schemas import Point3D, PointID
+from kinematics.geometry.points.base import Point3D
+from kinematics.geometry.points.ids import PointID
 
 
 class BaseConstraint:

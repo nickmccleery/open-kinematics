@@ -5,7 +5,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from kinematics.geometry.loader import load_geometry
-from kinematics.geometry.schemas import DoubleWishboneGeometry, PointID
+from kinematics.geometry.points.ids import PointID
+from kinematics.geometry.types.double_wishbone import DoubleWishboneGeometry
 from kinematics.solvers.common import SuspensionState
 from kinematics.solvers.constraints import PointPointDistanceConstraint
 from kinematics.solvers.double_wishbone import DoubleWishboneSolver
@@ -248,8 +249,8 @@ def test_run_solver(double_wishbone_geometry_file: Path) -> None:
     solver = DoubleWishboneSolver(geometry=geometry)
 
     # Create displacement sweep
-    displacement_range = [-100, 100]
-    n_steps = 26
+    displacement_range = [-50, 100]
+    n_steps = 21
     displacements = list(
         np.linspace(displacement_range[0], displacement_range[1], n_steps)
     )

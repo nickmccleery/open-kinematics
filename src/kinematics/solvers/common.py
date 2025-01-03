@@ -4,7 +4,8 @@ from typing import Dict, Iterator
 import numpy as np
 from scipy.optimize import least_squares
 
-from kinematics.geometry.schemas import Point3D, PointID
+from kinematics.geometry.points.base import Point3D
+from kinematics.geometry.points.ids import PointID
 from kinematics.geometry.utils import get_all_points
 from kinematics.solvers.constraints import BaseConstraint
 
