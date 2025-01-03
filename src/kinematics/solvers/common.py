@@ -115,28 +115,36 @@ class KinematicState:
 
 
 class BaseSolver:
-    def __init__(
-        self,
-        geometry,
-        derived_points: dict[PointID, DerivedPoint3D],
-        motion_target: MotionTarget,
-    ):
-        # Compute state.
+    def __init__(self, geometry):
+        # Store geometry and compute points.
         self.geometry = geometry
         self.all_points = get_all_points(self.geometry.hard_points)
+
+        # Create initial state with derived points and motion target.
         initial_state = KinematicState.from_geometry(
             self.all_points,
-            derived_points=derived_points,
-            motion_target=motion_target,
+            derived_points=self.create_derived_points(),
+            motion_target=None,  # Will be created after derived points exist
         )
 
-        # Store initial and current state; use deepcopy so that our initial and
-        # current states are independent.
+        # Create and store motion target using computed derived points.
+        motion_target = self.create_motion_target(initial_state.derived_points)
+        initial_state.motion_target = motion_target
+
+        # Store initial and current state; use deepcopy so they're independent.
         self.initial_state = deepcopy(initial_state)
         self.current_state = deepcopy(initial_state)
 
         # Initialize constraints.
         self.constraints = self.initialize_constraints()
+
+    def create_derived_points(self) -> dict[PointID, DerivedPoint3D]:
+        raise NotImplementedError
+
+    def create_motion_target(
+        self, derived_points: dict[PointID, DerivedPoint3D]
+    ) -> MotionTarget:
+        raise NotImplementedError
 
     def initialize_constraints(self) -> list[BaseConstraint]:
         raise NotImplementedError(

@@ -2,7 +2,7 @@ from copy import deepcopy
 
 import numpy as np
 
-from kinematics.geometry.points.base import Point3D
+from kinematics.geometry.points.base import DerivedPoint3D, Point3D
 from kinematics.geometry.points.collections import AxleMidPoint, WheelCenterPoint
 from kinematics.geometry.points.ids import PointID
 from kinematics.geometry.types.double_wishbone import DoubleWishboneGeometry
@@ -13,40 +13,32 @@ from kinematics.solvers.constraints import (
     PointPointDistanceConstraint,
     VectorOrientationConstraint,
 )
-from kinematics.solvers.targets import AxisDisplacementTarget
+from kinematics.solvers.targets import AxisDisplacementTarget, MotionTarget
 
 
 class DoubleWishboneSolver(BaseSolver):
-    """Solver for double wishbone suspension geometry."""
-
     def __init__(self, geometry: DoubleWishboneGeometry):
-        # Create derived points
-        derived_points = {
+        super().__init__(geometry)
+
+    def create_derived_points(self) -> dict[PointID, DerivedPoint3D]:
+        return {
             PointID.AXLE_MIDPOINT: AxleMidPoint(
                 deps=[PointID.AXLE_INBOARD, PointID.AXLE_OUTBOARD]
             ),
             PointID.WHEEL_CENTER: WheelCenterPoint(
                 deps=[PointID.AXLE_OUTBOARD, PointID.AXLE_INBOARD],
-                wheel_offset=geometry.configuration.wheel.offset,
+                wheel_offset=self.geometry.configuration.wheel.offset,
             ),
         }
 
-        # Call parent init without target
-        super().__init__(
-            geometry=geometry,
-            derived_points=derived_points,
-            motion_target=None,
-        )
-
-        # Create target after initial state exists
-        self.initial_state.motion_target = AxisDisplacementTarget(
+    def create_motion_target(
+        self, derived_points: dict[PointID, DerivedPoint3D]
+    ) -> MotionTarget:
+        return AxisDisplacementTarget(
             point_id=PointID.AXLE_MIDPOINT,
             axis=2,
-            reference_point=deepcopy(
-                self.initial_state.derived_points[PointID.AXLE_MIDPOINT]
-            ),
+            reference_point=deepcopy(derived_points[PointID.AXLE_MIDPOINT]),
         )
-        self.current_state.motion_target = deepcopy(self.initial_state.motion_target)
 
     def initialize_constraints(self) -> list[BaseConstraint]:
         """Initialize all constraints specific to double wishbone geometry."""
