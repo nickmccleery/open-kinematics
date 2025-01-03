@@ -7,13 +7,14 @@ from kinematics.geometry.points.collections import AxleMidPoint, WheelCenterPoin
 from kinematics.geometry.points.ids import PointID
 from kinematics.geometry.types.double_wishbone import DoubleWishboneGeometry
 from kinematics.geometry.utils import get_all_points
-from kinematics.solvers.common import AxisDisplacementTarget, BaseSolver
+from kinematics.solvers.common import BaseSolver
 from kinematics.solvers.constraints import (
     BaseConstraint,
     FixedAxisConstraint,
     PointPointDistanceConstraint,
     VectorOrientationConstraint,
 )
+from kinematics.solvers.targets import AxisDisplacementTarget
 
 
 class DoubleWishboneSolver(BaseSolver):

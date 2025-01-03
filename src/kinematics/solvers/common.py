@@ -1,6 +1,5 @@
 from copy import deepcopy
-from dataclasses import dataclass
-from typing import Iterator, Protocol
+from typing import Iterator
 
 import numpy as np
 from scipy.optimize import least_squares
@@ -9,6 +8,7 @@ from kinematics.geometry.points.base import DerivedPoint3D, Point3D
 from kinematics.geometry.points.ids import PointID
 from kinematics.geometry.utils import get_all_points
 from kinematics.solvers.constraints import BaseConstraint
+from kinematics.solvers.targets import MotionTarget
 
 FTOL = 1e-8  # Convergence tolerance for function value.
 XTOL = 1e-8  # Convergence tolerance for independent variables.
@@ -48,34 +48,6 @@ class PointSet:
             point.y = float(arr[i + 1])
             point.z = float(arr[i + 2])
             i += 3
-
-
-class MotionTarget(Protocol):
-    point_id: PointID
-    axis: int
-    reference_position: np.ndarray
-
-    def get_current_position(self, points: dict[PointID, Point3D]) -> np.ndarray: ...
-    def get_target_value(
-        self, reference_position: np.ndarray, displacement: float
-    ) -> float: ...
-
-
-@dataclass
-class AxisDisplacementTarget(MotionTarget):
-    """Target that moves along a specified axis."""
-
-    point_id: PointID
-    axis: int  # 0=x, 1=y, 2=z
-    reference_position: np.ndarray
-
-    def get_current_position(self, points: dict[PointID, Point3D]) -> np.ndarray:
-        return points[self.point_id].as_array()
-
-    def get_target_value(
-        self, reference_position: np.ndarray, displacement: float
-    ) -> float:
-        return reference_position[self.axis] + displacement
 
 
 class KinematicState:
