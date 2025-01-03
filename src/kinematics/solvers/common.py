@@ -66,21 +66,31 @@ class KinematicState:
         points: dict[PointID, Point3D],
         derived_points: dict[PointID, DerivedPoint3D],
     ):
+        # Take a deep copy of the points at initialization.
         self.points = deepcopy(points)
+
+        # Get point sets; these will be used in numpy array format, so we use the
+        # PointSet class to handle that.
         self.free_points = PointSet(
             {id: p for id, p in self.points.items() if not p.fixed}
         )
         self.fixed_points = PointSet(
             {id: p for id, p in self.points.items() if p.fixed}
         )
-        self.derived_points = derived_points or {}
 
+        # Derived points are purely calculated from other points; no requirement
+        # for numpy array format, so we can store them as a dictionary. Update
+        # call will give us our first set of derived points.
+        self.derived_points = derived_points or {}
         self.update_derived_points()
+
+        return
 
     def set_motion_target(self, motion_target: MotionTarget) -> None:
         self.motion_target = motion_target
 
     def update_derived_points(self) -> None:
+        # Each derived point defines its own update method.
         for point in self.derived_points.values():
             point.update(self.points)
 
