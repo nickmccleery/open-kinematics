@@ -2,17 +2,18 @@ from copy import deepcopy
 
 import numpy as np
 
+from kinematics.geometry.constants import CoordinateAxis, Direction
 from kinematics.geometry.points.base import DerivedPoint3D, Point3D
 from kinematics.geometry.points.collections import AxleMidPoint, WheelCenterPoint
 from kinematics.geometry.points.ids import PointID
-from kinematics.geometry.types.base import CoordinateAxis
 from kinematics.geometry.types.double_wishbone import DoubleWishboneGeometry
 from kinematics.solvers.common import BaseSolver
 from kinematics.solvers.constraints import (
     BaseConstraint,
-    FixedAxisConstraint,
+    PointFixedAxisConstraint,
+    PointOnLineConstraint,
     PointPointDistanceConstraint,
-    VectorOrientationConstraint,
+    VectorVectorAngleConstraint,
 )
 from kinematics.solvers.targets import AxisDisplacementTarget, MotionTarget
 
@@ -46,7 +47,7 @@ class DoubleWishboneSolver(BaseSolver):
         """Initialize all constraints specific to double wishbone geometry."""
         constraints = []
         constraints.extend(self.create_length_constraints())
-        constraints.extend(self.create_orientation_constraints())
+        constraints.extend(self.create_angle_constraints())
         constraints.extend(self.create_linear_constraints())
         return constraints
 
@@ -90,7 +91,7 @@ class DoubleWishboneSolver(BaseSolver):
 
         return constraints
 
-    def create_orientation_constraints(self) -> list[VectorOrientationConstraint]:
+    def create_angle_constraints(self) -> list[VectorVectorAngleConstraint]:
         """Creates orientation constraints for double wishbone geometry."""
         hp = self.geometry.hard_points
         constraints = []
@@ -105,7 +106,7 @@ class DoubleWishboneSolver(BaseSolver):
             theta = np.arccos(np.clip(np.dot(v1_vec, v2_vec), -1.0, 1.0))
 
             constraints.append(
-                VectorOrientationConstraint(
+                VectorVectorAngleConstraint(
                     v1=(v1[0].id, v1[1].id), v2=(v2[0].id, v2[1].id), angle=theta
                 )
             )
@@ -118,26 +119,20 @@ class DoubleWishboneSolver(BaseSolver):
 
         return constraints
 
-    def create_linear_constraints(self) -> list[FixedAxisConstraint]:
+    def create_linear_constraints(self) -> list[PointFixedAxisConstraint]:
         """Creates linear motion constraints for double wishbone geometry."""
         hp = self.geometry.hard_points
         constraints = []
 
-        # Track rod inner point should only move in Y direction; constrain X and Z.
+        # Track rod inner point should only move in Y direction. Note that this
+        # could also be achieved with two PointFixedAxisConstraints, but this is
+        # more concise.
         constraints.append(
-            FixedAxisConstraint(
+            PointOnLineConstraint(
                 point_id=hp.track_rod.inner.id,
-                axis=CoordinateAxis.X,
-                value=hp.track_rod.inner.x,
-            )
-        )
-
-        constraints.append(
-            FixedAxisConstraint(
-                point_id=hp.track_rod.inner.id,
-                axis=CoordinateAxis.Z,
-                value=hp.track_rod.inner.z,
-            )
+                line_point=hp.track_rod.inner.id,
+                line_direction=Direction.y,
+            ),
         )
 
         return constraints

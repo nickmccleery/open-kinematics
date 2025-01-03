@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 from typing import Protocol
 
+from kinematics.geometry.constants import CoordinateAxis
 from kinematics.geometry.points.base import Point3D
 from kinematics.geometry.points.ids import PointID
-from kinematics.geometry.types.base import CoordinateAxis
 
 
 class MotionTarget(Protocol):

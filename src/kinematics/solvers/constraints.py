@@ -2,9 +2,9 @@ from typing import Tuple
 
 import numpy as np
 
+from kinematics.geometry.constants import CoordinateAxis
 from kinematics.geometry.points.base import Point3D
 from kinematics.geometry.points.ids import PointID
-from kinematics.geometry.types.base import CoordinateAxis
 
 
 class BaseConstraint:
@@ -55,7 +55,7 @@ class PointPointDistanceConstraint(BaseConstraint):
         return current_length - self.distance
 
 
-class VectorOrientationConstraint(BaseConstraint):
+class VectorVectorAngleConstraint(BaseConstraint):
     """
     A constraint that ensures the orientation between two vectors remains constant.
 
@@ -103,7 +103,7 @@ class VectorOrientationConstraint(BaseConstraint):
         return current_angle - self.angle
 
 
-class FixedAxisConstraint(BaseConstraint):
+class PointFixedAxisConstraint(BaseConstraint):
     """
     A constraint that fixes a point on a specified axis.
 
@@ -140,3 +140,51 @@ class FixedAxisConstraint(BaseConstraint):
         point = points[self.point_id]
         point_coord = point.as_array()[self.axis]
         return point_coord - self.value
+
+
+class PointOnLineConstraint(BaseConstraint):
+    """
+    A constraint that ensures a point moves along a specified line.
+
+    Attributes:
+        point_id (PointID): The identifier for the point.
+        line_point (PointID): The identifier for a point on the line.
+        line_direction (np.ndarray): The direction vector of the line.
+
+    Methods:
+        compute_residual(points: dict[PointID, Point3D]) -> float:
+            Computes the residual of the constraint, which is the distance
+            from the point to the line.
+
+            Args:
+                points (dict[PointID, Point3D]): A dictionary mapping point identifiers
+                                                 to their 3D coordinates.
+
+            Returns:
+                float: The residual value of the constraint.
+    """
+
+    def __init__(
+        self, point_id: PointID, line_point: PointID, line_direction: np.ndarray
+    ):
+        self.point_id = point_id
+        self.line_point = line_point
+        self.line_direction = line_direction / np.linalg.norm(line_direction)
+
+    def compute_residual(self, points: dict[PointID, Point3D]) -> float:
+        point = points[self.point_id].as_array()
+        line_point = points[self.line_point].as_array()
+        line_direction = self.line_direction
+
+        # Vector from line_point to point.
+        point_vector = point - line_point
+
+        # Project point_vector onto line_direction.
+        projection_length = np.dot(point_vector, line_direction)
+        projection_vector = projection_length * line_direction
+
+        # Residual is the distance from the point to the line.
+        residual_vector = point_vector - projection_vector
+        residual = float(np.linalg.norm(residual_vector))
+
+        return residual
