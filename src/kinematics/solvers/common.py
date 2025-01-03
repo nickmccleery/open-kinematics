@@ -61,7 +61,7 @@ class MotionTarget(Protocol):
 
 
 @dataclass
-class AxisDisplacementTarget:
+class AxisDisplacementTarget(MotionTarget):
     """Target that moves along a specified axis."""
 
     point_id: PointID
@@ -143,9 +143,9 @@ class BaseSolver:
         motion_target: MotionTarget,
     ):
         self.geometry = geometry
-        self.points = get_all_points(self.geometry.hard_points)
+        self.all_points = get_all_points(self.geometry.hard_points)
         self.initial_state = KinematicState.from_geometry(
-            self.points,
+            self.all_points,
             derived_points=derived_points,
             motion_target=motion_target,
         )

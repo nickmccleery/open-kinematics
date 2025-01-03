@@ -1,9 +1,12 @@
+from copy import deepcopy
+
 import numpy as np
 
 from kinematics.geometry.points.base import Point3D
 from kinematics.geometry.points.collections import AxleMidPoint, WheelCenterPoint
 from kinematics.geometry.points.ids import PointID
 from kinematics.geometry.types.double_wishbone import DoubleWishboneGeometry
+from kinematics.geometry.utils import get_all_points
 from kinematics.solvers.common import AxisDisplacementTarget, BaseSolver
 from kinematics.solvers.constraints import (
     BaseConstraint,
@@ -17,26 +20,29 @@ class DoubleWishboneSolver(BaseSolver):
     """Solver for double wishbone suspension geometry."""
 
     def __init__(self, geometry: DoubleWishboneGeometry):
-        # Create derived points
+        # Get point map.
+        point_map = {p.id: deepcopy(p) for p in get_all_points(geometry.hard_points)}
+
+        # Create derived points.
         derived_points = {
             PointID.AXLE_MIDPOINT: AxleMidPoint(
                 deps=[PointID.AXLE_INBOARD, PointID.AXLE_OUTBOARD]
             ),
             PointID.WHEEL_CENTER: WheelCenterPoint(
                 deps=[PointID.AXLE_OUTBOARD, PointID.AXLE_INBOARD],
-                wheel_offset=geometry.configuration.wheel.width / 2,
+                wheel_offset=geometry.configuration.wheel.offset,
             ),
         }
 
-        # Initial update of derived points
+        # Initial update of derived points.
         for point in derived_points.values():
-            point.update(geometry.hard_points)
+            point.update(point_map)
 
         # Create target
         target = AxisDisplacementTarget(
-            point_id=PointID.WHEEL_CENTER,
+            point_id=PointID.AXLE_MIDPOINT,
             axis=2,  # Z-axis
-            reference_position=derived_points[PointID.WHEEL_CENTER].as_array(),
+            reference_position=derived_points[PointID.AXLE_MIDPOINT].as_array(),
         )
 
         super().__init__(
