@@ -53,6 +53,7 @@ class PointSet:
 class MotionTarget(Protocol):
     point_id: PointID
     axis: int
+    reference_position: np.ndarray
 
     def get_current_position(self, points: dict[PointID, Point3D]) -> np.ndarray: ...
     def get_target_value(
@@ -130,7 +131,8 @@ class KinematicState:
             raise ValueError("No motion target set.")
         current_pos = self.get_point_position(self.motion_target.point_id)
         target = self.motion_target.get_target_value(
-            reference_position=current_pos, displacement=displacement
+            reference_position=self.motion_target.reference_position,
+            displacement=displacement,
         )
         return current_pos[self.motion_target.axis] - target
 
@@ -195,6 +197,7 @@ class BaseSolver:
             motion_target=self.current_state.motion_target,
         )
         state.free_points.update_from_array(state_array)
+        state.update_derived_points()
 
         residuals = [
             constraint.compute_residual(state.points) for constraint in self.constraints
