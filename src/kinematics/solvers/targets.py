@@ -3,11 +3,12 @@ from typing import Protocol
 
 from kinematics.geometry.points.base import Point3D
 from kinematics.geometry.points.ids import PointID
+from kinematics.geometry.types.base import CoordinateAxis
 
 
 class MotionTarget(Protocol):
     point_id: PointID
-    axis: int  # 0=x, 1=y, 2=z
+    axis: CoordinateAxis
     reference_point: Point3D
 
     def get_current_position(self, points: dict[PointID, Point3D]) -> Point3D: ...
@@ -19,7 +20,7 @@ class MotionTarget(Protocol):
 @dataclass
 class AxisDisplacementTarget(MotionTarget):
     point_id: PointID
-    axis: int
+    axis: CoordinateAxis
     reference_point: Point3D
 
     def get_current_position(self, points: dict[PointID, Point3D]) -> Point3D:

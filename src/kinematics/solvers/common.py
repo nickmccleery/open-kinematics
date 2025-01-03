@@ -40,7 +40,7 @@ class PointSet:
 
     def update_from_array(self, arr: np.ndarray) -> None:
         """
-        Update point positions from a flat array."
+        Update point positions from a flat array.
         """
         i = 0
         for point in self.points.values():

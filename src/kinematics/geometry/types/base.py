@@ -1,7 +1,14 @@
 from dataclasses import dataclass
+from enum import IntEnum
 
 from kinematics.geometry.config.setup import SuspensionConfig
 from kinematics.geometry.config.units import Units
+
+
+class CoordinateAxis(IntEnum):
+    X = 0
+    Y = 1
+    Z = 2
 
 
 @dataclass
