@@ -188,3 +188,23 @@ class PointOnLineConstraint(BaseConstraint):
         residual = float(np.linalg.norm(residual_vector))
 
         return residual
+
+
+# Utility methods to create constraints.
+def lock_point_point_distance(p1: Point3D, p2: Point3D):
+    length = float(np.linalg.norm(p1.as_array() - p2.as_array()))
+    return PointPointDistanceConstraint(p1.id, p2.id, length)
+
+
+def lock_vector_angles(v1: tuple[Point3D, Point3D], v2: tuple[Point3D, Point3D]):
+    v1_vec = v1[1].as_array() - v1[0].as_array()
+    v2_vec = v2[1].as_array() - v2[0].as_array()
+
+    v1_vec = v1_vec / np.linalg.norm(v1_vec)
+    v2_vec = v2_vec / np.linalg.norm(v2_vec)
+
+    theta = np.arccos(np.clip(np.dot(v1_vec, v2_vec), -1.0, 1.0))
+
+    return VectorVectorAngleConstraint(
+        v1=(v1[0].id, v1[1].id), v2=(v2[0].id, v2[1].id), angle=theta
+    )

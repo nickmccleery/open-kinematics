@@ -1,7 +1,5 @@
 from copy import deepcopy
 
-import numpy as np
-
 from kinematics.geometry.constants import CoordinateAxis, Direction
 from kinematics.geometry.points.base import DerivedPoint3D, Point3D
 from kinematics.geometry.points.collections import AxleMidPoint, WheelCenterPoint
@@ -9,11 +7,12 @@ from kinematics.geometry.points.ids import PointID
 from kinematics.geometry.types.double_wishbone import DoubleWishboneGeometry
 from kinematics.solvers.common import BaseSolver
 from kinematics.solvers.constraints import (
-    BaseConstraint,
     PointFixedAxisConstraint,
     PointOnLineConstraint,
     PointPointDistanceConstraint,
     VectorVectorAngleConstraint,
+    lock_point_point_distance,
+    lock_vector_angles,
 )
 from kinematics.solvers.targets import AxisDisplacementTarget, MotionTarget
 
@@ -43,13 +42,12 @@ class DoubleWishboneSolver(BaseSolver):
             reference_point=deepcopy(derived_points[PointID.AXLE_MIDPOINT]),
         )
 
-    def initialize_constraints(self) -> list[BaseConstraint]:
+    def initialize_constraints(self) -> None:
         """Initialize all constraints specific to double wishbone geometry."""
-        constraints = []
-        constraints.extend(self.create_length_constraints())
-        constraints.extend(self.create_angle_constraints())
-        constraints.extend(self.create_linear_constraints())
-        return constraints
+        self.constraints.extend(self.create_length_constraints())
+        self.constraints.extend(self.create_angle_constraints())
+        self.constraints.extend(self.create_linear_constraints())
+        return
 
     def create_length_constraints(self) -> list[PointPointDistanceConstraint]:
         """Creates fixed-length constraints for double wishbone geometry."""
@@ -57,8 +55,7 @@ class DoubleWishboneSolver(BaseSolver):
         constraints = []
 
         def make_constraint(p1: Point3D, p2: Point3D):
-            length = float(np.linalg.norm(p1.as_array() - p2.as_array()))
-            constraints.append(PointPointDistanceConstraint(p1.id, p2.id, length))
+            constraints.append(lock_point_point_distance(p1, p2))
 
         # Wishbone inboard to outboard constraints.
         make_constraint(hp.upper_wishbone.inboard_front, hp.upper_wishbone.outboard)
@@ -97,19 +94,7 @@ class DoubleWishboneSolver(BaseSolver):
         constraints = []
 
         def make_constraint(v1: tuple[Point3D, Point3D], v2: tuple[Point3D, Point3D]):
-            v1_vec = v1[1].as_array() - v1[0].as_array()
-            v2_vec = v2[1].as_array() - v2[0].as_array()
-
-            v1_vec = v1_vec / np.linalg.norm(v1_vec)
-            v2_vec = v2_vec / np.linalg.norm(v2_vec)
-
-            theta = np.arccos(np.clip(np.dot(v1_vec, v2_vec), -1.0, 1.0))
-
-            constraints.append(
-                VectorVectorAngleConstraint(
-                    v1=(v1[0].id, v1[1].id), v2=(v2[0].id, v2[1].id), angle=theta
-                )
-            )
+            constraints.append(lock_vector_angles(v1, v2))
 
         # Kingpin axis to axle orientation constraint.
         make_constraint(

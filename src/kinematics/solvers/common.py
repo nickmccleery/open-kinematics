@@ -7,7 +7,6 @@ from scipy.optimize import least_squares
 from kinematics.geometry.points.base import DerivedPoint3D, Point3D
 from kinematics.geometry.points.ids import PointID
 from kinematics.geometry.utils import get_all_points
-from kinematics.solvers.constraints import BaseConstraint
 from kinematics.solvers.targets import MotionTarget
 
 FTOL = 1e-8  # Convergence tolerance for function value.
@@ -136,7 +135,8 @@ class BaseSolver:
         self.current_state = deepcopy(initial_state)
 
         # Initialize constraints.
-        self.constraints = self.initialize_constraints()
+        self.constraints = []
+        self.initialize_constraints()
 
     def create_derived_points(self) -> dict[PointID, DerivedPoint3D]:
         raise NotImplementedError
@@ -146,7 +146,7 @@ class BaseSolver:
     ) -> MotionTarget:
         raise NotImplementedError
 
-    def initialize_constraints(self) -> list[BaseConstraint]:
+    def initialize_constraints(self) -> None:
         raise NotImplementedError(
             "Derived solvers must implement initialize_constraints."
         )
