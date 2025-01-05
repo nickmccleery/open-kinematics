@@ -14,17 +14,15 @@ CHECK_TOLERANCE = 1e-2
 def create_suspension_animation(
     geometry: DoubleWishboneGeometry, states: list[KinematicState], output_path: Path
 ) -> None:
-    """Creates an animated visualization of suspension movement."""
     fig = plt.figure(figsize=(12, 10))
     gs = fig.add_gridspec(2, 2, hspace=0.1, wspace=0.1)
 
-    # Create four subplots
+    # Create four subplots.
     ax_top = fig.add_subplot(gs[0, 0], projection="3d")
     ax_front = fig.add_subplot(gs[0, 1], projection="3d")
     ax_side = fig.add_subplot(gs[1, 0], projection="3d")
     ax_iso = fig.add_subplot(gs[1, 1], projection="3d")
 
-    # Calculate fixed limits once from initial geometry and states
     hp = geometry.hard_points
     inboard_points = np.array(
         [
@@ -35,7 +33,6 @@ def create_suspension_animation(
         ]
     )
 
-    # Modified to use points dictionary
     def get_state_points(state: KinematicState) -> np.ndarray:
         return np.array(
             [

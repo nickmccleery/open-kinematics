@@ -31,6 +31,11 @@ class DoubleWishboneSolver(BaseSolver):
                 wheel_offset=self.geometry.configuration.wheel.offset,
             ),
         }
+
+        # Compute the initial position of all derived points.
+        for point in derived_points.values():
+            point.update(self.hard_points)
+
         return derived_points
 
     def create_motion_target(

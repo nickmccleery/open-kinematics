@@ -9,7 +9,7 @@ from kinematics.solvers.constraints import PointPointDistanceConstraint
 from kinematics.solvers.double_wishbone import DoubleWishboneSolver
 from visualization.debug import create_suspension_animation
 
-CHECK_TOLERANCE = 1e-2
+CHECK_TOLERANCE = 1e-5
 
 
 def test_run_solver(double_wishbone_geometry_file: Path) -> None:

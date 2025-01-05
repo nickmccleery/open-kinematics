@@ -65,6 +65,7 @@ class KinematicState:
         self,
         hard_points: dict[PointID, Point3D],
         derived_points: dict[PointID, DerivedPoint3D],
+        motion_target: MotionTarget,
     ):
         # Take a deep copy of the points at initialization.
         self.hard_points = deepcopy(hard_points)
@@ -78,36 +79,23 @@ class KinematicState:
             {id: p for id, p in self.hard_points.items() if p.fixed}
         )
 
-        # Derived points are purely calculated from other points; no requirement
-        # for numpy array format, so we can store them as a dictionary. Update
-        # call will give us our first set of derived points.
         self.derived_points = derived_points or {}
-        self.update_derived_points()
+
+        self.motion_target = motion_target
 
         return
-
-    def set_motion_target(self, motion_target: MotionTarget) -> None:
-        self.motion_target = motion_target
 
     def update_derived_points(self) -> None:
         # Each derived point defines its own update method.
         for point in self.derived_points.values():
             point.update(self.hard_points)
 
+    def set_motion_target(self, motion_target: MotionTarget) -> None:
+        self.motion_target = motion_target
+
     def update_free_points(self, arr: np.ndarray) -> None:
         self.free_points.update_from_array(arr)
         self.update_derived_points()
-
-    @classmethod
-    def from_geometry(
-        cls,
-        hard_points: dict[PointID, Point3D],
-        derived_points: dict[PointID, DerivedPoint3D],
-    ) -> "KinematicState":
-        return cls(
-            hard_points,
-            derived_points=derived_points,
-        )
 
     def get_point_position(self, point_id: PointID) -> np.ndarray:
         if point_id in self.derived_points:
@@ -136,18 +124,17 @@ class BaseSolver:
         self.geometry = geometry
         self.hard_points = build_point_map(get_all_points(self.geometry.hard_points))
         self.derived_points = self.create_derived_points()
-
-        # Create initial state with derived points and motion target.
-        initial_state = KinematicState.from_geometry(
+        self.motion_target = self.create_motion_target(
             hard_points=self.hard_points,
             derived_points=self.derived_points,
         )
 
-        # Create and store motion target using computed derived points.
-        motion_target = self.create_motion_target(
-            initial_state.hard_points, initial_state.derived_points
+        # Create initial state with points.
+        initial_state = KinematicState(
+            hard_points=self.hard_points,
+            derived_points=self.derived_points,
+            motion_target=self.motion_target,
         )
-        initial_state.set_motion_target(motion_target)
 
         # Store initial and current state; use deepcopy so they're independent.
         self.initial_state = deepcopy(initial_state)
