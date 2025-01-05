@@ -34,7 +34,9 @@ class DoubleWishboneSolver(BaseSolver):
         return derived_points
 
     def create_motion_target(
-        self, derived_points: dict[PointID, DerivedPoint3D]
+        self,
+        hard_points: dict[PointID, Point3D],
+        derived_points: dict[PointID, DerivedPoint3D],
     ) -> MotionTarget:
         return AxisDisplacementTarget(
             point_id=PointID.AXLE_MIDPOINT,
@@ -89,7 +91,6 @@ class DoubleWishboneSolver(BaseSolver):
         return constraints
 
     def create_angle_constraints(self) -> list[VectorVectorAngleConstraint]:
-        """Creates orientation constraints for double wishbone geometry."""
         hp = self.geometry.hard_points
         constraints = []
 
@@ -105,7 +106,6 @@ class DoubleWishboneSolver(BaseSolver):
         return constraints
 
     def create_linear_constraints(self) -> list[PointFixedAxisConstraint]:
-        """Creates linear motion constraints for double wishbone geometry."""
         hp = self.geometry.hard_points
         constraints = []
 

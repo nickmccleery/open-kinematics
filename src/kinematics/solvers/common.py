@@ -144,7 +144,9 @@ class BaseSolver:
         )
 
         # Create and store motion target using computed derived points.
-        motion_target = self.create_motion_target(initial_state.derived_points)
+        motion_target = self.create_motion_target(
+            initial_state.hard_points, initial_state.derived_points
+        )
         initial_state.set_motion_target(motion_target)
 
         # Store initial and current state; use deepcopy so they're independent.
@@ -159,7 +161,9 @@ class BaseSolver:
         raise NotImplementedError
 
     def create_motion_target(
-        self, derived_points: dict[PointID, DerivedPoint3D]
+        self,
+        hard_points: dict[PointID, Point3D],
+        derived_points: dict[PointID, DerivedPoint3D],
     ) -> MotionTarget:
         raise NotImplementedError
 
