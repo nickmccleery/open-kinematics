@@ -6,7 +6,7 @@ from scipy.optimize import least_squares
 
 from kinematics.geometry.points.base import DerivedPoint3D, Point3D
 from kinematics.geometry.points.ids import PointID
-from kinematics.geometry.utils import get_all_points
+from kinematics.geometry.utils import build_point_map, get_all_points
 from kinematics.solvers.targets import MotionTarget
 
 FTOL = 1e-8  # Convergence tolerance for function value.
@@ -63,19 +63,19 @@ class KinematicState:
 
     def __init__(
         self,
-        points: dict[PointID, Point3D],
+        hard_points: dict[PointID, Point3D],
         derived_points: dict[PointID, DerivedPoint3D],
     ):
         # Take a deep copy of the points at initialization.
-        self.points = deepcopy(points)
+        self.hard_points = deepcopy(hard_points)
 
         # Get point sets; these will be used in numpy array format, so we use the
         # PointSet class to handle that.
         self.free_points = PointSet(
-            {id: p for id, p in self.points.items() if not p.fixed}
+            {id: p for id, p in self.hard_points.items() if not p.fixed}
         )
         self.fixed_points = PointSet(
-            {id: p for id, p in self.points.items() if p.fixed}
+            {id: p for id, p in self.hard_points.items() if p.fixed}
         )
 
         # Derived points are purely calculated from other points; no requirement
@@ -92,7 +92,7 @@ class KinematicState:
     def update_derived_points(self) -> None:
         # Each derived point defines its own update method.
         for point in self.derived_points.values():
-            point.update(self.points)
+            point.update(self.hard_points)
 
     def update_free_points(self, arr: np.ndarray) -> None:
         self.free_points.update_from_array(arr)
@@ -101,18 +101,18 @@ class KinematicState:
     @classmethod
     def from_geometry(
         cls,
-        points: list[Point3D],
+        hard_points: dict[PointID, Point3D],
         derived_points: dict[PointID, DerivedPoint3D],
     ) -> "KinematicState":
         return cls(
-            {p.id: p for p in points},
+            hard_points,
             derived_points=derived_points,
         )
 
     def get_point_position(self, point_id: PointID) -> np.ndarray:
         if point_id in self.derived_points:
             return self.derived_points[point_id].as_array()
-        return self.points[point_id].as_array()
+        return self.hard_points[point_id].as_array()
 
     def compute_target_residual(self, displacement: float) -> float:
         if not self.motion_target:
@@ -134,12 +134,13 @@ class BaseSolver:
     def __init__(self, geometry):
         # Store geometry and compute points.
         self.geometry = geometry
-        self.all_points = get_all_points(self.geometry.hard_points)
+        self.hard_points = build_point_map(get_all_points(self.geometry.hard_points))
+        self.derived_points = self.create_derived_points()
 
         # Create initial state with derived points and motion target.
         initial_state = KinematicState.from_geometry(
-            self.all_points,
-            derived_points=self.create_derived_points(),
+            hard_points=self.hard_points,
+            derived_points=self.derived_points,
         )
 
         # Create and store motion target using computed derived points.
@@ -203,7 +204,8 @@ class BaseSolver:
         state.update_derived_points()
 
         residuals = [
-            constraint.compute_residual(state.points) for constraint in self.constraints
+            constraint.compute_residual(state.hard_points)
+            for constraint in self.constraints
         ]
         target_residual = state.compute_target_residual(target_dz)
 
