@@ -90,9 +90,6 @@ class KinematicState:
         for point in self.derived_points.values():
             point.update(self.hard_points)
 
-    def set_motion_target(self, motion_target: MotionTarget) -> None:
-        self.motion_target = motion_target
-
     def update_free_points(self, arr: np.ndarray) -> None:
         self.free_points.update_from_array(arr)
         self.update_derived_points()
