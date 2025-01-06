@@ -44,10 +44,9 @@ class KinematicState:
             {id: p for id, p in self.hard_points.items() if p.fixed}
         )
 
-        # Initialize derived points—requires a hard point reference.
-        self.derived_points = DerivedPointSet(
-            hard_points={id: p for id, p in hard_points.items()}
-        )
+        # Initialize derived points—using a reference to hard points which will be
+        # updated within the KinematicState.
+        self.derived_points = DerivedPointSet(hard_point_reference=self.hard_points)
         for dp in derived_points.values():
             self.derived_points.add(dp)
 
@@ -65,7 +64,7 @@ class KinematicState:
         """
         Update all derived point positions based on current point positions.
         """
-        self.derived_points.update(self.hard_points)
+        self.derived_points.update()
 
     def get_point_position(self, point_id: PointID) -> np.ndarray:
         """

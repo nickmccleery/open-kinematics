@@ -69,10 +69,10 @@ class DerivedPointSet:
     Collection of derived points with automatic dependency resolution.
     """
 
-    def __init__(self, hard_points: dict[PointID, Point3D]):
+    def __init__(self, hard_point_reference: dict[PointID, Point3D]):
         self.derived_points: dict[PointID, DerivedPoint3D] = {}
         self.dependency_graph: dict[PointID, set[PointID]] = defaultdict(set)
-        self.hard_points = hard_points
+        self.hard_points = hard_point_reference
 
     def __getitem__(self, key: PointID) -> DerivedPoint3D:
         return self.derived_points[key]
@@ -98,22 +98,21 @@ class DerivedPointSet:
         """
         self.derived_points[point.id] = point
         self.dependency_graph[point.id].update(point.get_dependencies())
-        self.update_point(point.id, self.hard_points)
+        self.update_point(point.id)
 
-    def update(self, hard_points: dict[PointID, Point3D]) -> None:
+    def update(self) -> None:
         """
         Update all derived points based on their dependencies.
         """
         target_order = self.get_update_order()
         for point_id in target_order:
-            self.update_point(point_id, hard_points)
+            self.update_point(point_id)
 
     def update_point(
         self,
         point_id: PointID,
-        hard_points: dict[PointID, Point3D],
     ) -> None:
-        all_points = {**hard_points, **self.derived_points}
+        all_points = {**self.hard_points, **self.derived_points}
         self.derived_points[point_id].update(all_points)
 
     def detect_cycles(self) -> list[PointID]:
