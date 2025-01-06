@@ -98,18 +98,22 @@ class DerivedPointSet:
         """
         self.points[point.id] = point
         self.dependency_graph[point.id].update(point.get_dependencies())
-        self.update_point(point.id)
+        self.update_point(point.id, self.hard_points)
 
-    def update(self) -> None:
+    def update(self, hard_points: dict[PointID, Point3D]) -> None:
         """
         Update all derived points based on their dependencies.
         """
         target_order = self.get_update_order()
         for point_id in target_order:
-            self.update_point(point_id)
+            self.update_point(point_id, hard_points)
 
-    def update_point(self, point_id: PointID) -> None:
-        all_points = {**self.hard_points, **self.points}
+    def update_point(
+        self,
+        point_id: PointID,
+        hard_points: dict[PointID, Point3D],
+    ) -> None:
+        all_points = {**hard_points, **self.points}
         self.points[point_id].update(all_points)
 
     def detect_cycles(self) -> list[PointID]:
