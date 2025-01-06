@@ -16,20 +16,20 @@ class LinkVisualization:
     points: list[PointID]
     color: str
     label: str
-    linewidth: float = 2.0
+    linewidth: float = 3.0
     linestyle: str = "-"
     marker: str = "o"
-    markersize: float = 5.0
+    markersize: float = 10.0
 
 
 @dataclass
 class WheelVisualization:
     diameter: float
     width: float
-    num_points: int = 12
+    num_points: int = 50
     color: str = "black"
-    alpha: float = 0.5
-    linestyle: str = "--"
+    alpha: float = 0.75
+    linestyle: str = "-"
 
 
 class SuspensionVisualizer:
@@ -48,7 +48,7 @@ class SuspensionVisualizer:
                     PointID.UPPER_WISHBONE_OUTBOARD,
                     PointID.UPPER_WISHBONE_INBOARD_REAR,
                 ],
-                color="blue",
+                color="dodgerblue",
                 label="Upper Wishbone",
             ),
             LinkVisualization(
@@ -57,7 +57,7 @@ class SuspensionVisualizer:
                     PointID.LOWER_WISHBONE_OUTBOARD,
                     PointID.LOWER_WISHBONE_INBOARD_REAR,
                 ],
-                color="blue",
+                color="dodgerblue",
                 label="Lower Wishbone",
             ),
             LinkVisualization(
@@ -67,17 +67,17 @@ class SuspensionVisualizer:
                     PointID.LOWER_WISHBONE_OUTBOARD,
                     PointID.TRACKROD_OUTBOARD,
                 ],
-                color="red",
+                color="slategrey",
                 label="Upright",
             ),
             LinkVisualization(
                 points=[PointID.TRACKROD_INBOARD, PointID.TRACKROD_OUTBOARD],
-                color="purple",
+                color="darkorange",
                 label="Track Rod",
             ),
             LinkVisualization(
                 points=[PointID.AXLE_INBOARD, PointID.AXLE_OUTBOARD],
-                color="gray",
+                color="forestgreen",
                 label="Axle",
             ),
         ]
@@ -129,13 +129,15 @@ class SuspensionVisualizer:
             rim_points_outboard[i] = wheel_outboard + radius * (
                 np.cos(angle) * e2 + np.sin(angle) * e3
             )
+
         # Plot center points
         ax.plot(
             rim_points_center[:, 0],
             rim_points_center[:, 1],
             rim_points_center[:, 2],
             color=self.wheel_config.color,
-            alpha=self.wheel_config.alpha,
+            alpha=0.5,
+            linestyle=self.wheel_config.linestyle,
         )
 
         # Plot inboard points
@@ -145,6 +147,7 @@ class SuspensionVisualizer:
             rim_points_inboard[:, 2],
             color=self.wheel_config.color,
             alpha=self.wheel_config.alpha,
+            linestyle=self.wheel_config.linestyle,
         )
 
         # Plot outboard points
@@ -154,6 +157,7 @@ class SuspensionVisualizer:
             rim_points_outboard[:, 2],
             color=self.wheel_config.color,
             alpha=self.wheel_config.alpha,
+            linestyle=self.wheel_config.linestyle,
         )
 
     def create_animation(
