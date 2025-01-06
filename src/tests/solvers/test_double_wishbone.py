@@ -7,7 +7,8 @@ from kinematics.geometry.points.ids import PointID
 from kinematics.geometry.types.double_wishbone import DoubleWishboneGeometry
 from kinematics.solvers.constraints import PointPointDistanceConstraint
 from kinematics.solvers.double_wishbone import DoubleWishboneSolver
-from visualization.debug import SuspensionVisualizer, WheelVisualization
+from visualization.debug import create_animation
+from visualization.main import SuspensionVisualizer, WheelVisualization
 
 CHECK_TOLERANCE = 1e-5
 
@@ -30,6 +31,8 @@ def test_run_solver(double_wishbone_geometry_file: Path) -> None:
 
     # Solve for all positions
     states = solver.solve_sweep(displacements)
+
+    print("Solve complete, verifying constraints...")
 
     # Verify constraints are maintained
     for state, displacement in zip(states, displacements):
@@ -61,7 +64,8 @@ def test_run_solver(double_wishbone_geometry_file: Path) -> None:
             np.abs(axle_midpoint[2] - target_z) < CHECK_TOLERANCE
         ), f"Failed to maintain axle midpoint at displacement {displacement}"
 
-    # Create animation
+    # Create animation.
+    print("Creating animation...")
     states_animate = states + states[::-1]
     output_path = Path("suspension_motion.gif")
 
@@ -71,4 +75,4 @@ def test_run_solver(double_wishbone_geometry_file: Path) -> None:
     )
 
     visualizer = SuspensionVisualizer(geometry, wheel_config)
-    visualizer.create_animation(states_animate, output_path)
+    create_animation(states_animate, visualizer, output_path)

@@ -1,0 +1,316 @@
+
+Point Positions Table:
+Frame  Point                         X          Y          Z
+------------------------------------------------------------
+0      Upper Outboard           -25.00     750.21     251.75
+0      Lower Outboard            -0.56     896.64     -50.05
+0      Axle Inboard             -20.35     798.44     101.16
+0      Axle Outboard            -19.86     998.43      98.84
+0      Trackrod Inboard          50.00     200.00     100.00
+0      Trackrod Outboard         49.27     697.70      52.12
+
+
+Point Positions Table:
+Frame  Point                         X          Y          Z
+------------------------------------------------------------
+0      Upper Outboard           -25.00     750.21     251.75
+0      Lower Outboard            -0.56     896.64     -50.05
+0      Axle Inboard             -20.35     798.44     101.16
+0      Axle Outboard            -19.86     998.43      98.84
+0      Trackrod Inboard          50.00     200.00     100.00
+0      Trackrod Outboard         49.27     697.70      52.12
+
+1      Upper Outboard           -25.00     750.93     259.11
+1      Lower Outboard            -0.40     897.57     -42.58
+1      Axle Inboard             -20.36     799.30     108.56
+1      Axle Outboard            -19.12     999.28     106.44
+1      Trackrod Inboard          50.00     200.00     100.00
+1      Trackrod Outboard         48.80     698.34      59.33
+
+2      Upper Outboard           -25.00     751.37     266.42
+2      Lower Outboard            -0.27     898.35     -35.09
+2      Axle Inboard             -20.36     799.93     115.93
+2      Axle Outboard            -18.66     999.91     114.07
+2      Trackrod Inboard          50.00     200.00     100.00
+2      Trackrod Outboard         48.54     698.88      66.52
+
+3      Upper Outboard           -25.00     751.55     273.69
+3      Lower Outboard            -0.17     898.98     -27.60
+3      Axle Inboard             -20.32     800.34     123.27
+3      Axle Outboard            -18.46    1000.32     121.73
+3      Trackrod Inboard          50.00     200.00     100.00
+3      Trackrod Outboard         48.49     699.31      73.70
+
+4      Upper Outboard           -25.00     751.47     280.92
+4      Lower Outboard            -0.09     899.46     -20.09
+4      Axle Inboard             -20.27     800.53     130.59
+4      Axle Outboard            -18.53    1000.52     129.41
+4      Trackrod Inboard          50.00     200.00     100.00
+4      Trackrod Outboard         48.64     699.63      80.88
+
+5      Upper Outboard           -25.00     751.13     288.10
+5      Lower Outboard            -0.04     899.79     -12.57
+5      Axle Inboard             -20.19     800.51     137.89
+5      Axle Outboard            -18.87    1000.50     137.11
+5      Trackrod Inboard          50.00     200.00     100.00
+5      Trackrod Outboard         48.99     699.86      88.05
+
+6      Upper Outboard           -25.00     750.54     295.25
+6      Lower Outboard            -0.01     899.97      -5.03
+6      Axle Inboard             -20.09     800.27     145.16
+6      Axle Outboard            -19.46    1000.27     144.84
+6      Trackrod Inboard          50.00     200.00     100.00
+6      Trackrod Outboard         49.53     699.98      95.22
+
+7      Upper Outboard           -25.00     749.69     302.37
+7      Lower Outboard            -0.00     899.99       2.52
+7      Axle Inboard             -19.96     799.82     152.41
+7      Axle Outboard            -20.31     999.83     152.59
+7      Trackrod Inboard          50.00     200.00     100.00
+7      Trackrod Outboard         50.26     699.99     102.39
+
+8      Upper Outboard           -25.00     748.59     309.44
+8      Lower Outboard            -0.02     899.86      10.08
+8      Axle Inboard             -19.82     799.17     159.64
+8      Axle Outboard            -21.40     999.16     160.36
+8      Trackrod Inboard          50.00     200.00     100.00
+8      Trackrod Outboard         51.17     699.91     109.56
+
+9      Upper Outboard           -25.00     747.24     316.48
+9      Lower Outboard            -0.07     899.58      17.66
+9      Axle Inboard             -19.66     798.30     166.85
+9      Axle Outboard            -22.72     998.27     168.15
+9      Trackrod Inboard          50.00     200.00     100.00
+9      Trackrod Outboard         52.24     699.71     116.73
+
+10     Upper Outboard           -25.00     745.64     323.48
+10     Lower Outboard            -0.14     899.15      25.25
+10     Axle Inboard             -19.48     797.22     174.03
+10     Axle Outboard            -24.25     997.16     175.97
+10     Trackrod Inboard          50.00     200.00     100.00
+10     Trackrod Outboard         53.47     699.42     123.91
+
+11     Upper Outboard           -25.00     743.78     330.45
+11     Lower Outboard            -0.24     898.56      32.86
+11     Axle Inboard             -19.28     795.93     181.20
+11     Axle Outboard            -26.00     995.80     183.80
+11     Trackrod Inboard          50.00     200.00     100.00
+11     Trackrod Outboard         54.84     699.01     131.08
+
+12     Upper Outboard           -25.00     741.66     337.37
+12     Lower Outboard            -0.37     897.81      40.49
+12     Axle Inboard             -19.07     794.43     188.35
+12     Axle Outboard            -27.94     994.21     191.65
+12     Trackrod Inboard          50.00     200.00     100.00
+12     Trackrod Outboard         56.34     698.49     138.26
+
+13     Upper Outboard           -25.00     739.28     344.26
+13     Lower Outboard            -0.52     896.90      48.14
+13     Axle Inboard             -18.85     792.71     195.48
+13     Axle Outboard            -30.07     992.36     199.52
+13     Trackrod Inboard          50.00     200.00     100.00
+13     Trackrod Outboard         57.96     697.87     145.44
+
+14     Upper Outboard           -25.00     736.64     351.10
+14     Lower Outboard            -0.70     895.82      55.81
+14     Axle Inboard             -18.61     790.78     202.59
+14     Axle Outboard            -32.38     990.25     207.41
+14     Trackrod Inboard          50.00     200.00     100.00
+14     Trackrod Outboard         59.70     697.13     152.63
+
+15     Upper Outboard           -25.00     733.72     357.90
+15     Lower Outboard            -0.90     894.58      63.51
+15     Axle Inboard             -18.36     788.63     209.69
+15     Axle Outboard            -34.86     987.87     215.31
+15     Trackrod Inboard          50.00     200.00     100.00
+15     Trackrod Outboard         61.53     696.27     159.82
+
+16     Upper Outboard           -25.00     730.52     364.65
+16     Lower Outboard            -1.14     893.17      71.23
+16     Axle Inboard             -18.11     786.26     216.76
+16     Axle Outboard            -37.51     985.21     223.24
+16     Trackrod Inboard          50.00     200.00     100.00
+16     Trackrod Outboard         63.46     695.31     167.02
+
+17     Upper Outboard           -25.00     727.03     371.36
+17     Lower Outboard            -1.40     891.59      78.98
+17     Axle Inboard             -17.84     783.65     223.82
+17     Axle Outboard            -40.32     982.25     231.18
+17     Trackrod Inboard          50.00     200.00     100.00
+17     Trackrod Outboard         65.48     694.22     174.23
+
+18     Upper Outboard           -25.00     723.24     378.02
+18     Lower Outboard            -1.70     889.82      86.76
+18     Axle Inboard             -17.56     780.81     230.86
+18     Axle Outboard            -43.29     978.98     239.14
+18     Trackrod Inboard          50.00     200.00     100.00
+18     Trackrod Outboard         67.58     693.01     181.44
+
+19     Upper Outboard           -25.00     719.14     384.62
+19     Lower Outboard            -2.02     887.87      94.57
+19     Axle Inboard             -17.28     777.73     237.87
+19     Axle Outboard            -46.41     975.38     247.13
+19     Trackrod Inboard          50.00     200.00     100.00
+19     Trackrod Outboard         69.75     691.68     188.68
+
+20     Upper Outboard           -25.00     714.72     391.16
+20     Lower Outboard            -2.38     885.73     102.43
+20     Axle Inboard             -16.98     774.40     244.87
+20     Axle Outboard            -49.70     971.44     255.13
+20     Trackrod Inboard          50.00     200.00     100.00
+20     Trackrod Outboard         72.00     690.22     195.93
+
+21     Upper Outboard           -25.00     714.72     391.16
+21     Lower Outboard            -2.38     885.73     102.43
+21     Axle Inboard             -16.98     774.40     244.87
+21     Axle Outboard            -49.70     971.44     255.13
+21     Trackrod Inboard          50.00     200.00     100.00
+21     Trackrod Outboard         72.00     690.22     195.93
+
+22     Upper Outboard           -25.00     719.14     384.62
+22     Lower Outboard            -2.02     887.87      94.57
+22     Axle Inboard             -17.28     777.73     237.87
+22     Axle Outboard            -46.41     975.38     247.13
+22     Trackrod Inboard          50.00     200.00     100.00
+22     Trackrod Outboard         69.75     691.68     188.68
+
+23     Upper Outboard           -25.00     723.24     378.02
+23     Lower Outboard            -1.70     889.82      86.76
+23     Axle Inboard             -17.56     780.81     230.86
+23     Axle Outboard            -43.29     978.98     239.14
+23     Trackrod Inboard          50.00     200.00     100.00
+23     Trackrod Outboard         67.58     693.01     181.44
+
+24     Upper Outboard           -25.00     727.03     371.36
+24     Lower Outboard            -1.40     891.59      78.98
+24     Axle Inboard             -17.84     783.65     223.82
+24     Axle Outboard            -40.32     982.25     231.18
+24     Trackrod Inboard          50.00     200.00     100.00
+24     Trackrod Outboard         65.48     694.22     174.23
+
+25     Upper Outboard           -25.00     730.52     364.65
+25     Lower Outboard            -1.14     893.17      71.23
+25     Axle Inboard             -18.11     786.26     216.76
+25     Axle Outboard            -37.51     985.21     223.24
+25     Trackrod Inboard          50.00     200.00     100.00
+25     Trackrod Outboard         63.46     695.31     167.02
+
+26     Upper Outboard           -25.00     733.72     357.90
+26     Lower Outboard            -0.90     894.58      63.51
+26     Axle Inboard             -18.36     788.63     209.69
+26     Axle Outboard            -34.86     987.87     215.31
+26     Trackrod Inboard          50.00     200.00     100.00
+26     Trackrod Outboard         61.53     696.27     159.82
+
+27     Upper Outboard           -25.00     736.64     351.10
+27     Lower Outboard            -0.70     895.82      55.81
+27     Axle Inboard             -18.61     790.78     202.59
+27     Axle Outboard            -32.38     990.25     207.41
+27     Trackrod Inboard          50.00     200.00     100.00
+27     Trackrod Outboard         59.70     697.13     152.63
+
+28     Upper Outboard           -25.00     739.28     344.26
+28     Lower Outboard            -0.52     896.90      48.14
+28     Axle Inboard             -18.85     792.71     195.48
+28     Axle Outboard            -30.07     992.36     199.52
+28     Trackrod Inboard          50.00     200.00     100.00
+28     Trackrod Outboard         57.96     697.87     145.44
+
+29     Upper Outboard           -25.00     741.66     337.37
+29     Lower Outboard            -0.37     897.81      40.49
+29     Axle Inboard             -19.07     794.43     188.35
+29     Axle Outboard            -27.94     994.21     191.65
+29     Trackrod Inboard          50.00     200.00     100.00
+29     Trackrod Outboard         56.34     698.49     138.26
+
+30     Upper Outboard           -25.00     743.78     330.45
+30     Lower Outboard            -0.24     898.56      32.86
+30     Axle Inboard             -19.28     795.93     181.20
+30     Axle Outboard            -26.00     995.80     183.80
+30     Trackrod Inboard          50.00     200.00     100.00
+30     Trackrod Outboard         54.84     699.01     131.08
+
+31     Upper Outboard           -25.00     745.64     323.48
+31     Lower Outboard            -0.14     899.15      25.25
+31     Axle Inboard             -19.48     797.22     174.03
+31     Axle Outboard            -24.25     997.16     175.97
+31     Trackrod Inboard          50.00     200.00     100.00
+31     Trackrod Outboard         53.47     699.42     123.91
+
+32     Upper Outboard           -25.00     747.24     316.48
+32     Lower Outboard            -0.07     899.58      17.66
+32     Axle Inboard             -19.66     798.30     166.85
+32     Axle Outboard            -22.72     998.27     168.15
+32     Trackrod Inboard          50.00     200.00     100.00
+32     Trackrod Outboard         52.24     699.71     116.73
+
+33     Upper Outboard           -25.00     748.59     309.44
+33     Lower Outboard            -0.02     899.86      10.08
+33     Axle Inboard             -19.82     799.17     159.64
+33     Axle Outboard            -21.40     999.16     160.36
+33     Trackrod Inboard          50.00     200.00     100.00
+33     Trackrod Outboard         51.17     699.91     109.56
+
+34     Upper Outboard           -25.00     749.69     302.37
+34     Lower Outboard            -0.00     899.99       2.52
+34     Axle Inboard             -19.96     799.82     152.41
+34     Axle Outboard            -20.31     999.83     152.59
+34     Trackrod Inboard          50.00     200.00     100.00
+34     Trackrod Outboard         50.26     699.99     102.39
+
+35     Upper Outboard           -25.00     750.54     295.25
+35     Lower Outboard            -0.01     899.97      -5.03
+35     Axle Inboard             -20.09     800.27     145.16
+35     Axle Outboard            -19.46    1000.27     144.84
+35     Trackrod Inboard          50.00     200.00     100.00
+35     Trackrod Outboard         49.53     699.98      95.22
+
+36     Upper Outboard           -25.00     751.13     288.10
+36     Lower Outboard            -0.04     899.79     -12.57
+36     Axle Inboard             -20.19     800.51     137.89
+36     Axle Outboard            -18.87    1000.50     137.11
+36     Trackrod Inboard          50.00     200.00     100.00
+36     Trackrod Outboard         48.99     699.86      88.05
+
+37     Upper Outboard           -25.00     751.47     280.92
+37     Lower Outboard            -0.09     899.46     -20.09
+37     Axle Inboard             -20.27     800.53     130.59
+37     Axle Outboard            -18.53    1000.52     129.41
+37     Trackrod Inboard          50.00     200.00     100.00
+37     Trackrod Outboard         48.64     699.63      80.88
+
+38     Upper Outboard           -25.00     751.55     273.69
+38     Lower Outboard            -0.17     898.98     -27.60
+38     Axle Inboard             -20.32     800.34     123.27
+38     Axle Outboard            -18.46    1000.32     121.73
+38     Trackrod Inboard          50.00     200.00     100.00
+38     Trackrod Outboard         48.49     699.31      73.70
+
+39     Upper Outboard           -25.00     751.37     266.42
+39     Lower Outboard            -0.27     898.35     -35.09
+39     Axle Inboard             -20.36     799.93     115.93
+39     Axle Outboard            -18.66     999.91     114.07
+39     Trackrod Inboard          50.00     200.00     100.00
+39     Trackrod Outboard         48.54     698.88      66.52
+
+40     Upper Outboard           -25.00     750.93     259.11
+40     Lower Outboard            -0.40     897.57     -42.58
+40     Axle Inboard             -20.36     799.30     108.56
+40     Axle Outboard            -19.12     999.28     106.44
+40     Trackrod Inboard          50.00     200.00     100.00
+40     Trackrod Outboard         48.80     698.34      59.33
+
+41     Upper Outboard           -25.00     750.21     251.75
+41     Lower Outboard            -0.56     896.64     -50.05
+41     Axle Inboard             -20.35     798.44     101.16
+41     Axle Outboard            -19.86     998.43      98.84
+41     Trackrod Inboard          50.00     200.00     100.00
+41     Trackrod Outboard         49.27     697.70      52.12
+
+
+Fixed Points Reference:
+------------------------------------------------------------
+--     UW Inboard Front         125.00     550.00     275.00
+--     UW Inboard Rear         -175.00     550.00     275.00
+--     LW Inboard Front         150.00     500.00       0.00
+--     LW Inboard Rear         -150.00     550.00       0.00
