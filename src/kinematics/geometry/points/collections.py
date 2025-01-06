@@ -71,14 +71,16 @@ class TrackRodPoints:
 
 
 class AxleMidPoint(DerivedPoint3D):
-    def __init__(self, deps: list[PointID]):
+    def __init__(self):
         super().__init__(
             x=0.0,
             y=0.0,
             z=0.0,
             id=PointID.AXLE_MIDPOINT,
-            deps=deps,
         )
+
+    def get_dependencies(self) -> set[PointID]:
+        return {PointID.AXLE_INBOARD, PointID.AXLE_OUTBOARD}
 
     def update(self, points: dict[PointID, Point3D]) -> None:
         p1 = points[PointID.AXLE_INBOARD]
@@ -90,15 +92,17 @@ class AxleMidPoint(DerivedPoint3D):
 
 
 class WheelCenterPoint(DerivedPoint3D):
-    def __init__(self, deps: list[PointID], wheel_offset: float):
+    def __init__(self, wheel_offset: float):
         super().__init__(
             x=0.0,
             y=0.0,
             z=0.0,
             id=PointID.WHEEL_CENTER,
-            deps=deps,
         )
         self.wheel_offset = wheel_offset
+
+    def get_dependencies(self) -> set[PointID]:
+        return {PointID.AXLE_OUTBOARD, PointID.AXLE_INBOARD}
 
     def update(self, points: dict[PointID, Point3D]) -> None:
         p2 = points[PointID.AXLE_OUTBOARD]

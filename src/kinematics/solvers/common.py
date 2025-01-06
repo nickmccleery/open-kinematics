@@ -1,52 +1,15 @@
 from copy import deepcopy
-from typing import Iterator
 
 import numpy as np
 from scipy.optimize import least_squares
 
-from kinematics.geometry.points.base import DerivedPoint3D, Point3D
+from kinematics.geometry.points.base import DerivedPointSet, Point3D, PointSet
 from kinematics.geometry.points.ids import PointID
 from kinematics.geometry.utils import build_point_map, get_all_points
 from kinematics.solvers.targets import MotionTarget
 
 FTOL = 1e-8  # Convergence tolerance for function value.
 XTOL = 1e-8  # Convergence tolerance for independent variables.
-
-
-class PointSet:
-    """
-    Represents a set of points in 3D space.
-
-    Attributes:
-        points (dict[PointID, Point3D]): A dictionary mapping point identifiers to their
-                                         3D coordinates.
-    """
-
-    def __init__(self, points: dict[PointID, Point3D]):
-        self.points = points
-
-    def __iter__(self) -> Iterator[Point3D]:
-        return iter(self.points.values())
-
-    def __getitem__(self, point_id: PointID) -> Point3D:
-        return self.points[point_id]
-
-    def as_array(self) -> np.ndarray:
-        """
-        Convert point positions to a flat array.
-        """
-        return np.concatenate([p.as_array() for p in self.points.values()])
-
-    def update_from_array(self, arr: np.ndarray) -> None:
-        """
-        Update point positions from a flat array.
-        """
-        i = 0
-        for point in self.points.values():
-            point.x = float(arr[i])
-            point.y = float(arr[i + 1])
-            point.z = float(arr[i + 2])
-            i += 3
 
 
 class KinematicState:
@@ -64,7 +27,7 @@ class KinematicState:
     def __init__(
         self,
         hard_points: dict[PointID, Point3D],
-        derived_points: dict[PointID, DerivedPoint3D],
+        derived_points: DerivedPointSet,
         motion_target: MotionTarget,
     ):
         # Take a deep copy of the points at initialization.
@@ -86,9 +49,7 @@ class KinematicState:
         return
 
     def update_derived_points(self) -> None:
-        # Each derived point defines its own update method.
-        for point in self.derived_points.values():
-            point.update(self.hard_points)
+        self.derived_points.update()
 
     def update_free_points(self, arr: np.ndarray) -> None:
         self.free_points.update_from_array(arr)
@@ -141,13 +102,13 @@ class BaseSolver:
         self.constraints = []
         self.initialize_constraints()
 
-    def create_derived_points(self) -> dict[PointID, DerivedPoint3D]:
+    def create_derived_points(self) -> DerivedPointSet:
         raise NotImplementedError
 
     def create_motion_target(
         self,
         hard_points: dict[PointID, Point3D],
-        derived_points: dict[PointID, DerivedPoint3D],
+        derived_points: DerivedPointSet,
     ) -> MotionTarget:
         raise NotImplementedError
 
