@@ -3,7 +3,12 @@ from copy import deepcopy
 import numpy as np
 from scipy.optimize import least_squares
 
-from kinematics.geometry.points.base import DerivedPointSet, Point3D, PointSet
+from kinematics.geometry.points.base import (
+    DerivedPoint3D,
+    DerivedPointSet,
+    Point3D,
+    PointSet,
+)
 from kinematics.geometry.points.ids import PointID
 from kinematics.geometry.utils import build_point_map, get_all_points
 from kinematics.solvers.targets import MotionTarget
@@ -27,7 +32,7 @@ class KinematicState:
     def __init__(
         self,
         hard_points: dict[PointID, Point3D],
-        derived_points: DerivedPointSet,
+        derived_points: dict[PointID, DerivedPoint3D],
         motion_target: MotionTarget,
     ):
         # Take a deep copy of the points at initialization.
@@ -42,7 +47,10 @@ class KinematicState:
             {id: p for id, p in self.hard_points.items() if p.fixed}
         )
 
-        self.derived_points = derived_points or {}
+        # Handle derived points.
+        self.derived_points = DerivedPointSet(self.hard_points)
+        for dp in derived_points.values():
+            self.derived_points.add(dp)
 
         self.motion_target = motion_target
 
@@ -87,28 +95,29 @@ class BaseSolver:
             derived_points=self.derived_points,
         )
 
-        # Create initial state with points.
-        initial_state = KinematicState(
+        # Store initial and current state; use deepcopy so they're independent.
+        self.initial_state = KinematicState(
+            hard_points=self.hard_points,
+            derived_points=self.derived_points,
+            motion_target=self.motion_target,
+        )
+        self.current_state = KinematicState(
             hard_points=self.hard_points,
             derived_points=self.derived_points,
             motion_target=self.motion_target,
         )
 
-        # Store initial and current state; use deepcopy so they're independent.
-        self.initial_state = deepcopy(initial_state)
-        self.current_state = deepcopy(initial_state)
-
         # Initialize constraints.
         self.constraints = []
         self.initialize_constraints()
 
-    def create_derived_points(self) -> DerivedPointSet:
+    def create_derived_points(self) -> dict[PointID, DerivedPoint3D]:
         raise NotImplementedError
 
     def create_motion_target(
         self,
         hard_points: dict[PointID, Point3D],
-        derived_points: DerivedPointSet,
+        derived_points: dict[PointID, DerivedPoint3D],
     ) -> MotionTarget:
         raise NotImplementedError
 

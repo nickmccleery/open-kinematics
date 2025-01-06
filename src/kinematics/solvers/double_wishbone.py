@@ -1,7 +1,7 @@
 from copy import deepcopy
 
 from kinematics.geometry.constants import CoordinateAxis, Direction
-from kinematics.geometry.points.base import DerivedPointSet, Point3D
+from kinematics.geometry.points.base import DerivedPoint3D, Point3D
 from kinematics.geometry.points.collections import AxleMidPoint, WheelCenterPoint
 from kinematics.geometry.points.ids import PointID
 from kinematics.geometry.types.double_wishbone import DoubleWishboneGeometry
@@ -21,12 +21,11 @@ class DoubleWishboneSolver(BaseSolver):
     def __init__(self, geometry: DoubleWishboneGeometry):
         super().__init__(geometry)
 
-    def create_derived_points(self) -> DerivedPointSet:
-        derived_points = DerivedPointSet(self.hard_points)
-
-        derived_points.add(AxleMidPoint())
-        derived_points.add(
-            WheelCenterPoint(wheel_offset=self.geometry.configuration.wheel.offset)
+    def create_derived_points(self) -> dict[PointID, DerivedPoint3D]:
+        derived_points = {}
+        derived_points[PointID.AXLE_MIDPOINT] = AxleMidPoint()
+        derived_points[PointID.WHEEL_CENTER] = WheelCenterPoint(
+            wheel_offset=self.geometry.configuration.wheel.offset
         )
 
         return derived_points
@@ -34,7 +33,7 @@ class DoubleWishboneSolver(BaseSolver):
     def create_motion_target(
         self,
         hard_points: dict[PointID, Point3D],
-        derived_points: DerivedPointSet,
+        derived_points: dict[PointID, DerivedPoint3D],
     ) -> MotionTarget:
         return AxisDisplacementTarget(
             point_id=PointID.AXLE_MIDPOINT,
