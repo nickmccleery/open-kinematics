@@ -155,12 +155,14 @@ class WheelOutboardPoint(DerivedPoint3D):
         self.wheel_width = wheel_width
 
     def get_dependencies(self) -> set[PointID]:
-        return {PointID.WHEEL_CENTER, PointID.AXLE_OUTBOARD}
+        return {PointID.WHEEL_CENTER, PointID.AXLE_INBOARD}
 
     def update(self, points: dict[PointID, Point3D]) -> None:
+        # Use axle inboard as a zero offset wheel would have wheel center and
+        # axle outboard in the same place.
         p1 = points[PointID.WHEEL_CENTER]
-        p2 = points[PointID.AXLE_OUTBOARD]
-        v = p2.as_array() - p1.as_array()
+        p2 = points[PointID.AXLE_INBOARD]
+        v = p1.as_array() - p2.as_array()
         v = v / np.linalg.norm(v)
 
         # Move outward from wheel center point (same direction as v).
