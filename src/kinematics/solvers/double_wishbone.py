@@ -2,7 +2,11 @@ from copy import deepcopy
 
 from kinematics.geometry.constants import CoordinateAxis, Direction
 from kinematics.geometry.points.base import DerivedPoint3D, Point3D
-from kinematics.geometry.points.collections import AxleMidPoint, WheelCenterPoint
+from kinematics.geometry.points.collections import (
+    AxleMidPoint,
+    WheelCenterPoint,
+    WheelOutboardPoint,
+)
 from kinematics.geometry.points.ids import PointID
 from kinematics.geometry.types.double_wishbone import DoubleWishboneGeometry
 from kinematics.solvers.common import BaseSolver, KinematicState
@@ -26,6 +30,9 @@ class DoubleWishboneSolver(BaseSolver):
         derived_points[PointID.AXLE_MIDPOINT] = AxleMidPoint()
         derived_points[PointID.WHEEL_CENTER] = WheelCenterPoint(
             wheel_offset=self.geometry.configuration.wheel.offset
+        )
+        derived_points[PointID.WHEEL_OUTBOARD] = WheelOutboardPoint(
+            wheel_width=self.geometry.configuration.wheel.width
         )
 
         return derived_points

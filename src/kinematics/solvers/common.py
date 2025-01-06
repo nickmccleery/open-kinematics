@@ -132,7 +132,9 @@ class BaseSolver:
                 raise RuntimeError(f"Failed to solve for displacement {displacement}m.")
 
             iteration_state.free_points.update_from_array(result.x)
+            iteration_state.update_derived_points()
             states.append(deepcopy(iteration_state))
+
             self.current_state = iteration_state
 
         return states

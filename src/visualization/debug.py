@@ -153,6 +153,16 @@ def create_suspension_animation(
             "k-",
         )
 
+        # Draw wheel center and outboard.
+        wheel_center = state.derived_points[PointID.WHEEL_CENTER].as_array()
+        wheel_outboard = state.derived_points[PointID.WHEEL_OUTBOARD].as_array()
+        ax.plot(
+            [wheel_center[0], wheel_outboard[0]],
+            [wheel_center[1], wheel_outboard[1]],
+            [wheel_center[2], wheel_outboard[2]],
+            "r-",
+        )
+
         # Set fixed axis limits
         ax.set_xlim(min_bounds[0], max_bounds[0])
         ax.set_ylim(min_bounds[1], max_bounds[1])
