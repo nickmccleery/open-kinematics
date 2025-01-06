@@ -5,6 +5,7 @@ from kinematics.geometry.points.base import DerivedPoint3D, Point3D
 from kinematics.geometry.points.collections import (
     AxleMidPoint,
     WheelCenterPoint,
+    WheelInboardPoint,
     WheelOutboardPoint,
 )
 from kinematics.geometry.points.ids import PointID
@@ -30,6 +31,9 @@ class DoubleWishboneSolver(BaseSolver):
         derived_points[PointID.AXLE_MIDPOINT] = AxleMidPoint()
         derived_points[PointID.WHEEL_CENTER] = WheelCenterPoint(
             wheel_offset=self.geometry.configuration.wheel.offset
+        )
+        derived_points[PointID.WHEEL_INBOARD] = WheelInboardPoint(
+            wheel_width=self.geometry.configuration.wheel.width
         )
         derived_points[PointID.WHEEL_OUTBOARD] = WheelOutboardPoint(
             wheel_width=self.geometry.configuration.wheel.width

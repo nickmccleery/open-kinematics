@@ -153,13 +153,28 @@ def create_suspension_animation(
             "k-",
         )
 
-        # Draw wheel center and outboard.
+        # Draw wheel center, inboard, and outboard.
+        wheel_inboard = state.derived_points[PointID.WHEEL_INBOARD].as_array()
         wheel_center = state.derived_points[PointID.WHEEL_CENTER].as_array()
         wheel_outboard = state.derived_points[PointID.WHEEL_OUTBOARD].as_array()
+
+        # Scatter points first.
+        wheel_points = np.array([wheel_inboard, wheel_center, wheel_outboard])
+        ax.scatter(
+            wheel_points[:, 0],
+            wheel_points[:, 1],
+            wheel_points[:, 2],
+            color="green",
+            marker="o",
+            s=30,
+            label="Wheel Points",
+        )
+
+        # Plot axis.
         ax.plot(
-            [wheel_center[0], wheel_outboard[0]],
-            [wheel_center[1], wheel_outboard[1]],
-            [wheel_center[2], wheel_outboard[2]],
+            [wheel_inboard[0], wheel_outboard[0]],
+            [wheel_inboard[1], wheel_outboard[1]],
+            [wheel_inboard[2], wheel_outboard[2]],
             "r-",
         )
 
