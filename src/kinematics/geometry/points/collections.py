@@ -71,14 +71,16 @@ class TrackRodPoints:
 
 
 class AxleMidPoint(DerivedPoint3D):
-    def __init__(self, deps: list[PointID]):
+    def __init__(self):
         super().__init__(
             x=0.0,
             y=0.0,
             z=0.0,
             id=PointID.AXLE_MIDPOINT,
-            deps=deps,
         )
+
+    def get_dependencies(self) -> set[PointID]:
+        return {PointID.AXLE_INBOARD, PointID.AXLE_OUTBOARD}
 
     def update(self, points: dict[PointID, Point3D]) -> None:
         p1 = points[PointID.AXLE_INBOARD]
@@ -90,22 +92,77 @@ class AxleMidPoint(DerivedPoint3D):
 
 
 class WheelCenterPoint(DerivedPoint3D):
-    def __init__(self, deps: list[PointID], wheel_offset: float):
+    def __init__(self, wheel_offset: float):
         super().__init__(
             x=0.0,
             y=0.0,
             z=0.0,
             id=PointID.WHEEL_CENTER,
-            deps=deps,
         )
         self.wheel_offset = wheel_offset
 
+    def get_dependencies(self) -> set[PointID]:
+        return {PointID.AXLE_OUTBOARD, PointID.AXLE_INBOARD}
+
     def update(self, points: dict[PointID, Point3D]) -> None:
-        p2 = points[PointID.AXLE_OUTBOARD]
-        p1 = points[PointID.AXLE_INBOARD]
+        p1 = points[PointID.AXLE_OUTBOARD]
+        p2 = points[PointID.AXLE_INBOARD]
         v = p2.as_array() - p1.as_array()
         v = v / np.linalg.norm(v)
+
+        # Our axle outboard point is the hub face. Wheel centerline is positioned
+        # along the axle centerline, offset by the wheel offset.
         pos = p2.as_array() + v * self.wheel_offset
+        self.x = float(pos[0])
+        self.y = float(pos[1])
+        self.z = float(pos[2])
+
+
+class WheelInboardPoint(DerivedPoint3D):
+    def __init__(self, wheel_width: float):
+        super().__init__(
+            x=0.0,
+            y=0.0,
+            z=0.0,
+            id=PointID.WHEEL_INBOARD,
+        )
+        self.wheel_width = wheel_width
+
+    def get_dependencies(self) -> set[PointID]:
+        return {PointID.WHEEL_CENTER, PointID.AXLE_INBOARD}
+
+    def update(self, points: dict[PointID, Point3D]) -> None:
+        p1 = points[PointID.WHEEL_CENTER]
+        p2 = points[PointID.AXLE_INBOARD]
+        v = p2.as_array() - p1.as_array()
+        v = v / np.linalg.norm(v)
+        # Move inward from axle point (opposite to v)
+        pos = p2.as_array() - v * (self.wheel_width / 2)
+        self.x = float(pos[0])
+        self.y = float(pos[1])
+        self.z = float(pos[2])
+
+
+class WheelOutboardPoint(DerivedPoint3D):
+    def __init__(self, wheel_width: float):
+        super().__init__(
+            x=0.0,
+            y=0.0,
+            z=0.0,
+            id=PointID.WHEEL_OUTBOARD,
+        )
+        self.wheel_width = wheel_width
+
+    def get_dependencies(self) -> set[PointID]:
+        return {PointID.WHEEL_CENTER, PointID.AXLE_OUTBOARD}
+
+    def update(self, points: dict[PointID, Point3D]) -> None:
+        p1 = points[PointID.WHEEL_CENTER]
+        p2 = points[PointID.AXLE_OUTBOARD]
+        v = p2.as_array() - p1.as_array()
+        v = v / np.linalg.norm(v)
+        # Move outward from axle point (same direction as v)
+        pos = p2.as_array() + v * (self.wheel_width / 2)
         self.x = float(pos[0])
         self.y = float(pos[1])
         self.z = float(pos[2])

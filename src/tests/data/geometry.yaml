@@ -31,13 +31,14 @@ hard_points:
       y: 750
       z: 300
   wheel_axle:
+    # Axle outer point is the hub face.
     inner:
       x: -20
       y: 800
       z: 150
     outer:
       x: -20
-      y: 1000
+      y: 900
       z: 150
   track_rod:
     inner:
@@ -53,7 +54,7 @@ configuration:
   wheel:
     diameter: 457.2
     width: 230.0
-    offset: 50
+    offset: -50
   static_setup:
     static_camber: -3.0
     static_toe: 0.0

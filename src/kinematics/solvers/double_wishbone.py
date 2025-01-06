@@ -2,10 +2,15 @@ from copy import deepcopy
 
 from kinematics.geometry.constants import CoordinateAxis, Direction
 from kinematics.geometry.points.base import DerivedPoint3D, Point3D
-from kinematics.geometry.points.collections import AxleMidPoint, WheelCenterPoint
+from kinematics.geometry.points.collections import (
+    AxleMidPoint,
+    WheelCenterPoint,
+    WheelInboardPoint,
+    WheelOutboardPoint,
+)
 from kinematics.geometry.points.ids import PointID
 from kinematics.geometry.types.double_wishbone import DoubleWishboneGeometry
-from kinematics.solvers.common import BaseSolver
+from kinematics.solvers.common import BaseSolver, KinematicState
 from kinematics.solvers.constraints import (
     PointFixedAxisConstraint,
     PointOnLineConstraint,
@@ -22,31 +27,29 @@ class DoubleWishboneSolver(BaseSolver):
         super().__init__(geometry)
 
     def create_derived_points(self) -> dict[PointID, DerivedPoint3D]:
-        derived_points = {
-            PointID.AXLE_MIDPOINT: AxleMidPoint(
-                deps=[PointID.AXLE_INBOARD, PointID.AXLE_OUTBOARD]
-            ),
-            PointID.WHEEL_CENTER: WheelCenterPoint(
-                deps=[PointID.AXLE_OUTBOARD, PointID.AXLE_INBOARD],
-                wheel_offset=self.geometry.configuration.wheel.offset,
-            ),
-        }
-
-        # Compute the initial position of all derived points.
-        for point in derived_points.values():
-            point.update(self.hard_points)
+        derived_points = {}
+        derived_points[PointID.AXLE_MIDPOINT] = AxleMidPoint()
+        derived_points[PointID.WHEEL_CENTER] = WheelCenterPoint(
+            wheel_offset=self.geometry.configuration.wheel.offset
+        )
+        derived_points[PointID.WHEEL_INBOARD] = WheelInboardPoint(
+            wheel_width=self.geometry.configuration.wheel.width
+        )
+        derived_points[PointID.WHEEL_OUTBOARD] = WheelOutboardPoint(
+            wheel_width=self.geometry.configuration.wheel.width
+        )
 
         return derived_points
 
-    def create_motion_target(
-        self,
-        hard_points: dict[PointID, Point3D],
-        derived_points: dict[PointID, DerivedPoint3D],
-    ) -> MotionTarget:
+    def create_motion_target(self, state: KinematicState) -> MotionTarget:
+        """
+        Create motion target using the initialized state to get correct derived point
+        positions.
+        """
         return AxisDisplacementTarget(
             point_id=PointID.AXLE_MIDPOINT,
             axis=CoordinateAxis.Z,
-            reference_point=deepcopy(derived_points[PointID.AXLE_MIDPOINT]),
+            reference_point=deepcopy(state.derived_points[PointID.AXLE_MIDPOINT]),
         )
 
     def initialize_constraints(self) -> None:
