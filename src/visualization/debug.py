@@ -22,9 +22,9 @@ def create_animation(
     gs = fig.add_gridspec(2, 2)
 
     axes = {
-        "top": fig.add_subplot(gs[0, 0], projection="3d"),
-        "front": fig.add_subplot(gs[0, 1], projection="3d"),
-        "side": fig.add_subplot(gs[1, 0], projection="3d"),
+        "front": fig.add_subplot(gs[0, 0], projection="3d"),
+        "top": fig.add_subplot(gs[1, 0], projection="3d"),
+        "side": fig.add_subplot(gs[0, 1], projection="3d"),
         "iso": fig.add_subplot(gs[1, 1], projection="3d"),
     }
 
@@ -47,19 +47,26 @@ def create_animation(
         for view_name, ax in axes.items():
             ax.clear()
 
-            # Set view angles
+            # Set view angles and configure orthographic projections
             if view_name == "top":
                 ax.view_init(elev=90, azim=0)
                 ax.set_title("Top View [X-Y]")
+                ax.set_proj_type("ortho")
+                ax.set_zticklabels([])  # Hide Z-axis ticks
             elif view_name == "front":
                 ax.view_init(elev=0, azim=0)
                 ax.set_title("Front View [Y-Z]")
+                ax.set_proj_type("ortho")
+                ax.set_xticklabels([])  # Hide X-axis ticks
             elif view_name == "side":
                 ax.view_init(elev=0, azim=90)
                 ax.set_title("Side View [X-Z]")
+                ax.set_proj_type("ortho")
+                ax.set_yticklabels([])  # Hide Y-axis ticks
             else:  # isometric
                 ax.view_init(elev=20, azim=45)
                 ax.set_title("Isometric View")
+                ax.set_proj_type("ortho")
 
             # Draw all links
             for link in visualizer.links:
