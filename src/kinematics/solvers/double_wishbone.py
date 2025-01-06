@@ -2,7 +2,7 @@ from copy import deepcopy
 
 from kinematics.geometry.constants import CoordinateAxis, Direction
 from kinematics.geometry.points.base import DerivedPoint3D, Point3D
-from kinematics.geometry.points.collections import (
+from kinematics.geometry.points.derived import (
     AxleMidPoint,
     WheelCenterPoint,
     WheelInboardPoint,
