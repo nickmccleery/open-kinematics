@@ -28,6 +28,10 @@ def create_animation(
         "iso": fig.add_subplot(gs[1, 1], projection="3d"),
     }
 
+    # axes = {
+    #     "iso": fig.add_subplot(111, projection="3d"),
+    # }
+
     # Calculate bounds
     all_points = []
     for state in states:
