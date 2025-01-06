@@ -6,12 +6,12 @@ units: "MILLIMETERS"
 hard_points:
   lower_wishbone:
     inboard_front:
-      x: 150
-      y: 500
+      x: 250
+      y: 400
       z: 0
     inboard_rear:
-      x: -150
-      y: 550
+      x: -250
+      y: 450
       z: 0
     outboard:
       x: 0
@@ -19,12 +19,12 @@ hard_points:
       z: 0
   upper_wishbone:
     inboard_front:
-      x: 125
-      y: 550
+      x: 225
+      y: 350
       z: 275
     inboard_rear:
-      x: -175
-      y: 550
+      x: -275
+      y: 350
       z: 275
     outboard:
       x: -25
@@ -38,7 +38,7 @@ hard_points:
       z: 150
     outer:
       x: -20
-      y: 900
+      y: 950
       z: 150
   track_rod:
     inner:
@@ -46,15 +46,15 @@ hard_points:
       y: 200
       z: 100
     outer:
-      x: 50
+      x: 100
       y: 700
-      z: 100
+      z: 25
 configuration:
   steered: true
   wheel:
     diameter: 457.2
-    width: 230.0
-    offset: -50
+    width: 225.0
+    offset: 10
   static_setup:
     static_camber: -3.0
     static_toe: 0.0

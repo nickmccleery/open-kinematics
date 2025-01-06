@@ -7,7 +7,7 @@ from kinematics.geometry.points.ids import PointID
 from kinematics.geometry.types.double_wishbone import DoubleWishboneGeometry
 from kinematics.solvers.constraints import PointPointDistanceConstraint
 from kinematics.solvers.double_wishbone import DoubleWishboneSolver
-from visualization.debug import create_suspension_animation
+from visualization.debug import SuspensionVisualizer, WheelVisualization
 
 CHECK_TOLERANCE = 1e-5
 
@@ -64,4 +64,11 @@ def test_run_solver(double_wishbone_geometry_file: Path) -> None:
     # Create animation
     states_animate = states + states[::-1]
     output_path = Path("suspension_motion.gif")
-    create_suspension_animation(geometry, states_animate, output_path)
+
+    wheel_config = WheelVisualization(
+        diameter=(17 * 25.4) + 0.45 * 225 * 2,
+        width=225,
+    )
+
+    visualizer = SuspensionVisualizer(geometry, wheel_config)
+    visualizer.create_animation(states_animate, output_path)
