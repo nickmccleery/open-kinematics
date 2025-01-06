@@ -70,33 +70,33 @@ class DerivedPointSet:
     """
 
     def __init__(self, hard_points: dict[PointID, Point3D]):
-        self.points: dict[PointID, DerivedPoint3D] = {}
+        self.derived_points: dict[PointID, DerivedPoint3D] = {}
         self.dependency_graph: dict[PointID, set[PointID]] = defaultdict(set)
         self.hard_points = hard_points
 
     def __getitem__(self, key: PointID) -> DerivedPoint3D:
-        return self.points[key]
+        return self.derived_points[key]
 
     def __iter__(self) -> Iterator[DerivedPoint3D]:
-        return iter(self.points.values())
+        return iter(self.derived_points.values())
 
     def __len__(self) -> int:
-        return len(self.points)
+        return len(self.derived_points)
 
     def __contains__(self, key: PointID) -> bool:
-        return key in self.points
+        return key in self.derived_points
 
     def items(self):
-        return self.points.items()
+        return self.derived_points.items()
 
     def values(self):
-        return self.points.values()
+        return self.derived_points.values()
 
     def add(self, point: DerivedPoint3D) -> None:
         """
         Add a derived point to the collection and compute its initial position.
         """
-        self.points[point.id] = point
+        self.derived_points[point.id] = point
         self.dependency_graph[point.id].update(point.get_dependencies())
         self.update_point(point.id, self.hard_points)
 
@@ -113,8 +113,8 @@ class DerivedPointSet:
         point_id: PointID,
         hard_points: dict[PointID, Point3D],
     ) -> None:
-        all_points = {**hard_points, **self.points}
-        self.points[point_id].update(all_points)
+        all_points = {**hard_points, **self.derived_points}
+        self.derived_points[point_id].update(all_points)
 
     def detect_cycles(self) -> list[PointID]:
         """
@@ -162,7 +162,7 @@ class DerivedPointSet:
         update_order = []
 
         # Start with all derived points - we'll follow their dependencies.
-        nodes = set(self.points.keys())
+        nodes = set(self.derived_points.keys())
 
         def dfs(node: PointID) -> None:
             # Skip or mark as visited.

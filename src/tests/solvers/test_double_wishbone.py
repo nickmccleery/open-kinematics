@@ -38,8 +38,8 @@ def test_run_solver(double_wishbone_geometry_file: Path) -> None:
         ]
         # Verify length constraints
         for constraint in length_constraints:
-            p1 = state.all_points[constraint.p1].as_array()
-            p2 = state.all_points[constraint.p2].as_array()
+            p1 = state.hard_points[constraint.p1].as_array()
+            p2 = state.hard_points[constraint.p2].as_array()
             current_length = np.linalg.norm(p1 - p2)
 
             assert np.abs(current_length - constraint.distance) < CHECK_TOLERANCE, (
@@ -48,12 +48,12 @@ def test_run_solver(double_wishbone_geometry_file: Path) -> None:
             )
 
         # Verify axle midpoint z position
-        axle_inner = state.all_points[PointID.AXLE_INBOARD].as_array()
-        axle_outer = state.all_points[PointID.AXLE_OUTBOARD].as_array()
+        axle_inner = state.hard_points[PointID.AXLE_INBOARD].as_array()
+        axle_outer = state.hard_points[PointID.AXLE_OUTBOARD].as_array()
         axle_midpoint = (axle_inner + axle_outer) / 2
         initial_midpoint = (
-            solver.initial_state.all_points[PointID.AXLE_INBOARD].as_array()
-            + solver.initial_state.all_points[PointID.AXLE_OUTBOARD].as_array()
+            solver.initial_state.hard_points[PointID.AXLE_INBOARD].as_array()
+            + solver.initial_state.hard_points[PointID.AXLE_OUTBOARD].as_array()
         ) / 2
         target_z = initial_midpoint[2] + displacement
 

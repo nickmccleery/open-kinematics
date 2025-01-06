@@ -22,10 +22,10 @@ class KinematicState:
     Represents the point positions in a kinematic system at a given instant.
 
     Attributes:
-        all_points (dict[PointID, Point3D]): Complete dictionary of all point positions.
-        free_points (PointSet): Set of points that can move.
-        fixed_points (PointSet): Set of points with fixed positions.
-        derived_points (DerivedPointSet): Set of points derived from other points.
+        hard_points (dict[PointID, Point3D]): Dictionary of all hard points.
+        free_points (PointSet): Set of hard points that can move.
+        fixed_points (PointSet): Set of hard points with fixed positions.
+        derived_points (DerivedPointSet): Set of points derived from hard points.
     """
 
     def __init__(
@@ -34,14 +34,14 @@ class KinematicState:
         derived_points: dict[PointID, DerivedPoint3D],
     ):
         # Store the complete set of points.
-        self.all_points = deepcopy(hard_points)
+        self.hard_points = deepcopy(hard_points)
 
         # Separate into free and fixed point sets.
         self.free_points = PointSet(
-            {id: p for id, p in self.all_points.items() if not p.fixed}
+            {id: p for id, p in self.hard_points.items() if not p.fixed}
         )
         self.fixed_points = PointSet(
-            {id: p for id, p in self.all_points.items() if p.fixed}
+            {id: p for id, p in self.hard_points.items() if p.fixed}
         )
 
         # Initialize derived points—requires a hard point reference.
@@ -56,7 +56,7 @@ class KinematicState:
 
         # Sync changes back to main points dictionary.
         for point_id, point in self.free_points.points.items():
-            self.all_points[point_id] = point
+            self.hard_points[point_id] = point
 
         # Update derived points with new positions.
         self.update_derived_points()
@@ -65,7 +65,7 @@ class KinematicState:
         """
         Update all derived point positions based on current point positions.
         """
-        self.derived_points.update(self.all_points)
+        self.derived_points.update(self.hard_points)
 
     def get_point_position(self, point_id: PointID) -> np.ndarray:
         """
@@ -73,7 +73,7 @@ class KinematicState:
         """
         if point_id in self.derived_points:
             return self.derived_points[point_id].as_array()
-        return self.all_points[point_id].as_array()
+        return self.hard_points[point_id].as_array()
 
 
 class BaseSolver:
@@ -148,7 +148,7 @@ class BaseSolver:
         state.update_derived_points()
 
         residuals = [
-            constraint.compute_residual(state.all_points)
+            constraint.compute_residual(state.hard_points)
             for constraint in self.constraints
         ]
         target_residual = self.compute_target_residual(

@@ -36,12 +36,12 @@ def create_suspension_animation(
     def get_state_points(state: KinematicState) -> np.ndarray:
         return np.array(
             [
-                state.all_points[PointID.UPPER_WISHBONE_OUTBOARD].as_array(),
-                state.all_points[PointID.LOWER_WISHBONE_OUTBOARD].as_array(),
-                state.all_points[PointID.AXLE_INBOARD].as_array(),
-                state.all_points[PointID.AXLE_OUTBOARD].as_array(),
-                state.all_points[PointID.TRACKROD_INBOARD].as_array(),
-                state.all_points[PointID.TRACKROD_OUTBOARD].as_array(),
+                state.hard_points[PointID.UPPER_WISHBONE_OUTBOARD].as_array(),
+                state.hard_points[PointID.LOWER_WISHBONE_OUTBOARD].as_array(),
+                state.hard_points[PointID.AXLE_INBOARD].as_array(),
+                state.hard_points[PointID.AXLE_OUTBOARD].as_array(),
+                state.hard_points[PointID.TRACKROD_INBOARD].as_array(),
+                state.hard_points[PointID.TRACKROD_OUTBOARD].as_array(),
             ]
         )
 
@@ -96,7 +96,7 @@ def create_suspension_animation(
         )
 
         # Draw upper wishbone legs
-        upper_outboard = state.all_points[PointID.UPPER_WISHBONE_OUTBOARD].as_array()
+        upper_outboard = state.hard_points[PointID.UPPER_WISHBONE_OUTBOARD].as_array()
         ax.plot(
             [hp.upper_wishbone.inboard_front.x, upper_outboard[0]],
             [hp.upper_wishbone.inboard_front.y, upper_outboard[1]],
@@ -111,7 +111,7 @@ def create_suspension_animation(
         )
 
         # Draw lower wishbone legs
-        lower_outboard = state.all_points[PointID.LOWER_WISHBONE_OUTBOARD].as_array()
+        lower_outboard = state.hard_points[PointID.LOWER_WISHBONE_OUTBOARD].as_array()
         ax.plot(
             [hp.lower_wishbone.inboard_front.x, lower_outboard[0]],
             [hp.lower_wishbone.inboard_front.y, lower_outboard[1]],
@@ -134,8 +134,8 @@ def create_suspension_animation(
         )
 
         # Draw wheel axle
-        axle_inner = state.all_points[PointID.AXLE_INBOARD].as_array()
-        axle_outer = state.all_points[PointID.AXLE_OUTBOARD].as_array()
+        axle_inner = state.hard_points[PointID.AXLE_INBOARD].as_array()
+        axle_outer = state.hard_points[PointID.AXLE_OUTBOARD].as_array()
         ax.plot(
             [axle_inner[0], axle_outer[0]],
             [axle_inner[1], axle_outer[1]],
@@ -144,8 +144,8 @@ def create_suspension_animation(
         )
 
         # Draw track rod
-        track_rod_inner = state.all_points[PointID.TRACKROD_INBOARD].as_array()
-        track_rod_outer = state.all_points[PointID.TRACKROD_OUTBOARD].as_array()
+        track_rod_inner = state.hard_points[PointID.TRACKROD_INBOARD].as_array()
+        track_rod_outer = state.hard_points[PointID.TRACKROD_OUTBOARD].as_array()
         ax.plot(
             [track_rod_inner[0], track_rod_outer[0]],
             [track_rod_inner[1], track_rod_outer[1]],
@@ -181,7 +181,7 @@ def create_suspension_animation(
                 file.write("-" * 60 + "\n")
 
             for name, point_id in points_of_interest.items():
-                point = state.all_points[point_id].as_array()
+                point = state.hard_points[point_id].as_array()
                 file.write(
                     f"{frame:<6} {name:<20} {point[0]:>10.2f} {point[1]:>10.2f} {point[2]:>10.2f}\n"
                 )
