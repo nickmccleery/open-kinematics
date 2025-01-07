@@ -94,7 +94,7 @@ class BaseSolver:
         self.current_state = deepcopy(self.initial_state)
 
         # Create motion target using initialized state.
-        self.motion_target = self.create_motion_target(state=self.current_state)
+        self.motion_target = self.create_motion_target(initial_state=self.initial_state)
 
         # Initialize constraints.
         self.constraints = []
@@ -103,7 +103,7 @@ class BaseSolver:
     def create_derived_points(self) -> dict[PointID, DerivedPoint3D]:
         raise NotImplementedError
 
-    def create_motion_target(self, state: KinematicState) -> MotionTarget:
+    def create_motion_target(self, initial_state: KinematicState) -> MotionTarget:
         raise NotImplementedError
 
     def initialize_constraints(self) -> None:

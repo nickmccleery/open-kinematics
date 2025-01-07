@@ -50,19 +50,16 @@ def test_run_solver(double_wishbone_geometry_file: Path) -> None:
                 f"{constraint.p1} to {constraint.p2}"
             )
 
-        # Verify axle midpoint z position
-        axle_inner = state.hard_points[PointID.AXLE_INBOARD].as_array()
-        axle_outer = state.hard_points[PointID.AXLE_OUTBOARD].as_array()
-        axle_midpoint = (axle_inner + axle_outer) / 2
-        initial_midpoint = (
-            solver.initial_state.hard_points[PointID.AXLE_INBOARD].as_array()
-            + solver.initial_state.hard_points[PointID.AXLE_OUTBOARD].as_array()
-        ) / 2
-        target_z = initial_midpoint[2] + displacement
+        # Verify wheel center z position.
+        wheel_center = state.derived_points[PointID.WHEEL_CENTER].as_array()
+        initial_wheel_center = solver.initial_state.derived_points[
+            PointID.WHEEL_CENTER
+        ].as_array()
+        target_z = initial_wheel_center[2] + displacement
 
         assert (
-            np.abs(axle_midpoint[2] - target_z) < CHECK_TOLERANCE
-        ), f"Failed to maintain axle midpoint at displacement {displacement}"
+            np.abs(wheel_center[2] - target_z) < CHECK_TOLERANCE
+        ), f"Failed to maintain wheel center at displacement {displacement}"
 
     # Create animation.
     print("Creating animation...")

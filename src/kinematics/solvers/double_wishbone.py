@@ -41,15 +41,16 @@ class DoubleWishboneSolver(BaseSolver):
 
         return derived_points
 
-    def create_motion_target(self, state: KinematicState) -> MotionTarget:
+    def create_motion_target(self, initial_state: KinematicState) -> MotionTarget:
         """
         Create motion target using the initialized state to get correct derived point
         positions.
         """
+        reference_point = deepcopy(initial_state.derived_points[PointID.WHEEL_CENTER])
         return AxisDisplacementTarget(
-            point_id=PointID.AXLE_MIDPOINT,
+            point_id=PointID.WHEEL_CENTER,
             axis=CoordinateAxis.Z,
-            reference_point=deepcopy(state.derived_points[PointID.AXLE_MIDPOINT]),
+            reference_point=reference_point,
         )
 
     def initialize_constraints(self) -> None:
