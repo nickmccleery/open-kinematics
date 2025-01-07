@@ -54,14 +54,18 @@ class DoubleWishboneSolver(BaseSolver):
         )
 
     def initialize_constraints(self) -> None:
-        """Initialize all constraints specific to double wishbone geometry."""
+        """
+        Initialize all constraints specific to double wishbone geometry.
+        """
         self.constraints.extend(self.create_length_constraints())
         self.constraints.extend(self.create_angle_constraints())
         self.constraints.extend(self.create_linear_constraints())
         return
 
     def create_length_constraints(self) -> list[PointPointDistanceConstraint]:
-        """Creates fixed-length constraints for double wishbone geometry."""
+        """
+        Creates fixed-length constraints for double wishbone geometry.
+        """
         hp = self.geometry.hard_points
         constraints = []
 
