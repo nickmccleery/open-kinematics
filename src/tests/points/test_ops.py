@@ -1,7 +1,7 @@
 import numpy as np
 
 from kinematics.geometry.points.ids import PointID
-from kinematics.ops.points import (
+from kinematics.points.ops import (
     compute_midpoint,
     compute_vector_angle,
     get_positions_as_array,
