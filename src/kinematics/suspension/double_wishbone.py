@@ -37,7 +37,7 @@ def calculate_wheel_outboard(positions: Positions, wheel_width: float) -> NDArra
     return center + v * (wheel_width / 2)
 
 
-def update_wheel_positions(positions: Positions, config: WheelConfig) -> Positions:
+def compute_derived_points(positions: Positions, config: WheelConfig) -> Positions:
     result = positions.copy()
     result[PointID.WHEEL_CENTER] = calculate_wheel_center(result, config.offset)
     result[PointID.WHEEL_INBOARD] = calculate_wheel_inboard(result, config.width)
@@ -180,23 +180,29 @@ def create_target(positions: Positions) -> MotionTarget:
 def solve_suspension(
     geometry: DoubleWishboneGeometry, displacements: list[float]
 ) -> list[Positions]:
-    initial_positions = create_initial_positions(geometry)
+    # Pull wheel config.
     wheel_config = WheelConfig(
         width=geometry.configuration.wheel.width,
         offset=geometry.configuration.wheel.offset,
         diameter=geometry.configuration.wheel.diameter,
     )
-    derived_updater = partial(update_wheel_positions, config=wheel_config)
 
-    positions = update_wheel_positions(initial_positions, wheel_config)
-    free_points = get_free_points(geometry)
+    # Compute initial positions dict.
+    initial_positions = create_initial_positions(geometry)
 
+    # Compute derived points and create motion target.
+    compute_derived_points_ptl = partial(compute_derived_points, config=wheel_config)
+    positions = compute_derived_points_ptl(initial_positions)
+    target = create_target(positions)
+
+    # Create constraints.
     constraints = []
     constraints.extend(create_length_constraints(positions))
     constraints.extend(create_angle_constraints(positions))
     constraints.extend(create_linear_constraints(positions))
 
-    target = create_target(positions)
+    # Get free points.
+    free_points = get_free_points(geometry)
 
     return solve_sweep(
         positions=positions,
@@ -204,5 +210,5 @@ def solve_suspension(
         constraints=constraints,
         target=target,
         displacements=displacements,
-        derived_updater=derived_updater,
+        compute_derived_points=compute_derived_points_ptl,
     )

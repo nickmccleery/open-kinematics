@@ -80,7 +80,7 @@ def solve_positions(
     constraints: list[PointPointDistance | VectorAngle | PointFixedAxis | PointOnLine],
     target: MotionTarget,
     displacement: float,
-    derived_updater: Callable[[Positions], Positions] | None = None,
+    compute_derived_points: Callable[[Positions], Positions],
     config: SolverConfig = SolverConfig(),
 ) -> Positions:
     # Extract free point positions into flat array
@@ -92,10 +92,8 @@ def solve_positions(
         for i, pid in enumerate(point_order):
             pos[pid] = x[i * 3 : (i + 1) * 3]
 
-        if derived_updater is not None:
-            pos = derived_updater(
-                pos
-            )  # Update derived points before computing residuals
+        # Update derived points before computing residuals
+        pos = compute_derived_points(pos)
 
         return compute_residuals(pos, constraints, target, displacement)
 
@@ -125,7 +123,7 @@ def solve_sweep(
     constraints: list[PointPointDistance | VectorAngle | PointFixedAxis | PointOnLine],
     target: MotionTarget,
     displacements: Sequence[float],
-    derived_updater: Callable[[Positions], Positions] | None = None,
+    compute_derived_points: Callable[[Positions], Positions],
     config: SolverConfig = SolverConfig(),
 ) -> list[Positions]:
     states = []
@@ -138,12 +136,11 @@ def solve_sweep(
             constraints,
             target,
             displacement,
-            derived_updater,
+            compute_derived_points,
             config,
         )
 
-        if derived_updater is not None:
-            new_positions = derived_updater(new_positions)
+        new_positions = compute_derived_points(new_positions)
 
         states.append(new_positions)
         current_positions = new_positions

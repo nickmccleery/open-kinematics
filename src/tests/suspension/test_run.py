@@ -32,9 +32,9 @@ def test_run_solver(double_wishbone_geometry_file: Path) -> None:
     # Get initial positions for comparison
     from kinematics.suspension.double_wishbone import (
         WheelConfig,
+        compute_derived_points,
         create_initial_positions,
         create_length_constraints,
-        update_wheel_positions,
     )
 
     initial_positions = create_initial_positions(geometry)
@@ -43,7 +43,7 @@ def test_run_solver(double_wishbone_geometry_file: Path) -> None:
         offset=geometry.configuration.wheel.offset,
         diameter=geometry.configuration.wheel.diameter,
     )
-    initial_positions = update_wheel_positions(initial_positions, wheel_config)
+    initial_positions = compute_derived_points(initial_positions, wheel_config)
     length_constraints = create_length_constraints(initial_positions)
 
     # Verify constraints are maintained
