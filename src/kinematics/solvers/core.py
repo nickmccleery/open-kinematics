@@ -85,22 +85,24 @@ def solve_positions(
 ) -> Positions:
     # Pull points into a consistently ordered vector.
     point_order = sorted(free_points)
-    initial_guess = np.concatenate([positions[pid] for pid in point_order])
+    initial_guess = np.array([positions[pid] for pid in point_order])
+    initial_guess_1d = np.reshape(initial_guess, -1)
 
     def residual_wrapper(x: NDArray) -> NDArray:
-        pos = positions.copy()
+        positions_iter = positions.copy()
         for i, pid in enumerate(point_order):
-            pos[pid] = x[i * 3 : (i + 1) * 3]
+            # Update positions with current guess.
+            positions_iter[pid] = x[i * 3 : (i + 1) * 3]
 
         # Update derived points before computing residuals.
-        pos = compute_derived_points(pos)
+        positions_iter = compute_derived_points(positions_iter)
 
-        return compute_residuals(pos, constraints, target, displacement)
+        return compute_residuals(positions_iter, constraints, target, displacement)
 
     # Solve system
     result = least_squares(
         residual_wrapper,
-        initial_guess,
+        initial_guess_1d,
         method="lm",
         ftol=config.ftol,
         xtol=config.xtol,
