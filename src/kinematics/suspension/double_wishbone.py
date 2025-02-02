@@ -3,7 +3,12 @@ from functools import partial
 import numpy as np
 from numpy.typing import NDArray
 
-from kinematics.constraints.types import PointOnLine, PointPointDistance, VectorAngle
+from kinematics.constraints.types import (
+    PointFixedAxis,
+    PointOnLine,
+    PointPointDistance,
+    VectorAngle,
+)
 from kinematics.constraints.utils import make_point_point_distance, make_vector_angle
 from kinematics.geometry.config.wheel import WheelConfig
 from kinematics.geometry.constants import CoordinateAxis, Direction
@@ -122,6 +127,32 @@ def create_linear_constraints(positions: Positions) -> list[PointOnLine]:
     return constraints
 
 
+def create_fixed_axis_constraints(positions: Positions) -> list[PointFixedAxis]:
+    constraints = []
+
+    def constrain(point_id: PointID, axis: CoordinateAxis, value: float):
+        constraints.append(PointFixedAxis(point_id=point_id, axis=axis, value=value))
+
+    # Fix the X and Z coordinate sof the track rod inboard point.
+    constrain(
+        PointID.TRACKROD_INBOARD,
+        CoordinateAxis.X,
+        positions[PointID.TRACKROD_INBOARD][CoordinateAxis.X],
+    )
+    constrain(
+        PointID.TRACKROD_INBOARD,
+        CoordinateAxis.Y,
+        positions[PointID.TRACKROD_INBOARD][CoordinateAxis.Y],
+    )
+    constrain(
+        PointID.TRACKROD_INBOARD,
+        CoordinateAxis.Z,
+        positions[PointID.TRACKROD_INBOARD][CoordinateAxis.Z],
+    )
+
+    return constraints
+
+
 def get_free_points(geometry: DoubleWishboneGeometry) -> set[PointID]:
     return {
         PointID.UPPER_WISHBONE_OUTBOARD,
@@ -199,7 +230,8 @@ def solve_suspension(
     constraints = []
     constraints.extend(create_length_constraints(positions))
     constraints.extend(create_angle_constraints(positions))
-    constraints.extend(create_linear_constraints(positions))
+    # constraints.extend(create_linear_constraints(positions))
+    constraints.extend(create_fixed_axis_constraints(positions))
 
     # Get free points.
     free_points = get_free_points(geometry)

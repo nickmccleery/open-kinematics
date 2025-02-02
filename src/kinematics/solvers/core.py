@@ -83,8 +83,14 @@ def solve_positions(
     compute_derived_points: Callable[[Positions], Positions],
     config: SolverConfig = SolverConfig(),
 ) -> Positions:
+    
+    # Pretty print constraints.
+    print("Constraints:")
+    for constraint in constraints:
+        print(constraint)
+
     # Pull points into a consistently ordered vector.
-    point_order = sorted(free_points)
+    point_order = sorted(free_points, key=lambda point: point.value)
     initial_guess = np.array([positions[pid] for pid in point_order])
     initial_guess_1d = np.reshape(initial_guess, -1)
 
