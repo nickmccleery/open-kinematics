@@ -83,8 +83,8 @@ def solve_positions(
     compute_derived_points: Callable[[Positions], Positions],
     config: SolverConfig = SolverConfig(),
 ) -> Positions:
-    # Extract free point positions into flat array
-    point_order = sorted(free_points)  # Ensure consistent order
+    # Pull points into a consistently ordered vector.
+    point_order = sorted(free_points)
     initial_guess = np.concatenate([positions[pid] for pid in point_order])
 
     def residual_wrapper(x: NDArray) -> NDArray:
@@ -92,7 +92,7 @@ def solve_positions(
         for i, pid in enumerate(point_order):
             pos[pid] = x[i * 3 : (i + 1) * 3]
 
-        # Update derived points before computing residuals
+        # Update derived points before computing residuals.
         pos = compute_derived_points(pos)
 
         return compute_residuals(pos, constraints, target, displacement)
@@ -109,10 +109,13 @@ def solve_positions(
     if not result.success:
         raise RuntimeError(f"Failed to solve for displacement {displacement}m")
 
-    # Update positions with solution
+    # Update positions with solution.
     new_positions = positions.copy()
     for i, pid in enumerate(point_order):
         new_positions[pid] = result.x[i * 3 : (i + 1) * 3]
+
+    # Update derived points.
+    new_positions = compute_derived_points(new_positions)
 
     return new_positions
 
@@ -139,8 +142,6 @@ def solve_sweep(
             compute_derived_points,
             config,
         )
-
-        new_positions = compute_derived_points(new_positions)
 
         states.append(new_positions)
         current_positions = new_positions
