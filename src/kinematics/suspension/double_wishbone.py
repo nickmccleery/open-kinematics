@@ -1,20 +1,16 @@
 from functools import partial
-from typing import NamedTuple
 
 import numpy as np
 from numpy.typing import NDArray
 
 from kinematics.constraints.types import PointOnLine, PointPointDistance, VectorAngle
+from kinematics.constraints.utils import make_point_point_distance, make_vector_angle
+from kinematics.geometry.config.wheel import WheelConfig
 from kinematics.geometry.constants import CoordinateAxis, Direction
 from kinematics.geometry.points.ids import PointID
 from kinematics.geometry.types.double_wishbone import DoubleWishboneGeometry
-from kinematics.solvers_new.core import MotionTarget, solve_sweep
+from kinematics.solvers.core import MotionTarget, solve_sweep
 from kinematics.types.state import Positions
-
-
-class WheelConfig(NamedTuple):
-    width: float
-    offset: float
 
 
 def calculate_wheel_center(positions: Positions, wheel_offset: float) -> NDArray:
@@ -53,8 +49,7 @@ def create_length_constraints(positions: Positions) -> list[PointPointDistance]:
     constraints = []
 
     def add_distance(p1: PointID, p2: PointID):
-        distance = float(np.linalg.norm(positions[p1] - positions[p2]))
-        constraints.append(PointPointDistance(p1=p1, p2=p2, distance=distance))
+        constraints.append(make_point_point_distance(positions, p1, p2))
 
     add_distance(PointID.UPPER_WISHBONE_INBOARD_FRONT, PointID.UPPER_WISHBONE_OUTBOARD)
     add_distance(PointID.UPPER_WISHBONE_INBOARD_REAR, PointID.UPPER_WISHBONE_OUTBOARD)
@@ -76,27 +71,9 @@ def create_length_constraints(positions: Positions) -> list[PointPointDistance]:
 
 
 def create_angle_constraints(positions: Positions) -> list[VectorAngle]:
-    def make_angle(
-        v1_start: PointID, v1_end: PointID, v2_start: PointID, v2_end: PointID
-    ) -> VectorAngle:
-        v1 = positions[v1_end] - positions[v1_start]
-        v2 = positions[v2_end] - positions[v2_start]
-
-        v1 = v1 / np.linalg.norm(v1)
-        v2 = v2 / np.linalg.norm(v2)
-
-        angle = float(np.arccos(np.clip(np.dot(v1, v2), -1.0, 1.0)))
-
-        return VectorAngle(
-            v1_start=v1_start,
-            v1_end=v1_end,
-            v2_start=v2_start,
-            v2_end=v2_end,
-            angle=angle,
-        )
-
     return [
-        make_angle(
+        make_vector_angle(
+            positions,
             PointID.UPPER_WISHBONE_OUTBOARD,
             PointID.LOWER_WISHBONE_OUTBOARD,
             PointID.AXLE_INBOARD,
@@ -177,6 +154,7 @@ def solve_suspension(
     wheel_config = WheelConfig(
         width=geometry.configuration.wheel.width,
         offset=geometry.configuration.wheel.offset,
+        diameter=geometry.configuration.wheel.diameter,
     )
     derived_updater = partial(update_wheel_positions, config=wheel_config)
 

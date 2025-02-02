@@ -4,7 +4,7 @@ import pytest
 from kinematics.constraints.types import PointPointDistance
 from kinematics.geometry.constants import CoordinateAxis
 from kinematics.geometry.points.ids import PointID
-from kinematics.solvers_new.core import (
+from kinematics.solvers.core import (
     MotionTarget,
     compute_residuals,
     compute_target_residual,

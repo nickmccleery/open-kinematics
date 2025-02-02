@@ -41,6 +41,7 @@ def test_run_solver(double_wishbone_geometry_file: Path) -> None:
     wheel_config = WheelConfig(
         width=geometry.configuration.wheel.width,
         offset=geometry.configuration.wheel.offset,
+        diameter=geometry.configuration.wheel.diameter,
     )
     initial_positions = update_wheel_positions(initial_positions, wheel_config)
     length_constraints = create_length_constraints(initial_positions)
