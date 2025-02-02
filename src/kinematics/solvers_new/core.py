@@ -1,4 +1,4 @@
-from typing import NamedTuple, Sequence
+from typing import Callable, NamedTuple, Sequence
 
 import numpy as np
 from numpy.typing import NDArray
@@ -80,6 +80,7 @@ def solve_positions(
     constraints: list[PointPointDistance | VectorAngle | PointFixedAxis | PointOnLine],
     target: MotionTarget,
     displacement: float,
+    derived_updater: Callable[[Positions], Positions] | None = None,
     config: SolverConfig = SolverConfig(),
 ) -> Positions:
     # Extract free point positions into flat array
@@ -87,10 +88,14 @@ def solve_positions(
     initial_guess = np.concatenate([positions[pid] for pid in point_order])
 
     def residual_wrapper(x: NDArray) -> NDArray:
-        # Create positions dict from flat array
         pos = positions.copy()
         for i, pid in enumerate(point_order):
             pos[pid] = x[i * 3 : (i + 1) * 3]
+
+        if derived_updater is not None:
+            pos = derived_updater(
+                pos
+            )  # Update derived points before computing residuals
 
         return compute_residuals(pos, constraints, target, displacement)
 
@@ -120,6 +125,7 @@ def solve_sweep(
     constraints: list[PointPointDistance | VectorAngle | PointFixedAxis | PointOnLine],
     target: MotionTarget,
     displacements: Sequence[float],
+    derived_updater: Callable[[Positions], Positions] | None = None,
     config: SolverConfig = SolverConfig(),
 ) -> list[Positions]:
     states = []
@@ -127,8 +133,18 @@ def solve_sweep(
 
     for displacement in displacements:
         new_positions = solve_positions(
-            current_positions, free_points, constraints, target, displacement, config
+            current_positions,
+            free_points,
+            constraints,
+            target,
+            displacement,
+            derived_updater,
+            config,
         )
+
+        if derived_updater is not None:
+            new_positions = derived_updater(new_positions)
+
         states.append(new_positions)
         current_positions = new_positions
 
