@@ -48,48 +48,78 @@ def update_wheel_positions(positions: Positions, config: WheelConfig) -> Positio
 def create_length_constraints(positions: Positions) -> list[PointPointDistance]:
     constraints = []
 
-    def add_distance(p1: PointID, p2: PointID):
+    def constrain(p1: PointID, p2: PointID):
         constraints.append(make_point_point_distance(positions, p1, p2))
 
-    add_distance(PointID.UPPER_WISHBONE_INBOARD_FRONT, PointID.UPPER_WISHBONE_OUTBOARD)
-    add_distance(PointID.UPPER_WISHBONE_INBOARD_REAR, PointID.UPPER_WISHBONE_OUTBOARD)
-    add_distance(PointID.LOWER_WISHBONE_INBOARD_FRONT, PointID.LOWER_WISHBONE_OUTBOARD)
-    add_distance(PointID.LOWER_WISHBONE_INBOARD_REAR, PointID.LOWER_WISHBONE_OUTBOARD)
-    add_distance(PointID.UPPER_WISHBONE_OUTBOARD, PointID.LOWER_WISHBONE_OUTBOARD)
-    add_distance(PointID.AXLE_INBOARD, PointID.AXLE_OUTBOARD)
-    add_distance(PointID.AXLE_INBOARD, PointID.UPPER_WISHBONE_OUTBOARD)
-    add_distance(PointID.AXLE_INBOARD, PointID.LOWER_WISHBONE_OUTBOARD)
-    add_distance(PointID.AXLE_OUTBOARD, PointID.UPPER_WISHBONE_OUTBOARD)
-    add_distance(PointID.AXLE_OUTBOARD, PointID.LOWER_WISHBONE_OUTBOARD)
-    add_distance(PointID.TRACKROD_INBOARD, PointID.TRACKROD_OUTBOARD)
-    add_distance(PointID.UPPER_WISHBONE_OUTBOARD, PointID.TRACKROD_OUTBOARD)
-    add_distance(PointID.LOWER_WISHBONE_OUTBOARD, PointID.TRACKROD_OUTBOARD)
-    add_distance(PointID.AXLE_INBOARD, PointID.TRACKROD_OUTBOARD)
-    add_distance(PointID.AXLE_OUTBOARD, PointID.TRACKROD_OUTBOARD)
+    # Wishbone inboard to outboard constraints.
+    constrain(PointID.UPPER_WISHBONE_INBOARD_FRONT, PointID.UPPER_WISHBONE_OUTBOARD)
+    constrain(PointID.UPPER_WISHBONE_INBOARD_REAR, PointID.UPPER_WISHBONE_OUTBOARD)
+    constrain(PointID.LOWER_WISHBONE_INBOARD_FRONT, PointID.LOWER_WISHBONE_OUTBOARD)
+    constrain(PointID.LOWER_WISHBONE_INBOARD_REAR, PointID.LOWER_WISHBONE_OUTBOARD)
+
+    # Upright length constraint.
+    constrain(PointID.UPPER_WISHBONE_OUTBOARD, PointID.LOWER_WISHBONE_OUTBOARD)
+
+    # Axle length constraint.
+    constrain(PointID.AXLE_INBOARD, PointID.AXLE_OUTBOARD)
+
+    # Axle to balljoint constraints.
+    constrain(PointID.AXLE_INBOARD, PointID.UPPER_WISHBONE_OUTBOARD)
+    constrain(PointID.AXLE_INBOARD, PointID.LOWER_WISHBONE_OUTBOARD)
+    constrain(PointID.AXLE_OUTBOARD, PointID.UPPER_WISHBONE_OUTBOARD)
+    constrain(PointID.AXLE_OUTBOARD, PointID.LOWER_WISHBONE_OUTBOARD)
+
+    # Track rod length constraint.
+    constrain(PointID.TRACKROD_INBOARD, PointID.TRACKROD_OUTBOARD)
+
+    # Track rod constraints.
+    constrain(PointID.UPPER_WISHBONE_OUTBOARD, PointID.TRACKROD_OUTBOARD)
+    constrain(PointID.LOWER_WISHBONE_OUTBOARD, PointID.TRACKROD_OUTBOARD)
+
+    # Axle to TRE constraints.
+    constrain(PointID.AXLE_INBOARD, PointID.TRACKROD_OUTBOARD)
+    constrain(PointID.AXLE_OUTBOARD, PointID.TRACKROD_OUTBOARD)
 
     return constraints
 
 
 def create_angle_constraints(positions: Positions) -> list[VectorAngle]:
-    return [
-        make_vector_angle(
-            positions,
-            PointID.UPPER_WISHBONE_OUTBOARD,
-            PointID.LOWER_WISHBONE_OUTBOARD,
-            PointID.AXLE_INBOARD,
-            PointID.AXLE_OUTBOARD,
+    constraints = []
+
+    def constrain(
+        v1_start: PointID, v1_end: PointID, v2_start: PointID, v2_end: PointID
+    ):
+        constraints.append(
+            make_vector_angle(positions, v1_start, v1_end, v2_start, v2_end)
         )
-    ]
+
+    # Kingpin axis to axle orientation constraint.
+    constrain(
+        PointID.UPPER_WISHBONE_OUTBOARD,
+        PointID.LOWER_WISHBONE_OUTBOARD,
+        PointID.AXLE_INBOARD,
+        PointID.AXLE_OUTBOARD,
+    )
+
+    return constraints
 
 
 def create_linear_constraints(positions: Positions) -> list[PointOnLine]:
-    return [
-        PointOnLine(
-            point_id=PointID.TRACKROD_INBOARD,
-            line_point=PointID.TRACKROD_INBOARD,
-            line_direction=Direction.y,
+    constraints = []
+
+    def constrain(point_id: PointID, line_point: PointID, line_direction: NDArray):
+        constraints.append(
+            PointOnLine(
+                point_id=point_id, line_point=line_point, line_direction=line_direction
+            )
         )
-    ]
+
+    # Track rod inner point should only move in Y direction. Note that this
+    # could also be achieved with two PointFixedAxisConstraints, but this is
+    # more concise.
+    constrain(PointID.TRACKROD_INBOARD, PointID.TRACKROD_INBOARD, Direction.y)
+
+    return constraints
 
 
 def get_free_points(geometry: DoubleWishboneGeometry) -> set[PointID]:
