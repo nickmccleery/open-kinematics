@@ -31,6 +31,7 @@ class MotionTarget(NamedTuple):
 class SolverConfig(NamedTuple):
     ftol: float = 1e-8
     xtol: float = 1e-8
+    gtol: float = 1e-8
 
 
 # Core solver functions
@@ -83,12 +84,6 @@ def solve_positions(
     compute_derived_points: Callable[[Positions], Positions],
     config: SolverConfig = SolverConfig(),
 ) -> Positions:
-    
-    # Pretty print constraints.
-    print("Constraints:")
-    for constraint in constraints:
-        print(constraint)
-
     # Pull points into a consistently ordered vector.
     point_order = sorted(free_points, key=lambda point: point.value)
     initial_guess = np.array([positions[pid] for pid in point_order])
@@ -97,10 +92,8 @@ def solve_positions(
     def residual_wrapper(x: NDArray) -> NDArray:
         positions_iter = positions.copy()
         for i, pid in enumerate(point_order):
-            # Update positions with current guess.
             positions_iter[pid] = x[i * 3 : (i + 1) * 3]
 
-        # Update derived points before computing residuals.
         positions_iter = compute_derived_points(positions_iter)
 
         return compute_residuals(positions_iter, constraints, target, displacement)
@@ -109,9 +102,10 @@ def solve_positions(
     result = least_squares(
         residual_wrapper,
         initial_guess_1d,
-        method="lm",
+        method="trf",
         ftol=config.ftol,
         xtol=config.xtol,
+        gtol=config.gtol,
     )
 
     if not result.success:
