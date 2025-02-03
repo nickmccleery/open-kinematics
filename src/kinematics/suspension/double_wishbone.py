@@ -160,7 +160,7 @@ def get_free_points(geometry: DoubleWishboneGeometry) -> set[PointID]:
         PointID.AXLE_INBOARD,
         PointID.AXLE_OUTBOARD,
         PointID.TRACKROD_OUTBOARD,
-        PointID.TRACKROD_INBOARD,
+        # PointID.TRACKROD_INBOARD,
     }
 
 
@@ -231,7 +231,7 @@ def solve_suspension(
     constraints.extend(create_length_constraints(positions))
     constraints.extend(create_angle_constraints(positions))
     # constraints.extend(create_linear_constraints(positions))
-    constraints.extend(create_fixed_axis_constraints(positions))
+    # constraints.extend(create_fixed_axis_constraints(positions))
 
     # Get free points.
     free_points = get_free_points(geometry)
