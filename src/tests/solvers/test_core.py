@@ -11,6 +11,7 @@ from kinematics.solvers.core import (
     solve_positions,
     solve_sweep,
 )
+from kinematics.types.state import Positions
 
 
 @pytest.fixture
@@ -67,6 +68,10 @@ def simple_target(simple_positions):
     )
 
 
+def null_derived_points(positions: Positions) -> Positions:
+    return positions.copy()
+
+
 def test_compute_target_residual(simple_positions, simple_target):
     # Test initial position has zero residual
     residual = compute_target_residual(simple_positions, simple_target, 0.0)
@@ -98,7 +103,12 @@ def test_solve_positions(
     displacement = 1.0
 
     new_positions = solve_positions(
-        simple_positions, free_points, simple_constraints, simple_target, displacement
+        positions=simple_positions,
+        free_points=free_points,
+        constraints=simple_constraints,
+        target=simple_target,
+        displacement=displacement,
+        compute_derived_points=null_derived_points,
     )
 
     # Check distance constraint maintained.
@@ -124,7 +134,12 @@ def test_solve_sweep(
     displacements = [0.0, 0.5, 1.0]
 
     states = solve_sweep(
-        simple_positions, free_points, simple_constraints, simple_target, displacements
+        positions=simple_positions,
+        free_points=free_points,
+        constraints=simple_constraints,
+        target=simple_target,
+        displacements=displacements,
+        compute_derived_points=null_derived_points,
     )
 
     assert len(states) == len(displacements)

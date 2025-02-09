@@ -6,8 +6,8 @@ from kinematics.geometry.loader import load_geometry
 from kinematics.geometry.points.ids import PointID
 from kinematics.geometry.types.double_wishbone import DoubleWishboneGeometry
 from kinematics.suspension.double_wishbone import solve_suspension
-from visualization_new.debug import create_animation
-from visualization_new.main import SuspensionVisualizer, WheelVisualization
+from visualization.debug import create_animation
+from visualization.main import SuspensionVisualizer, WheelVisualization
 
 CHECK_TOLERANCE = 1e-5
 

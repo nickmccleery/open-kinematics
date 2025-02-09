@@ -5,7 +5,7 @@ import numpy as np
 
 from kinematics.geometry.points.ids import PointID
 from kinematics.geometry.types.double_wishbone import DoubleWishboneGeometry
-from kinematics.solvers.common import KinematicState
+from kinematics.types.state import Positions
 
 
 @dataclass
@@ -82,41 +82,32 @@ class SuspensionVisualizer:
     def draw_wheel(
         self,
         ax,
-        wheel_center,
-        wheel_inboard,
-        wheel_outboard,
-        axle_vector,
-        state: KinematicState,
+        positions: Positions,
     ) -> None:
-        """Draw a 3D wheel representation"""
-        # Normalize axle vector
+        wheel_center = positions[PointID.WHEEL_CENTER]
+        wheel_inboard = positions[PointID.WHEEL_INBOARD]
+        wheel_outboard = positions[PointID.WHEEL_OUTBOARD]
+        axle_vector = positions[PointID.AXLE_OUTBOARD] - positions[PointID.AXLE_INBOARD]
+
         axle_vector = axle_vector / np.linalg.norm(axle_vector)
 
-        # Create basis vectors for wheel plane
-        # First basis vector is the axle direction
         e1 = axle_vector
-
-        # Second basis vector can be any perpendicular vector
         e2 = np.array([1, 0, 0])
         if np.abs(np.dot(e1, e2)) > 0.9:
             e2 = np.array([0, 1, 0])
         e2 = e2 - np.dot(e2, e1) * e1
         e2 = e2 / np.linalg.norm(e2)
 
-        # Third basis vector completes right-handed system
         e3 = np.cross(e1, e2)
 
-        # Generate points for wheel rim
         theta = np.linspace(0, 2 * np.pi, self.wheel_config.num_points)
         radius = self.wheel_config.diameter / 2
 
-        # Create wheel points.
         rim_points_center = np.zeros((self.wheel_config.num_points, 3))
         rim_points_inboard = np.zeros((self.wheel_config.num_points, 3))
         rim_points_outboard = np.zeros((self.wheel_config.num_points, 3))
 
         for i, angle in enumerate(theta):
-            # Combine basis vectors with sin/cos for circle
             rim_points_center[i] = wheel_center + radius * (
                 np.cos(angle) * e2 + np.sin(angle) * e3
             )
@@ -127,7 +118,6 @@ class SuspensionVisualizer:
                 np.cos(angle) * e2 + np.sin(angle) * e3
             )
 
-        # Plot center points
         ax.plot(
             rim_points_center[:, 0],
             rim_points_center[:, 1],
@@ -137,7 +127,6 @@ class SuspensionVisualizer:
             linestyle=self.wheel_config.linestyle,
         )
 
-        # Plot inboard points
         ax.plot(
             rim_points_inboard[:, 0],
             rim_points_inboard[:, 1],
@@ -147,7 +136,6 @@ class SuspensionVisualizer:
             linestyle=self.wheel_config.linestyle,
         )
 
-        # Plot outboard points
         ax.plot(
             rim_points_outboard[:, 0],
             rim_points_outboard[:, 1],
