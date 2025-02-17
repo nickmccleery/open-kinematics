@@ -123,7 +123,7 @@ class SuspensionVisualizer:
             rim_points_center[:, 1],
             rim_points_center[:, 2],
             color=self.wheel_config.color,
-            alpha=0.5,
+            alpha=0.25,
             linestyle=self.wheel_config.linestyle,
         )
 
@@ -144,3 +144,15 @@ class SuspensionVisualizer:
             alpha=self.wheel_config.alpha,
             linestyle=self.wheel_config.linestyle,
         )
+
+        spoke_indices = np.linspace(0, self.wheel_config.num_points - 1, 12, dtype=int)
+
+        for idx in spoke_indices:
+            ax.plot(
+                [rim_points_inboard[idx, 0], rim_points_outboard[idx, 0]],
+                [rim_points_inboard[idx, 1], rim_points_outboard[idx, 1]],
+                [rim_points_inboard[idx, 2], rim_points_outboard[idx, 2]],
+                color=self.wheel_config.color,
+                alpha=self.wheel_config.alpha,
+                linestyle=self.wheel_config.linestyle,
+            )
