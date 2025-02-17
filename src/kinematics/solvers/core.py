@@ -29,9 +29,9 @@ class MotionTarget(NamedTuple):
 
 
 class SolverConfig(NamedTuple):
-    ftol: float = 1e-8
-    xtol: float = 1e-8
-    gtol: float = 1e-8
+    ftol: float = 1e-8  # Constraint residual tolerance.
+    xtol: float = 1e-6  # Step size tolerance.
+    gtol: float = 1e-6  # Gradient tolerance.
 
 
 # Core solver functions
