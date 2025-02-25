@@ -100,9 +100,9 @@ def create_animation(
             if view_name == "iso":
                 ax.legend(loc="upper left")
 
-        target_z = positions[PointID.WHEEL_CENTER][2]
+        target_z = positions[PointID.LOWER_WISHBONE_OUTBOARD][2]
         fig.suptitle(
-            f"Wheel Center Z: {target_z:.1f} [mm]",
+            f"Lower Wishbone Outboard Z: {target_z:.1f} [mm]",
             fontsize=16,
         )
 

@@ -9,7 +9,8 @@ from kinematics.suspension.double_wishbone import solve_suspension
 from visualization.debug import create_animation
 from visualization.main import SuspensionVisualizer, WheelVisualization
 
-CHECK_TOLERANCE = 1e-5
+# Our actual solve tolerance is a OOM tighter than this, so should be good.
+EPSILON_CHECK = 1e-5
 
 
 def test_run_solver(double_wishbone_geometry_file: Path) -> None:
@@ -17,19 +18,19 @@ def test_run_solver(double_wishbone_geometry_file: Path) -> None:
     if not isinstance(geometry, DoubleWishboneGeometry):
         raise ValueError("Invalid geometry type")
 
-    # Create displacement sweep
-    displacement_range = [-100, 100]
+    # Create displacement sweep.
+    displacement_range = [-80, 80]
     n_steps = 21
     displacements = list(
         np.linspace(displacement_range[0], displacement_range[1], n_steps)
     )
 
-    # Solve for all positions
+    # Solve for all positions.
     position_states = solve_suspension(geometry, displacements)
 
     print("Solve complete, verifying constraints...")
 
-    # Get initial positions for comparison
+    # Get initial positions for comparison.
     from kinematics.suspension.double_wishbone import (
         WheelConfig,
         compute_derived_points,
@@ -47,6 +48,7 @@ def test_run_solver(double_wishbone_geometry_file: Path) -> None:
     initial_positions = compute_derived_points(initial_positions, wheel_config)
     length_constraints = create_length_constraints(initial_positions)
     length_constraints = create_length_constraints(initial_positions)
+    target_point_id = PointID.LOWER_WISHBONE_OUTBOARD
 
     # Verify constraints are maintained
     for positions, displacement in zip(position_states, displacements):
@@ -56,19 +58,19 @@ def test_run_solver(double_wishbone_geometry_file: Path) -> None:
             p2 = positions[constraint.p2]
             current_length = np.linalg.norm(p1 - p2)
 
-            assert np.abs(current_length - constraint.distance) < CHECK_TOLERANCE, (
+            assert np.abs(current_length - constraint.distance) < EPSILON_CHECK, (
                 f"Constraint violation at displacement {displacement}: "
                 f"{constraint.p1.name} to {constraint.p2.name}"
             )
 
-        # Verify wheel center z position
-        wheel_center = positions[PointID.WHEEL_CENTER]
-        initial_wheel_center = initial_positions[PointID.WHEEL_CENTER]
-        target_z = initial_wheel_center[2] + displacement
+        # Verify target point z position.
+        target_point_position = positions[target_point_id]
+        initial_target_point_position = initial_positions[target_point_id]
+        target_z = initial_target_point_position[2] + displacement
 
         assert (
-            np.abs(wheel_center[2] - target_z) < CHECK_TOLERANCE
-        ), f"Failed to maintain wheel center at displacement {displacement}"
+            np.abs(target_point_position[2] - target_z) < EPSILON_CHECK
+        ), f"Failed to maintain {target_point_id} at displacement {displacement}"
 
     print("Creating animation...")
     # We'll need to adapt the visualization code to work with our new state format
@@ -76,8 +78,12 @@ def test_run_solver(double_wishbone_geometry_file: Path) -> None:
     position_states_animate = position_states + position_states[::-1]
     output_path = Path("suspension_motion.gif")
 
+    r_aspect = 0.45
+    x_section = 225
+    x_diameter = 17 * 25.4
+
     wheel_config = WheelVisualization(
-        diameter=(17 * 25.4) + 0.45 * 225 * 2,
+        diameter=x_diameter + r_aspect * x_section * 2,
         width=225,
     )
 

@@ -200,11 +200,11 @@ def create_initial_positions(geometry: DoubleWishboneGeometry) -> Positions:
     return positions
 
 
-def create_target(positions: Positions) -> MotionTarget:
+def create_motion_target(positions: Positions, point_id: PointID) -> MotionTarget:
     return MotionTarget(
-        point_id=PointID.WHEEL_CENTER,
+        point_id=point_id,
         axis=CoordinateAxis.Z,
-        reference_position=positions[PointID.WHEEL_CENTER],
+        reference_position=positions[point_id],
     )
 
 
@@ -224,7 +224,7 @@ def solve_suspension(
     # Compute derived points and create motion target.
     compute_derived_points_ptl = partial(compute_derived_points, config=wheel_config)
     positions = compute_derived_points_ptl(initial_positions)
-    target = create_target(positions)
+    motion_target = create_motion_target(positions, PointID.LOWER_WISHBONE_OUTBOARD)
 
     # Create constraints.
     constraints = []
@@ -240,7 +240,7 @@ def solve_suspension(
         positions=positions,
         free_points=free_points,
         constraints=constraints,
-        target=target,
+        target=motion_target,
         displacements=displacements,
         compute_derived_points=compute_derived_points_ptl,
     )
