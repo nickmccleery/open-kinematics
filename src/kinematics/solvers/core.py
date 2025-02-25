@@ -11,6 +11,7 @@ from kinematics.constraints.ops import (
     vector_angle_residual,
 )
 from kinematics.constraints.types import (
+    Constraint,
     PointFixedAxis,
     PointOnLine,
     PointPointDistance,
@@ -51,7 +52,7 @@ def compute_target_residual(
 
 def compute_residuals(
     positions: Positions,
-    constraints: list[PointPointDistance | VectorAngle | PointFixedAxis | PointOnLine],
+    constraints: list[Constraint],
     target: MotionTarget,
     displacement: float,
 ) -> NDArray:
@@ -78,7 +79,7 @@ def compute_residuals(
 def solve_positions(
     positions: Positions,
     free_points: set[PointID],
-    constraints: list[PointPointDistance | VectorAngle | PointFixedAxis | PointOnLine],
+    constraints: list[Constraint],
     target: MotionTarget,
     displacement: float,
     compute_derived_points: Callable[[Positions], Positions],
@@ -128,7 +129,7 @@ def solve_positions(
 def solve_sweep(
     positions: Positions,
     free_points: set[PointID],
-    constraints: list[PointPointDistance | VectorAngle | PointFixedAxis | PointOnLine],
+    constraints: list[Constraint],
     target: MotionTarget,
     displacements: Sequence[float],
     compute_derived_points: Callable[[Positions], Positions],

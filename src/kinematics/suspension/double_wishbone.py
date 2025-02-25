@@ -14,8 +14,20 @@ from kinematics.geometry.config.wheel import WheelConfig
 from kinematics.geometry.constants import CoordinateAxis, Direction
 from kinematics.geometry.points.ids import PointID
 from kinematics.geometry.types.double_wishbone import DoubleWishboneGeometry
-from kinematics.solvers.core import MotionTarget, solve_sweep
+from kinematics.solvers.core import Constraint, MotionTarget, solve_sweep
 from kinematics.types.state import Positions
+
+# Points which the constraint solve will be able to move. Note that these are
+# effictively just demarcated as 'free' as opposed to fixed, and that they can still
+# be constrained according to the constraint creation functions below.
+FREE_POINTS: set = {
+    PointID.UPPER_WISHBONE_OUTBOARD,
+    PointID.LOWER_WISHBONE_OUTBOARD,
+    PointID.AXLE_INBOARD,
+    PointID.AXLE_OUTBOARD,
+    PointID.TRACKROD_OUTBOARD,
+    # PointID.TRACKROD_INBOARD,
+}
 
 
 def calculate_wheel_center(positions: Positions, wheel_offset: float) -> NDArray:
@@ -153,15 +165,14 @@ def create_fixed_axis_constraints(positions: Positions) -> list[PointFixedAxis]:
     return constraints
 
 
-def get_free_points(geometry: DoubleWishboneGeometry) -> set[PointID]:
-    return {
-        PointID.UPPER_WISHBONE_OUTBOARD,
-        PointID.LOWER_WISHBONE_OUTBOARD,
-        PointID.AXLE_INBOARD,
-        PointID.AXLE_OUTBOARD,
-        PointID.TRACKROD_OUTBOARD,
-        # PointID.TRACKROD_INBOARD,
-    }
+def create_constraints(positions: Positions) -> list[Constraint]:
+    constraints = []
+    constraints.extend(create_length_constraints(positions))
+    constraints.extend(create_angle_constraints(positions))
+    # constraints.extend(create_linear_constraints(positions))
+    # constraints.extend(create_fixed_axis_constraints(positions))
+
+    return constraints
 
 
 def create_initial_positions(geometry: DoubleWishboneGeometry) -> Positions:
@@ -227,18 +238,11 @@ def solve_suspension(
     motion_target = create_motion_target(positions, PointID.LOWER_WISHBONE_OUTBOARD)
 
     # Create constraints.
-    constraints = []
-    constraints.extend(create_length_constraints(positions))
-    constraints.extend(create_angle_constraints(positions))
-    # constraints.extend(create_linear_constraints(positions))
-    # constraints.extend(create_fixed_axis_constraints(positions))
-
-    # Get free points.
-    free_points = get_free_points(geometry)
+    constraints = create_constraints(positions=positions)
 
     return solve_sweep(
         positions=positions,
-        free_points=free_points,
+        free_points=FREE_POINTS,
         constraints=constraints,
         target=motion_target,
         displacements=displacements,

@@ -1,4 +1,4 @@
-from typing import NamedTuple
+from typing import NamedTuple, Union
 
 from numpy.typing import NDArray
 
@@ -34,3 +34,6 @@ class PointOnLine(NamedTuple):
     point_id: PointID
     line_point: PointID
     line_direction: NDArray  # Normalized direction vector.
+
+
+Constraint = Union[PointPointDistance | VectorAngle | PointFixedAxis | PointOnLine]
