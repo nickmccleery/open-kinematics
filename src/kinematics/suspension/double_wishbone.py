@@ -26,7 +26,10 @@ FREE_POINTS: set = {
     PointID.AXLE_INBOARD,
     PointID.AXLE_OUTBOARD,
     PointID.TRACKROD_OUTBOARD,
-    # PointID.TRACKROD_INBOARD,
+    PointID.TRACKROD_INBOARD,
+    # TODO: Trackrod inboard is currently fully constrained via the constraint
+    #       methods below, but should be free in Y (or driven by fixed Y steps)
+    #       when rack travel is supported.
 }
 
 
@@ -145,7 +148,7 @@ def create_fixed_axis_constraints(positions: Positions) -> list[PointFixedAxis]:
     def constrain(point_id: PointID, axis: CoordinateAxis, value: float):
         constraints.append(PointFixedAxis(point_id=point_id, axis=axis, value=value))
 
-    # Fix the X and Z coordinate sof the track rod inboard point.
+    # Fix the X and Z coordinates of the track rod inboard point.
     constrain(
         PointID.TRACKROD_INBOARD,
         CoordinateAxis.X,
@@ -170,7 +173,7 @@ def create_constraints(positions: Positions) -> list[Constraint]:
     constraints.extend(create_length_constraints(positions))
     constraints.extend(create_angle_constraints(positions))
     # constraints.extend(create_linear_constraints(positions))
-    # constraints.extend(create_fixed_axis_constraints(positions))
+    constraints.extend(create_fixed_axis_constraints(positions))
 
     return constraints
 
