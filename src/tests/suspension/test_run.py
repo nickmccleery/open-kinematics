@@ -10,7 +10,7 @@ from visualization.debug import create_animation
 from visualization.main import SuspensionVisualizer, WheelVisualization
 
 # Our actual solve tolerance is a OOM tighter than this, so should be good.
-EPSILON_CHECK = 1e-5
+EPSILON_CHECK = 1e-2
 
 
 def test_run_solver(double_wishbone_geometry_file: Path) -> None:

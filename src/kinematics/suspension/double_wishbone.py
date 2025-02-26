@@ -27,9 +27,6 @@ FREE_POINTS: set = {
     PointID.AXLE_OUTBOARD,
     PointID.TRACKROD_OUTBOARD,
     PointID.TRACKROD_INBOARD,
-    # TODO: Trackrod inboard is currently fully constrained via the constraint
-    #       methods below, but should be free in Y (or driven by fixed Y steps)
-    #       when rack travel is supported.
 }
 
 
@@ -130,7 +127,9 @@ def create_linear_constraints(positions: Positions) -> list[PointOnLine]:
     def constrain(point_id: PointID, line_point: PointID, line_direction: NDArray):
         constraints.append(
             PointOnLine(
-                point_id=point_id, line_point=line_point, line_direction=line_direction
+                point_id=point_id,
+                line_point=positions[line_point],
+                line_direction=line_direction,
             )
         )
 
@@ -149,21 +148,22 @@ def create_fixed_axis_constraints(positions: Positions) -> list[PointFixedAxis]:
         constraints.append(PointFixedAxis(point_id=point_id, axis=axis, value=value))
 
     # Fix the X and Z coordinates of the track rod inboard point.
-    constrain(
-        PointID.TRACKROD_INBOARD,
-        CoordinateAxis.X,
-        positions[PointID.TRACKROD_INBOARD][CoordinateAxis.X],
-    )
+    # constrain(
+    #     PointID.TRACKROD_INBOARD,
+    #     CoordinateAxis.X,
+    #     positions[PointID.TRACKROD_INBOARD][CoordinateAxis.X],
+    # )
     constrain(
         PointID.TRACKROD_INBOARD,
         CoordinateAxis.Y,
         positions[PointID.TRACKROD_INBOARD][CoordinateAxis.Y],
     )
-    constrain(
-        PointID.TRACKROD_INBOARD,
-        CoordinateAxis.Z,
-        positions[PointID.TRACKROD_INBOARD][CoordinateAxis.Z],
-    )
+    # TODO: Remove the Y fix.
+    # constrain(
+    #     PointID.TRACKROD_INBOARD,
+    #     CoordinateAxis.Z,
+    #     positions[PointID.TRACKROD_INBOARD][CoordinateAxis.Z],
+    # )
 
     return constraints
 
@@ -172,7 +172,7 @@ def create_constraints(positions: Positions) -> list[Constraint]:
     constraints = []
     constraints.extend(create_length_constraints(positions))
     constraints.extend(create_angle_constraints(positions))
-    # constraints.extend(create_linear_constraints(positions))
+    constraints.extend(create_linear_constraints(positions))
     constraints.extend(create_fixed_axis_constraints(positions))
 
     return constraints

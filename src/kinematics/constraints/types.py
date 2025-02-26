@@ -4,6 +4,7 @@ from numpy.typing import NDArray
 
 from kinematics.geometry.constants import CoordinateAxis
 from kinematics.geometry.points.ids import PointID
+from kinematics.types.state import Position
 
 
 class PointPointDistance(NamedTuple):
@@ -32,7 +33,7 @@ class PointFixedAxis(NamedTuple):
 class PointOnLine(NamedTuple):
     # Constrain a point to lie on an arbitrary vector.
     point_id: PointID
-    line_point: PointID
+    line_point: Position
     line_direction: NDArray  # Normalized direction vector.
 
 

@@ -41,23 +41,16 @@ def point_fixed_axis_residual(
 
 
 def point_on_line_residual(positions: Positions, constraint: PointOnLine) -> float:
-    # Note that the constraint requires both point and line_point because
-    # the line is defined by a point and a direction vector.
-    point = positions[constraint.point_id]
-    line_point = positions[constraint.line_point]
-    line_direction = constraint.line_direction
+    current_point = positions[constraint.point_id]
+    line_point = constraint.line_point
+    direction = constraint.line_direction  # Don't normalize
 
-    # Vector from line_point to point
-    point_vector = point - line_point
+    # Vector from line point to current point
+    point_to_line = current_point - line_point
 
-    # Check if point and line_point are the same
-    if np.allclose(point, line_point):
-        return 0.0
+    # Use unnormalized cross product to maintain physical scale
+    cross_product = np.cross(point_to_line, direction)
+    direction_length = np.linalg.norm(direction)
 
-    # Project point_vector onto line_direction
-    projection_length = np.dot(point_vector, line_direction)
-    projection_vector = projection_length * line_direction
-
-    # Residual is the distance from the point to the line
-    residual_vector = point_vector - projection_vector
-    return float(np.linalg.norm(residual_vector))
+    # Return actual physical distance
+    return float(np.linalg.norm(cross_product) / direction_length)
