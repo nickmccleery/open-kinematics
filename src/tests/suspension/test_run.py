@@ -19,8 +19,8 @@ def test_run_solver(double_wishbone_geometry_file: Path) -> None:
         raise ValueError("Invalid geometry type")
 
     # Create displacement sweep.
-    displacement_range = [-80, 80]
-    n_steps = 21
+    displacement_range = [-125, 130]
+    n_steps = 25
     displacements = list(
         np.linspace(displacement_range[0], displacement_range[1], n_steps)
     )
