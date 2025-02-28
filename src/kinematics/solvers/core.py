@@ -78,56 +78,6 @@ def compute_residuals(
     return np.array(residuals)
 
 
-# def solve_positions(
-#     positions: Positions,
-#     free_points: set[PointID],
-#     constraints: list[Constraint],
-#     target: MotionTarget,
-#     displacement: float,
-#     compute_derived_points: Callable[[Positions], Positions],
-#     config: SolverConfig = SolverConfig(),
-# ) -> Positions:
-#     # Pull points into a consistently ordered array.
-#     free_points_ordered = sorted(free_points, key=lambda point: point.value)
-#     initial_guess = np.array([positions[i_point] for i_point in free_points_ordered])
-
-#     # Reshape to a vector so we can feed to the optimiser.
-#     initial_guess_1d = np.reshape(initial_guess, -1)
-
-#     def residual_wrapper(guess_1d: NDArray) -> NDArray:
-#         # Get the solver's current iteration into the point map format.
-#         _positions = positions.copy()
-#         for i, i_point in enumerate(free_points_ordered):
-#             # All points are 1x3, so slice up the free points.
-#             _positions[i_point] = guess_1d[i * 3 : (i + 1) * 3]
-
-#         _positions = compute_derived_points(_positions)
-#         return compute_residuals(_positions, constraints, target, displacement)
-
-#     # Solve system
-#     result = least_squares(
-#         residual_wrapper,
-#         initial_guess_1d,
-#         method="trf",
-#         ftol=config.ftol,
-#         xtol=config.xtol,
-#         gtol=config.gtol,
-#     )
-
-#     if not result.success:
-#         raise RuntimeError(f"Failed to solve for displacement {displacement}m")
-
-#     # Update positions with solution.
-#     new_positions = positions.copy()
-#     for i, pid in enumerate(free_points_ordered):
-#         new_positions[pid] = result.x[i * 3 : (i + 1) * 3]
-
-#     # Update derived points.
-#     new_positions = compute_derived_points(new_positions)
-
-#     return new_positions
-
-
 def solve_positions(
     positions: Positions,
     free_points: set[PointID],
