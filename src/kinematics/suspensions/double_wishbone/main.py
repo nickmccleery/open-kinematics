@@ -13,7 +13,12 @@ from kinematics.constraints.utils import make_point_point_distance, make_vector_
 from kinematics.geometry.config.wheel import WheelConfig
 from kinematics.geometry.constants import CoordinateAxis, Direction
 from kinematics.geometry.points.ids import PointID
-from kinematics.solvers.core import Constraint, MotionTarget, solve_sweep
+from kinematics.solvers.core import (
+    Constraint,
+    DisplacementTargetSet,
+    MotionTarget,
+    solve_sweep,
+)
 from kinematics.suspensions.double_wishbone.geometry import DoubleWishboneGeometry
 from kinematics.types.state import Positions
 
@@ -213,8 +218,12 @@ def create_motion_target(positions: Positions, point_id: PointID) -> MotionTarge
 
 
 def solve_suspension(
-    geometry: DoubleWishboneGeometry, displacements: list[float]
+    geometry: DoubleWishboneGeometry, displacement_targets: list[DisplacementTargetSet]
 ) -> list[Positions]:
+    # Validate.
+    if len(displacement_targets) == 0:
+        raise ValueError("Invalid displacement target set passed.")
+
     # Pull wheel config.
     wheel_config = WheelConfig(
         width=geometry.configuration.wheel.width,
@@ -225,13 +234,19 @@ def solve_suspension(
     # Compute initial positions dict.
     initial_positions = create_initial_positions(geometry)
 
-    # Compute derived points and create motion target.
+    # Compute derived points.
     compute_derived_points_ptl = partial(compute_derived_points, config=wheel_config)
     positions = compute_derived_points_ptl(initial_positions)
-    motion_target = create_motion_target(positions, PointID.LOWER_WISHBONE_OUTBOARD)
 
     # Create constraints.
     constraints = create_constraints(positions=positions)
+
+    # Our displacement targets must all be the same length... we can move to, for
+    # example, a given wheel center Z at a given rack position, sweeping both
+    # steer and bump at the same time... but it's still ~1D.
+    for target in displacement_targets:
+        motion_target = create_motion_target(positions, target.point_id)
+        displacements = target.displacements
 
     return solve_sweep(
         positions=positions,

@@ -21,6 +21,12 @@ from kinematics.geometry.points.ids import PointID
 from kinematics.types.state import Position, Positions
 
 
+class DisplacementTargetSet(NamedTuple):
+    point_id: PointID
+    axis: CoordinateAxis
+    displacements: Sequence[float]
+
+
 class MotionTarget(NamedTuple):
     point_id: PointID
     axis: CoordinateAxis

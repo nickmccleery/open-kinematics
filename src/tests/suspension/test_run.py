@@ -2,15 +2,17 @@ from pathlib import Path
 
 import numpy as np
 
+from kinematics.geometry.constants import CoordinateAxis
 from kinematics.geometry.loader import load_geometry
 from kinematics.geometry.points.ids import PointID
+from kinematics.solvers.core import DisplacementTargetSet
 from kinematics.suspensions.double_wishbone.geometry import DoubleWishboneGeometry
 from kinematics.suspensions.double_wishbone.main import solve_suspension
 from visualization.debug import create_animation
 from visualization.main import SuspensionVisualizer, WheelVisualization
 
 # Our actual solve tolerance is a OOM tighter than this, so should be good.
-EPSILON_CHECK = 1e-2
+EPSILON_CHECK = 1e-3
 
 
 def test_run_solver(double_wishbone_geometry_file: Path) -> None:
@@ -25,8 +27,14 @@ def test_run_solver(double_wishbone_geometry_file: Path) -> None:
         np.linspace(displacement_range[0], displacement_range[1], n_steps)
     )
 
+    target = DisplacementTargetSet(
+        point_id=PointID.LOWER_WISHBONE_OUTBOARD,
+        axis=CoordinateAxis.Z,
+        displacements=displacements,
+    )
+
     # Solve for all positions.
-    position_states = solve_suspension(geometry, displacements)
+    position_states = solve_suspension(geometry, [target])
 
     print("Solve complete, verifying constraints...")
 
