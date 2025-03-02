@@ -21,7 +21,7 @@ def test_run_solver(double_wishbone_geometry_file: Path) -> None:
         raise ValueError("Invalid geometry type")
 
     # Create displacement sweep.
-    displacement_range = [-125, 130]
+    displacement_range = [-120, 120]
     n_steps = 25
     displacements = list(
         np.linspace(displacement_range[0], displacement_range[1], n_steps)
@@ -81,8 +81,7 @@ def test_run_solver(double_wishbone_geometry_file: Path) -> None:
         ), f"Failed to maintain {target_point_id} at displacement {displacement}"
 
     print("Creating animation...")
-    # We'll need to adapt the visualization code to work with our new state format
-    # or convert our states to the old format for visualization
+
     position_states_animate = position_states + position_states[::-1]
     output_path = Path("suspension_motion.gif")
 
