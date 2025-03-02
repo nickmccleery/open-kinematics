@@ -1,7 +1,7 @@
 from typing import Type, Union
 
-from kinematics.geometry.types.double_wishbone import DoubleWishboneGeometry
-from kinematics.geometry.types.macpherson import MacPhersonGeometry
+from kinematics.suspensions.double_wishbone.geometry import DoubleWishboneGeometry
+from kinematics.suspensions.macpherson.geometry import MacPhersonGeometry
 
 GeometryType = Union[DoubleWishboneGeometry, MacPhersonGeometry]
 

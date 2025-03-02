@@ -94,7 +94,7 @@ def test_point_on_line():
 
     constraint = PointOnLine(
         point_id=PointID.TRACKROD_OUTBOARD,
-        line_point=PointID.TRACKROD_INBOARD,
+        line_point=positions[PointID.TRACKROD_INBOARD],
         line_direction=np.array([0.0, 1.0, 0.0]),  # Points along Y axis
     )
 

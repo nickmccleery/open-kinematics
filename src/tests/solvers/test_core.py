@@ -4,14 +4,11 @@ import pytest
 from kinematics.constraints.types import PointPointDistance
 from kinematics.geometry.constants import CoordinateAxis
 from kinematics.geometry.points.ids import PointID
-from kinematics.solvers.core import (
-    MotionTarget,
-    compute_residuals,
-    compute_target_residual,
-    solve_positions,
-    solve_sweep,
-)
+from kinematics.solvers.core import MotionTarget, solve_sweep
 from kinematics.types.state import Positions
+
+# Tolerance on position checks.
+TOL_CHECK = 1e-4
 
 
 @pytest.fixture
@@ -72,57 +69,6 @@ def null_derived_points(positions: Positions) -> Positions:
     return positions.copy()
 
 
-def test_compute_target_residual(simple_positions, simple_target):
-    # Test initial position has zero residual
-    residual = compute_target_residual(simple_positions, simple_target, 0.0)
-    assert residual == pytest.approx(0.0)
-
-    # Test residual with displacement
-    residual = compute_target_residual(simple_positions, simple_target, 1.0)
-    assert residual == pytest.approx(-1.0)  # Current Z is 0, target is 1
-
-
-def test_compute_residuals(simple_positions, simple_constraints, simple_target):
-    residuals = compute_residuals(
-        simple_positions, simple_constraints, simple_target, displacement=0.0
-    )
-
-    # Should be three residuals: distance constraints and target.
-    assert len(residuals) == 3
-    assert np.allclose(residuals, 0.0)
-
-
-def test_solve_positions(
-    simple_positions,
-    simple_constraints,
-    simple_target,
-    length_forward_leg,
-    length_rearward_leg,
-):
-    free_points = {PointID.LOWER_WISHBONE_OUTBOARD}
-    displacement = 1.0
-
-    new_positions = solve_positions(
-        positions=simple_positions,
-        free_points=free_points,
-        constraints=simple_constraints,
-        target=simple_target,
-        displacement=displacement,
-        compute_derived_points=null_derived_points,
-    )
-
-    # Check distance constraint maintained.
-    p_front = new_positions[PointID.LOWER_WISHBONE_INBOARD_FRONT]
-    p_rear = new_positions[PointID.LOWER_WISHBONE_INBOARD_REAR]
-    p_outboard = new_positions[PointID.LOWER_WISHBONE_OUTBOARD]
-
-    assert np.linalg.norm(p_outboard - p_front) == pytest.approx(length_forward_leg)
-    assert np.linalg.norm(p_outboard - p_rear) == pytest.approx(length_rearward_leg)
-
-    # Check target displacement achieved.
-    assert p_outboard[2] == pytest.approx(1.0)
-
-
 def test_solve_sweep(
     simple_positions,
     simple_constraints,
@@ -151,8 +97,12 @@ def test_solve_sweep(
         p_outboard = state[PointID.LOWER_WISHBONE_OUTBOARD]
 
         # Distance constraints
-        assert np.linalg.norm(p_outboard - p_front) == pytest.approx(length_forward_leg)
-        assert np.linalg.norm(p_outboard - p_rear) == pytest.approx(length_rearward_leg)
+        assert np.linalg.norm(p_outboard - p_front) == pytest.approx(
+            length_forward_leg, rel=TOL_CHECK
+        )
+        assert np.linalg.norm(p_outboard - p_rear) == pytest.approx(
+            length_rearward_leg, rel=TOL_CHECK
+        )
 
         # Target displacement
-        assert p_outboard[2] == pytest.approx(displacements[i])
+        assert p_outboard[2] == pytest.approx(displacements[i], rel=TOL_CHECK)

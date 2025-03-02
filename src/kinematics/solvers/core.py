@@ -28,11 +28,9 @@ class MotionTarget(NamedTuple):
 
 
 class SolverConfig(NamedTuple):
-    ftol: float = 1e-6  # Constraint residual tolerance.
-    xtol: float = 1e-6  # Step size tolerance.
-    gtol: float = 1e-6  # Gradient tolerance.
+    ftol: float = 1e-6  # Function tolerance.
     residual_tolerance: float = 1e-4  # Constraint residual tolerance.
-    max_iterations: int = 2000  # Maximum number of iterations.
+    max_iterations: int = 1000  # Maximum number of iterations.
 
 
 def solve_sweep(
@@ -161,8 +159,6 @@ def solve_sweep(
             ],
             options={
                 "ftol": config.ftol,
-                "xtol": config.xtol,
-                "gtol": config.gtol,
                 "maxiter": config.max_iterations,
                 "disp": False,
             },

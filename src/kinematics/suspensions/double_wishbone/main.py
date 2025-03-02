@@ -13,8 +13,8 @@ from kinematics.constraints.utils import make_point_point_distance, make_vector_
 from kinematics.geometry.config.wheel import WheelConfig
 from kinematics.geometry.constants import CoordinateAxis, Direction
 from kinematics.geometry.points.ids import PointID
-from kinematics.geometry.types.double_wishbone import DoubleWishboneGeometry
 from kinematics.solvers.core import Constraint, MotionTarget, solve_sweep
+from kinematics.suspensions.double_wishbone.geometry import DoubleWishboneGeometry
 from kinematics.types.state import Positions
 
 # Points which the constraint solve will be able to move. Note that these are
@@ -147,23 +147,13 @@ def create_fixed_axis_constraints(positions: Positions) -> list[PointFixedAxis]:
     def constrain(point_id: PointID, axis: CoordinateAxis, value: float):
         constraints.append(PointFixedAxis(point_id=point_id, axis=axis, value=value))
 
-    # Fix the X and Z coordinates of the track rod inboard point.
-    # constrain(
-    #     PointID.TRACKROD_INBOARD,
-    #     CoordinateAxis.X,
-    #     positions[PointID.TRACKROD_INBOARD][CoordinateAxis.X],
-    # )
+    # Fix Y coordinate of the track rod inboard point. This should be removed
+    # once we add steering.
     constrain(
         PointID.TRACKROD_INBOARD,
         CoordinateAxis.Y,
         positions[PointID.TRACKROD_INBOARD][CoordinateAxis.Y],
     )
-    # TODO: Remove the Y fix.
-    # constrain(
-    #     PointID.TRACKROD_INBOARD,
-    #     CoordinateAxis.Z,
-    #     positions[PointID.TRACKROD_INBOARD][CoordinateAxis.Z],
-    # )
 
     return constraints
 

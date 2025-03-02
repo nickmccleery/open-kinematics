@@ -4,8 +4,8 @@ import numpy as np
 
 from kinematics.geometry.loader import load_geometry
 from kinematics.geometry.points.ids import PointID
-from kinematics.geometry.types.double_wishbone import DoubleWishboneGeometry
-from kinematics.suspension.double_wishbone import solve_suspension
+from kinematics.suspensions.double_wishbone.geometry import DoubleWishboneGeometry
+from kinematics.suspensions.double_wishbone.main import solve_suspension
 from visualization.debug import create_animation
 from visualization.main import SuspensionVisualizer, WheelVisualization
 
@@ -31,7 +31,7 @@ def test_run_solver(double_wishbone_geometry_file: Path) -> None:
     print("Solve complete, verifying constraints...")
 
     # Get initial positions for comparison.
-    from kinematics.suspension.double_wishbone import (
+    from kinematics.suspensions.double_wishbone.main import (
         WheelConfig,
         compute_derived_points,
         create_initial_positions,

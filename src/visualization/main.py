@@ -4,7 +4,7 @@ from typing import List
 import numpy as np
 
 from kinematics.geometry.points.ids import PointID
-from kinematics.geometry.types.double_wishbone import DoubleWishboneGeometry
+from kinematics.suspensions.double_wishbone.geometry import DoubleWishboneGeometry
 from kinematics.types.state import Positions
 
 

@@ -7,8 +7,8 @@ from marshmallow_dataclass import class_schema
 
 import kinematics.geometry.exceptions as exc
 from kinematics.geometry.points.ids import PointID
-from kinematics.geometry.types.registry import GEOMETRY_TYPES, GeometryType
 from kinematics.geometry.utils import get_all_points
+from kinematics.suspensions.registry import GEOMETRY_TYPES, GeometryType
 
 
 def validate_geometry(geometry: GeometryType) -> None:
