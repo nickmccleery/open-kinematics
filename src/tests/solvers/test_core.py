@@ -4,7 +4,12 @@ import pytest
 from kinematics.constraints.types import PointPointDistance
 from kinematics.geometry.constants import CoordinateAxis
 from kinematics.geometry.points.ids import PointID
-from kinematics.solvers.core import MotionTarget, solve_sweep
+from kinematics.solvers.core import (
+    PointTarget,
+    PointTargetSet,
+    SolverConfig,
+    solve_sweep,
+)
 from kinematics.types.state import Positions
 
 # Tolerance on position checks.
@@ -26,7 +31,6 @@ def length_forward_leg(simple_positions):
         simple_positions[PointID.LOWER_WISHBONE_INBOARD_FRONT]
         - simple_positions[PointID.LOWER_WISHBONE_OUTBOARD],
     )
-
     return x_forward_leg
 
 
@@ -36,7 +40,6 @@ def length_rearward_leg(simple_positions):
         simple_positions[PointID.LOWER_WISHBONE_INBOARD_REAR]
         - simple_positions[PointID.LOWER_WISHBONE_OUTBOARD]
     )
-
     return x_rearward_leg
 
 
@@ -57,12 +60,17 @@ def simple_constraints(simple_positions, length_forward_leg, length_rearward_leg
 
 
 @pytest.fixture
-def simple_target(simple_positions):
-    return MotionTarget(
-        point_id=PointID.LOWER_WISHBONE_OUTBOARD,
-        axis=CoordinateAxis.Z,
-        reference_position=simple_positions[PointID.LOWER_WISHBONE_OUTBOARD],
-    )
+def simple_target_set():
+    displacements = [0.0, 0.5, 1.0]
+    point_targets = [
+        PointTarget(
+            point_id=PointID.LOWER_WISHBONE_OUTBOARD,
+            axis=CoordinateAxis.Z,
+            value=d,
+        )
+        for d in displacements
+    ]
+    return PointTargetSet(values=point_targets)
 
 
 def null_derived_points(positions: Positions) -> Positions:
@@ -72,23 +80,27 @@ def null_derived_points(positions: Positions) -> Positions:
 def test_solve_sweep(
     simple_positions,
     simple_constraints,
-    simple_target,
+    simple_target_set,
     length_forward_leg,
     length_rearward_leg,
 ):
     free_points = {PointID.LOWER_WISHBONE_OUTBOARD}
-    displacements = [0.0, 0.5, 1.0]
+
+    # Extract displacement values for assertions
+    displacement_values = [target.value for target in simple_target_set.values]
 
     states = solve_sweep(
-        positions=simple_positions,
-        free_points=free_points,
+        initial_positions=simple_positions,
         constraints=simple_constraints,
-        target=simple_target,
-        displacements=displacements,
+        free_points=free_points,
+        targets=[simple_target_set],  # Wrapped in a list for the new API
         compute_derived_points=null_derived_points,
+        solver_config=SolverConfig(
+            ftol=1e-6, residual_tolerance=1e-4, max_iterations=1000
+        ),
     )
 
-    assert len(states) == len(displacements)
+    assert len(states) == len(displacement_values)
 
     # Check each state maintains constraints
     for i, state in enumerate(states):
@@ -105,4 +117,4 @@ def test_solve_sweep(
         )
 
         # Target displacement
-        assert p_outboard[2] == pytest.approx(displacements[i], rel=TOL_CHECK)
+        assert p_outboard[2] == pytest.approx(displacement_values[i], rel=TOL_CHECK)

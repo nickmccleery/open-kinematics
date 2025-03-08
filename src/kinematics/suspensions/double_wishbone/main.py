@@ -13,12 +13,7 @@ from kinematics.constraints.utils import make_point_point_distance, make_vector_
 from kinematics.geometry.config.wheel import WheelConfig
 from kinematics.geometry.constants import CoordinateAxis, Direction
 from kinematics.geometry.points.ids import PointID
-from kinematics.solvers.core import (
-    Constraint,
-    DisplacementTargetSet,
-    MotionTarget,
-    solve_sweep,
-)
+from kinematics.solvers.core import Constraint, PointTargetSet, solve_sweep
 from kinematics.suspensions.double_wishbone.geometry import DoubleWishboneGeometry
 from kinematics.types.state import Positions
 
@@ -154,11 +149,11 @@ def create_fixed_axis_constraints(positions: Positions) -> list[PointFixedAxis]:
 
     # Fix Y coordinate of the track rod inboard point. This should be removed
     # once we add steering.
-    constrain(
-        PointID.TRACKROD_INBOARD,
-        CoordinateAxis.Y,
-        positions[PointID.TRACKROD_INBOARD][CoordinateAxis.Y],
-    )
+    # constrain(
+    #     PointID.TRACKROD_INBOARD,
+    #     CoordinateAxis.Y,
+    #     positions[PointID.TRACKROD_INBOARD][CoordinateAxis.Y],
+    # )
 
     return constraints
 
@@ -209,50 +204,34 @@ def create_initial_positions(geometry: DoubleWishboneGeometry) -> Positions:
     return positions
 
 
-def create_motion_target(positions: Positions, point_id: PointID) -> MotionTarget:
-    return MotionTarget(
-        point_id=point_id,
-        axis=CoordinateAxis.Z,
-        reference_position=positions[point_id],
-    )
-
-
 def solve_suspension(
-    geometry: DoubleWishboneGeometry, displacement_targets: list[DisplacementTargetSet]
+    geometry: DoubleWishboneGeometry, point_targets: list[PointTargetSet]
 ) -> list[Positions]:
-    # Validate.
-    if len(displacement_targets) == 0:
-        raise ValueError("Invalid displacement target set passed.")
-
-    # Pull wheel config.
+    # Pull wheel config, define partial function for derived points.
     wheel_config = WheelConfig(
         width=geometry.configuration.wheel.width,
         offset=geometry.configuration.wheel.offset,
         diameter=geometry.configuration.wheel.diameter,
     )
+    compute_derived_points_ptl = partial(compute_derived_points, config=wheel_config)
 
     # Compute initial positions dict.
     initial_positions = create_initial_positions(geometry)
-
-    # Compute derived points.
-    compute_derived_points_ptl = partial(compute_derived_points, config=wheel_config)
-    positions = compute_derived_points_ptl(initial_positions)
+    initial_positions = compute_derived_points_ptl(initial_positions)
 
     # Create constraints.
-    constraints = create_constraints(positions=positions)
+    constraints = create_constraints(positions=initial_positions)
 
     # Our displacement targets must all be the same length... we can move to, for
     # example, a given wheel center Z at a given rack position, sweeping both
     # steer and bump at the same time... but it's still ~1D.
-    for target in displacement_targets:
-        motion_target = create_motion_target(positions, target.point_id)
-        displacements = target.displacements
+    # Validate.
 
+    # Solve.
     return solve_sweep(
-        positions=positions,
-        free_points=FREE_POINTS,
+        initial_positions=initial_positions,
         constraints=constraints,
-        target=motion_target,
-        displacements=displacements,
+        free_points=FREE_POINTS,
+        targets=point_targets,
         compute_derived_points=compute_derived_points_ptl,
     )
