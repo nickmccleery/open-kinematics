@@ -17,12 +17,23 @@ EPSILON_CHECK = 1e-3
 
 
 @pytest.fixture
-def target_set():
-    n_steps = 25
+def displacements():
+    n_steps = 31
+
+    hub_range = [-30, 90]
+    hub_displacements = list(np.linspace(hub_range[0], hub_range[1], n_steps))
+
+    steer_range = [-30, 30]
+    steer_displacements = list(np.linspace(steer_range[0], steer_range[1], n_steps))
+
+    return hub_displacements, steer_displacements
+
+
+@pytest.fixture
+def target_set(displacements):
+    hub_displacements, steer_displacements = displacements
 
     # Create hub displacement sweep.
-    hub_range = [0, 0]
-    hub_displacements = list(np.linspace(hub_range[0], hub_range[1], n_steps))
     hub_targets = [
         PointTarget(
             point_id=PointID.WHEEL_CENTER,
@@ -33,8 +44,6 @@ def target_set():
     ]
 
     # Create steer sweep.
-    steer_range = [0, 50]
-    steer_displacements = list(np.linspace(steer_range[0], steer_range[1], n_steps))
     steer_targets = [
         PointTarget(
             point_id=PointID.TRACKROD_INBOARD,
@@ -53,7 +62,11 @@ def target_set():
     return targets
 
 
-def test_run_solver(double_wishbone_geometry_file: Path, target_set) -> None:
+def test_run_solver(
+    double_wishbone_geometry_file: Path, target_set, displacements
+) -> None:
+    hub_displacements, _ = displacements
+
     geometry = load_geometry(double_wishbone_geometry_file)
     if not isinstance(geometry, DoubleWishboneGeometry):
         raise ValueError("Invalid geometry type")
@@ -71,7 +84,6 @@ def test_run_solver(double_wishbone_geometry_file: Path, target_set) -> None:
         create_length_constraints,
     )
 
-    initial_positions = create_initial_positions(geometry)
     wheel_config = WheelConfig(
         width=geometry.configuration.wheel.width,
         offset=geometry.configuration.wheel.offset,
@@ -81,38 +93,38 @@ def test_run_solver(double_wishbone_geometry_file: Path, target_set) -> None:
     initial_positions = compute_derived_points(initial_positions, wheel_config)
     length_constraints = create_length_constraints(initial_positions)
     length_constraints = create_length_constraints(initial_positions)
-    target_point_id = PointID.LOWER_WISHBONE_OUTBOARD
+    target_point_id = PointID.WHEEL_CENTER
 
     # Verify constraints are maintained.
-    # for positions, displacement in zip(position_states, displacements):
-    #     # Verify length constraints.
-    #     for constraint in length_constraints:
-    #         p1 = positions[constraint.p1]
-    #         p2 = positions[constraint.p2]
-    #         current_length = np.linalg.norm(p1 - p2)
+    for positions, displacement in zip(position_states, hub_displacements):
+        # Verify length constraints.
+        for constraint in length_constraints:
+            p1 = positions[constraint.p1]
+            p2 = positions[constraint.p2]
+            current_length = np.linalg.norm(p1 - p2)
 
-    #         assert np.abs(current_length - constraint.distance) < EPSILON_CHECK, (
-    #             f"Constraint violation at displacement {displacement}: "
-    #             f"{constraint.p1.name} to {constraint.p2.name}"
-    #         )
+            assert np.abs(current_length - constraint.distance) < EPSILON_CHECK, (
+                f"Constraint violation at displacement {displacement}: "
+                f"{constraint.p1.name} to {constraint.p2.name}"
+            )
 
-    #     # Verify target point z position.
-    #     target_point_position = positions[target_point_id]
-    #     initial_target_point_position = initial_positions[target_point_id]
-    #     target_z = initial_target_point_position[2] + displacement
+        # Verify target point z position.
+        target_point_position = positions[target_point_id]
+        initial_target_point_position = initial_positions[target_point_id]
+        target_z = initial_target_point_position[2] + displacement
 
-    #     assert (
-    #         np.abs(target_point_position[2] - target_z) < EPSILON_CHECK
-    #     ), f"Failed to maintain {target_point_id} at displacement {displacement}"
+        assert (
+            np.abs(target_point_position[2] - target_z) < EPSILON_CHECK
+        ), f"Failed to maintain {target_point_id} at displacement {displacement}"
 
     print("Creating animation...")
 
     position_states_animate = position_states + position_states[::-1]
     output_path = Path("suspension_motion.gif")
 
-    r_aspect = 0.45
-    x_section = 225
-    x_diameter = 17 * 25.4
+    r_aspect = 0.55
+    x_section = 270
+    x_diameter = 13 * 25.4
 
     wheel_config = WheelVisualization(
         diameter=x_diameter + r_aspect * x_section * 2,
@@ -120,4 +132,6 @@ def test_run_solver(double_wishbone_geometry_file: Path, target_set) -> None:
     )
 
     visualizer = SuspensionVisualizer(geometry, wheel_config)
-    create_animation(position_states_animate, visualizer, output_path)
+    create_animation(
+        position_states_animate, initial_positions, visualizer, output_path
+    )

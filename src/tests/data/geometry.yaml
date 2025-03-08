@@ -48,7 +48,7 @@ hard_points:
     outer:
       x: 100
       y: 700
-      z: 25
+      z: 100
 configuration:
   steered: true
   wheel:

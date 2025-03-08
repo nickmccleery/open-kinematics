@@ -11,6 +11,7 @@ from visualization.main import SuspensionVisualizer
 
 def create_animation(
     position_states: list[Positions],
+    initial_positions: Positions,
     visualizer: SuspensionVisualizer,
     output_path: Path,
     fps: int = 20,
@@ -100,9 +101,12 @@ def create_animation(
             if view_name == "iso":
                 ax.legend(loc="upper left")
 
-        target_z = positions[PointID.LOWER_WISHBONE_OUTBOARD][2]
+        title_string = (
+            f"Wheel Center Z: {positions[PointID.WHEEL_CENTER][2] - initial_positions[PointID.WHEEL_CENTER][2]:.1f} [mm]",
+            f"Rack Displacement: {positions[PointID.TRACKROD_INBOARD][1] - initial_positions[PointID.TRACKROD_INBOARD][1]:.1f} [mm]",
+        )
         fig.suptitle(
-            f"Lower Wishbone Outboard Z: {target_z:.1f} [mm]",
+            "\n".join(title_string),
             fontsize=16,
         )
 
