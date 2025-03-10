@@ -188,23 +188,7 @@ def solve_positions(
     )
 
     if not result.success:
-        # If the standard approach fails, try with relaxed tolerance
-        relaxed_tolerance = residual_tolerance * 10.0
-
-        def relaxed_constraint(free_array: np.ndarray) -> np.ndarray:
-            r = compute_residuals(free_array)
-            return relaxed_tolerance - np.abs(r)
-
-        result = minimize(
-            objective,
-            init_guess,
-            method="SLSQP",
-            constraints=[{"type": "ineq", "fun": relaxed_constraint}],
-            options={"ftol": ftol, "maxiter": max_iterations * 2, "disp": False},
-        )
-
-        if not result.success:
-            raise RuntimeError(f"solve_positions failed: {result.message}")
+        raise RuntimeError(f"solve_positions failed: {result.message}")
 
     # Convert final solution to a Positions dict & apply derived points.
     full_array_final = expand_positions(result.x)
