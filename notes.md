@@ -1,0 +1,5 @@
+# Notes
+
+- We should setup some method for allowing MotionTarget to be defined without a reference position, then 'enriched' once we have initial positions. This could make `DisplacementTargetSet` redundant and simplify combined bump/steer simulations. Maybe just a vanilla class approach, if JAX plays nicely with that.
+- We should also accommodate non-cardinal axes on the motion target values. We might need to allow use of derived/calculated parameters, e.g. roadwheel or handwheel angle, to be fed into this in the same way we permit derived points to drive motion targets... in this way we could sweep for point positions and things like steer angles.
+- We might also be able to do something ~2D by allowing sweeps of both steer and bump, effectively sweeping steer across the bump steps, for example.
