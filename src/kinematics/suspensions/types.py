@@ -5,16 +5,13 @@ from kinematics.suspensions.double_wishbone.geometry import DoubleWishboneGeomet
 from kinematics.suspensions.double_wishbone.provider import DoubleWishboneProvider
 from kinematics.suspensions.macpherson.geometry import MacPhersonGeometry
 
-# This registry maps a specific geometry class to the provider class
-# that knows how to handle its rules and constraints.
+# Maps a specific geometry class to the provider class
 PROVIDER_REGISTRY: Dict[Type, Type[SuspensionProvider]] = {
     DoubleWishboneGeometry: DoubleWishboneProvider,
-    # When a MacPhersonProvider is created, it will be added here:
-    # MacPhersonGeometry: MacPhersonProvider,
 }
 
+# Maps the key from the YAML file to the geometry class
 GeometryType = Union[DoubleWishboneGeometry, MacPhersonGeometry]
-
 GEOMETRY_TYPES: dict[str, Type[GeometryType]] = {
     "DOUBLE_WISHBONE": DoubleWishboneGeometry,
     "MACPHERSON_STRUT": MacPhersonGeometry,
