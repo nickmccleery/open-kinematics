@@ -3,9 +3,9 @@ from typing import List
 
 import numpy as np
 
+from kinematics.core.types import Positions
 from kinematics.geometry.points.ids import PointID
 from kinematics.suspensions.double_wishbone.geometry import DoubleWishboneGeometry
-from kinematics.core.types import Positions
 
 
 @dataclass

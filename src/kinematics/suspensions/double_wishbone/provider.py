@@ -4,19 +4,19 @@ from typing import Dict, List, Set
 
 from kinematics.constraints.types import Constraint, PointOnLine
 from kinematics.constraints.utils import make_point_point_distance, make_vector_angle
-from kinematics.geometry.constants import Direction
-from kinematics.geometry.points.ids import PointID
-from kinematics.geometry.utils import get_all_points
+from kinematics.core.types import Positions
 from kinematics.derived_points import (
     get_axle_midpoint,
     get_wheel_center,
     get_wheel_inboard,
     get_wheel_outboard,
 )
+from kinematics.geometry.constants import Direction
+from kinematics.geometry.points.ids import PointID
+from kinematics.geometry.utils import get_all_points
 from kinematics.solver.manager import DerivedPointDefinition
 from kinematics.suspensions.base import SuspensionProvider
 from kinematics.suspensions.double_wishbone.geometry import DoubleWishboneGeometry
-from kinematics.core.types import Positions
 
 
 class DoubleWishboneProvider(SuspensionProvider):

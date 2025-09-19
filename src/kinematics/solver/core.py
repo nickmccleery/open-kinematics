@@ -17,9 +17,9 @@ from kinematics.constraints.types import (
     PointPointDistance,
     VectorAngle,
 )
+from kinematics.core.types import Positions
 from kinematics.geometry.constants import CoordinateAxis
 from kinematics.geometry.points.ids import PointID
-from kinematics.core.types import Positions
 
 AxisVector = Annotated[NDArray[np.float64], "shape=(3,)"]
 

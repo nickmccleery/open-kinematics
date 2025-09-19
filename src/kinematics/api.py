@@ -1,10 +1,10 @@
 # In src/kinematics/api.py
 from typing import Dict, List, Type
 
+from kinematics.core.types import Positions
 from kinematics.geometry.base import SuspensionGeometry
 from kinematics.solver.core import PointTargetSet, solve_sweep
 from kinematics.solver.manager import DerivedPointManager
-from kinematics.core.types import Positions
 from kinematics.suspensions.base import SuspensionProvider
 from kinematics.suspensions.double_wishbone.geometry import DoubleWishboneGeometry
 from kinematics.suspensions.double_wishbone.provider import DoubleWishboneProvider

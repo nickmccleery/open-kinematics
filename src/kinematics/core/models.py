@@ -3,10 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Set
 
-from kinematics.geometry.points.ids import PointID
-
 # Import the type aliases from the new location
 from kinematics.core.types import Positions
+from kinematics.geometry.points.ids import PointID
 
 
 @dataclass(frozen=True)

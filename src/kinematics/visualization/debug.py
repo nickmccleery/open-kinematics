@@ -4,8 +4,8 @@ import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import numpy as np
 
-from kinematics.geometry.points.ids import PointID
 from kinematics.core.types import Positions
+from kinematics.geometry.points.ids import PointID
 from kinematics.visualization.main import SuspensionVisualizer
 
 

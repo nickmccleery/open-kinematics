@@ -6,8 +6,8 @@ from kinematics.constraints.types import (
     PointPointDistance,
     VectorAngle,
 )
-from kinematics.math import normalize_vector
 from kinematics.core.types import Positions
+from kinematics.math import normalize_vector
 
 
 def point_point_distance_residual(

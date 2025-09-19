@@ -1,6 +1,6 @@
+from kinematics.core.types import Position, Positions
 from kinematics.geometry.points.ids import PointID
 from kinematics.math import normalize_vector
-from kinematics.core.types import Position, Positions
 
 
 def get_axle_midpoint(positions: Positions) -> Position:

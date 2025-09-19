@@ -3,12 +3,12 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from kinematics.api import solve_kinematics
 from kinematics.geometry.constants import CoordinateAxis
 from kinematics.geometry.loader import load_geometry
 from kinematics.geometry.points.ids import PointID
 from kinematics.solver.core import PointTarget, PointTargetSet
 from kinematics.suspensions.double_wishbone.geometry import DoubleWishboneGeometry
-from kinematics.api import solve_kinematics
 from kinematics.visualization.debug import create_animation
 from kinematics.visualization.main import SuspensionVisualizer, WheelVisualization
 
@@ -115,9 +115,9 @@ def test_run_solver(
         initial_target_point_position = initial_positions[target_point_id]
         target_z = initial_target_point_position[2] + displacement
 
-        assert np.abs(target_point_position[2] - target_z) < EPSILON_CHECK, (
-            f"Failed to maintain {target_point_id} at displacement {displacement}"
-        )
+        assert (
+            np.abs(target_point_position[2] - target_z) < EPSILON_CHECK
+        ), f"Failed to maintain {target_point_id} at displacement {displacement}"
 
     print("Creating animation...")
 

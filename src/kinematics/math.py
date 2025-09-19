@@ -2,8 +2,8 @@ from typing import Dict
 
 import numpy as np
 
-from kinematics.geometry.points.ids import PointID
 from kinematics.core.types import Position, Positions
+from kinematics.geometry.points.ids import PointID
 
 
 def point_distance(p1: Position, p2: Position) -> float:

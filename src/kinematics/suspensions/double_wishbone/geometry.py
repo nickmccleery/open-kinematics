@@ -1,12 +1,12 @@
 from dataclasses import dataclass
 
+from kinematics.geometry.base import SuspensionGeometry
 from kinematics.geometry.points.collections import (
     LowerWishbonePoints,
     TrackRodPoints,
     UpperWishbonePoints,
     WheelAxlePoints,
 )
-from kinematics.geometry.base import SuspensionGeometry
 
 
 @dataclass
