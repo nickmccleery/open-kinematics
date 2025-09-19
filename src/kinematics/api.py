@@ -52,7 +52,7 @@ def solve_kinematics(
         constraints=constraints,
         free_points=free_points,
         targets=point_targets,
-        compute_derived_points=derived_point_manager.update,
+        compute_derived_points_func=derived_point_manager.update,
     )
 
     return position_states

@@ -94,10 +94,8 @@ def test_solve_sweep(
         constraints=simple_constraints,
         free_points=free_points,
         targets=[simple_target_set],  # Wrapped in a list for the new API
-        compute_derived_points=null_derived_points,
-        solver_config=SolverConfig(
-            ftol=1e-6, residual_tolerance=1e-4, max_iterations=1000
-        ),
+        compute_derived_points_func=null_derived_points,
+        solver_config=SolverConfig(ftol=1e-6, xtol=1e-6, verbose=0),
     )
 
     assert len(states) == len(displacement_values)
