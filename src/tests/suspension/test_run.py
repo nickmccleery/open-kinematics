@@ -77,21 +77,18 @@ def test_run_solver(
     print("Solve complete, verifying constraints...")
 
     # Get initial positions for comparison.
+    from kinematics.solver.derived_points import DerivedPointManager
     from kinematics.suspensions.double_wishbone.main import (
-        WheelConfig,
-        compute_derived_points,
         create_initial_positions,
         create_length_constraints,
+        get_dw_derived_point_definitions,
     )
 
-    wheel_config = WheelConfig(
-        width=geometry.configuration.wheel.width,
-        offset=geometry.configuration.wheel.offset,
-        diameter=geometry.configuration.wheel.diameter,
-    )
+    derived_point_definitions = get_dw_derived_point_definitions(geometry)
+    derived_point_manager = DerivedPointManager(derived_point_definitions)
+
     initial_positions = create_initial_positions(geometry)
-    initial_positions = compute_derived_points(initial_positions, wheel_config)
-    length_constraints = create_length_constraints(initial_positions)
+    initial_positions = derived_point_manager.update(initial_positions)
     length_constraints = create_length_constraints(initial_positions)
     target_point_id = PointID.WHEEL_CENTER
 
