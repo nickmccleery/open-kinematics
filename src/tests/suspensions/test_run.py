@@ -8,9 +8,9 @@ from kinematics.geometry.loader import load_geometry
 from kinematics.geometry.points.ids import PointID
 from kinematics.solver.core import PointTarget, PointTargetSet
 from kinematics.suspensions.double_wishbone.geometry import DoubleWishboneGeometry
-from kinematics.suspensions.double_wishbone.main import solve_suspension
-from visualization.debug import create_animation
-from visualization.main import SuspensionVisualizer, WheelVisualization
+from kinematics.api import solve_kinematics
+from kinematics.visualization.debug import create_animation
+from kinematics.visualization.main import SuspensionVisualizer, WheelVisualization
 
 # Our actual solve tolerance is a OOM tighter than this, so should be good.
 EPSILON_CHECK = 1e-3
@@ -72,7 +72,7 @@ def test_run_solver(
         raise ValueError("Invalid geometry type")
 
     # Solve for all positions.
-    position_states = solve_suspension(geometry, target_set)
+    position_states = solve_kinematics(geometry, target_set)
 
     print("Solve complete, verifying constraints...")
 

@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from kinematics.geometry.points.ids import PointID
-from kinematics.points.derived import (
+from kinematics.derived_points import (
     get_axle_midpoint,
     get_wheel_center,
     get_wheel_inboard,

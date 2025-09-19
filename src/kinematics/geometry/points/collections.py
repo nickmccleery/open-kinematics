@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from kinematics.geometry.points.base import Point3D
+from kinematics.geometry.base import Point3D
 from kinematics.geometry.points.ids import PointID
 
 

@@ -3,7 +3,7 @@ import numpy as np
 from kinematics.constraints.types import PointPointDistance, VectorAngle
 from kinematics.geometry.points.ids import PointID
 from kinematics.math import normalize_vector
-from kinematics.types import Positions
+from kinematics.core.types import Positions
 
 
 def make_point_point_distance(

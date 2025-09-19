@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import cast
+from typing import Type, Union, cast
 
 import yaml
 from marshmallow.exceptions import ValidationError
@@ -8,7 +8,16 @@ from marshmallow_dataclass import class_schema
 import kinematics.geometry.exceptions as exc
 from kinematics.geometry.points.ids import PointID
 from kinematics.geometry.utils import get_all_points
-from kinematics.types import GEOMETRY_TYPES, GeometryType
+from kinematics.suspensions.double_wishbone.geometry import DoubleWishboneGeometry
+from kinematics.suspensions.macpherson.geometry import MacPhersonGeometry
+
+# Define geometry types directly here
+GeometryType = Union[DoubleWishboneGeometry, MacPhersonGeometry]
+
+GEOMETRY_TYPES: dict[str, Type[GeometryType]] = {
+    "DOUBLE_WISHBONE": DoubleWishboneGeometry,
+    "MACPHERSON_STRUT": MacPhersonGeometry,
+}
 
 
 def validate_geometry(geometry: GeometryType) -> None:
@@ -34,12 +43,6 @@ def load_geometry(file_path: Path) -> GeometryType:
         exc.GeometryFileError: For general file handling errors.
         exc.UnsupportedGeometryType: If the geometry type is not recognized.
     """
-    # Ensure registries are populated
-    from kinematics.types import _populate_registries
-
-    if not GEOMETRY_TYPES:
-        _populate_registries()
-
     if not file_path.exists():
         raise exc.GeometryFileNotFound(f"Geometry file not found: {file_path}")
 

@@ -10,7 +10,7 @@ from kinematics.solver.core import (
     SolverConfig,
     solve_sweep,
 )
-from kinematics.types import Positions
+from kinematics.core.types import Positions
 
 # Tolerance on position checks.
 TOL_CHECK = 1e-4

@@ -5,7 +5,7 @@ import yaml
 
 import kinematics.geometry.exceptions as exc
 from kinematics.geometry.loader import load_geometry
-from kinematics.geometry.types.base import SuspensionGeometry
+from kinematics.geometry.base import SuspensionGeometry
 
 
 @pytest.fixture

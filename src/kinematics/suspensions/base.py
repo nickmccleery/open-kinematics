@@ -3,9 +3,9 @@ from typing import Dict, List, Set
 
 from kinematics.constraints.types import Constraint
 from kinematics.geometry.points.ids import PointID
-from kinematics.geometry.types.base import SuspensionGeometry
+from kinematics.geometry.base import SuspensionGeometry
 from kinematics.solver.manager import DerivedPointDefinition
-from kinematics.types import Positions
+from kinematics.core.types import Positions
 
 
 class SuspensionProvider(ABC):

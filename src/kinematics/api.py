@@ -1,10 +1,21 @@
 # In src/kinematics/api.py
-from typing import List
+from typing import Dict, List, Type
 
-from kinematics.geometry.types.base import SuspensionGeometry
+from kinematics.geometry.base import SuspensionGeometry
 from kinematics.solver.core import PointTargetSet, solve_sweep
 from kinematics.solver.manager import DerivedPointManager
-from kinematics.types import PROVIDER_REGISTRY, Positions
+from kinematics.core.types import Positions
+from kinematics.suspensions.base import SuspensionProvider
+from kinematics.suspensions.double_wishbone.geometry import DoubleWishboneGeometry
+from kinematics.suspensions.double_wishbone.provider import DoubleWishboneProvider
+
+# This registry maps a specific geometry class to the provider class
+# that knows how to handle its rules and constraints.
+PROVIDER_REGISTRY: Dict[Type, Type[SuspensionProvider]] = {
+    DoubleWishboneGeometry: DoubleWishboneProvider,
+    # When a MacPhersonProvider is created, it will be added here:
+    # MacPhersonGeometry: MacPhersonProvider,
+}
 
 
 def solve_kinematics(
@@ -20,12 +31,6 @@ def solve_kinematics(
     3. Sets up the derived point calculation engine.
     4. Calls the core solver to run the simulation sweep.
     """
-    # Ensure registries are populated
-    from kinematics.types import _populate_registries
-
-    if not PROVIDER_REGISTRY:
-        _populate_registries()
-
     # 1. Look up the provider class from the registry based on the geometry's type
     provider_class = PROVIDER_REGISTRY.get(type(geometry))
     if not provider_class:

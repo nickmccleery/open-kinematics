@@ -7,7 +7,7 @@ from kinematics.constraints.utils import make_point_point_distance, make_vector_
 from kinematics.geometry.constants import Direction
 from kinematics.geometry.points.ids import PointID
 from kinematics.geometry.utils import get_all_points
-from kinematics.points.derived import (
+from kinematics.derived_points import (
     get_axle_midpoint,
     get_wheel_center,
     get_wheel_inboard,
@@ -16,7 +16,7 @@ from kinematics.points.derived import (
 from kinematics.solver.manager import DerivedPointDefinition
 from kinematics.suspensions.base import SuspensionProvider
 from kinematics.suspensions.double_wishbone.geometry import DoubleWishboneGeometry
-from kinematics.types import Positions
+from kinematics.core.types import Positions
 
 
 class DoubleWishboneProvider(SuspensionProvider):

@@ -5,7 +5,7 @@ from kinematics.geometry.points.collections import (
     StrutPoints,
     WheelAxlePoints,
 )
-from kinematics.geometry.types.base import SuspensionGeometry
+from kinematics.geometry.base import SuspensionGeometry
 
 
 @dataclass

@@ -2,7 +2,7 @@ from collections import defaultdict
 from typing import Callable, Dict, List, Set, Tuple
 
 from kinematics.geometry.points.ids import PointID
-from kinematics.types import Position, Positions
+from kinematics.core.types import Position, Positions
 
 # A definition consists of the function to call and a set of its dependencies.
 DerivedPointDefinition = Tuple[Callable[[Positions], Position], Set[PointID]]
