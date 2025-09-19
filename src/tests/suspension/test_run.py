@@ -76,23 +76,25 @@ def test_run_solver(
 
     print("Solve complete, verifying constraints...")
 
-    # Get initial positions for comparison.
-    from kinematics.suspensions.double_wishbone.main import (
-        WheelConfig,
-        compute_derived_points,
-        create_initial_positions,
-        create_length_constraints,
+    # Get initial positions for comparison using the provider.
+    from kinematics.solver.derived_points import DerivedPointManager
+    from kinematics.suspensions.double_wishbone.provider import DoubleWishboneProvider
+
+    provider = DoubleWishboneProvider(geometry)
+    derived_point_manager = DerivedPointManager(
+        provider.get_derived_point_definitions()
     )
 
-    wheel_config = WheelConfig(
-        width=geometry.configuration.wheel.width,
-        offset=geometry.configuration.wheel.offset,
-        diameter=geometry.configuration.wheel.diameter,
-    )
-    initial_positions = create_initial_positions(geometry)
-    initial_positions = compute_derived_points(initial_positions, wheel_config)
-    length_constraints = create_length_constraints(initial_positions)
-    length_constraints = create_length_constraints(initial_positions)
+    initial_positions = provider.get_initial_positions()
+    initial_positions = derived_point_manager.update(initial_positions)
+
+    # Get only the length constraints for verification
+    all_constraints = provider.get_constraints(initial_positions)
+    from kinematics.constraints.types import PointPointDistance
+
+    length_constraints = [
+        c for c in all_constraints if isinstance(c, PointPointDistance)
+    ]
     target_point_id = PointID.WHEEL_CENTER
 
     # Verify constraints are maintained.
@@ -113,9 +115,9 @@ def test_run_solver(
         initial_target_point_position = initial_positions[target_point_id]
         target_z = initial_target_point_position[2] + displacement
 
-        assert (
-            np.abs(target_point_position[2] - target_z) < EPSILON_CHECK
-        ), f"Failed to maintain {target_point_id} at displacement {displacement}"
+        assert np.abs(target_point_position[2] - target_z) < EPSILON_CHECK, (
+            f"Failed to maintain {target_point_id} at displacement {displacement}"
+        )
 
     print("Creating animation...")
 
