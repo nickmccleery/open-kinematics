@@ -6,7 +6,7 @@ import pytest
 from kinematics.geometry.constants import CoordinateAxis
 from kinematics.geometry.loader import load_geometry
 from kinematics.geometry.points.ids import PointID
-from kinematics.solvers.core import PointTarget, PointTargetSet
+from kinematics.solver.core import PointTarget, PointTargetSet
 from kinematics.suspensions.double_wishbone.geometry import DoubleWishboneGeometry
 from kinematics.suspensions.double_wishbone.main import solve_suspension
 from visualization.debug import create_animation
@@ -77,7 +77,7 @@ def test_run_solver(
     print("Solve complete, verifying constraints...")
 
     # Get initial positions for comparison using the provider.
-    from kinematics.solver.derived_points import DerivedPointManager
+    from kinematics.solver.manager import DerivedPointManager
     from kinematics.suspensions.double_wishbone.provider import DoubleWishboneProvider
 
     provider = DoubleWishboneProvider(geometry)

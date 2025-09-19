@@ -8,7 +8,7 @@ from marshmallow_dataclass import class_schema
 import kinematics.geometry.exceptions as exc
 from kinematics.geometry.points.ids import PointID
 from kinematics.geometry.utils import get_all_points
-from kinematics.suspensions.types import GEOMETRY_TYPES, GeometryType
+from kinematics.types import GEOMETRY_TYPES, GeometryType
 
 
 def validate_geometry(geometry: GeometryType) -> None:
@@ -34,6 +34,12 @@ def load_geometry(file_path: Path) -> GeometryType:
         exc.GeometryFileError: For general file handling errors.
         exc.UnsupportedGeometryType: If the geometry type is not recognized.
     """
+    # Ensure registries are populated
+    from kinematics.types import _populate_registries
+
+    if not GEOMETRY_TYPES:
+        _populate_registries()
+
     if not file_path.exists():
         raise exc.GeometryFileNotFound(f"Geometry file not found: {file_path}")
 

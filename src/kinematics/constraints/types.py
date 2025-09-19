@@ -4,7 +4,7 @@ from numpy.typing import NDArray
 
 from kinematics.geometry.constants import CoordinateAxis
 from kinematics.geometry.points.ids import PointID
-from kinematics.types.state import Position
+from kinematics.types import Position
 
 
 class PointPointDistance(NamedTuple):

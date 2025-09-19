@@ -10,7 +10,7 @@ from kinematics.points.derived import (
     get_wheel_inboard,
     get_wheel_outboard,
 )
-from kinematics.solver.derived_points import DerivedPointManager
+from kinematics.solver.manager import DerivedPointManager
 
 
 @pytest.fixture

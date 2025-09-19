@@ -2,9 +2,9 @@
 from typing import List
 
 from kinematics.api import solve_kinematics
-from kinematics.solvers.core import PointTargetSet
+from kinematics.solver.core import PointTargetSet
 from kinematics.suspensions.double_wishbone.geometry import DoubleWishboneGeometry
-from kinematics.types.state import Positions
+from kinematics.types import Positions
 
 
 def solve_suspension(

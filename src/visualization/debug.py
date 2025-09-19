@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from kinematics.geometry.points.ids import PointID
-from kinematics.types.state import Positions
+from kinematics.types import Positions
 from visualization.main import SuspensionVisualizer
 
 

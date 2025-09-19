@@ -4,13 +4,13 @@ import pytest
 from kinematics.constraints.types import PointPointDistance
 from kinematics.geometry.constants import CoordinateAxis
 from kinematics.geometry.points.ids import PointID
-from kinematics.solvers.core import (
+from kinematics.solver.core import (
     PointTarget,
     PointTargetSet,
     SolverConfig,
     solve_sweep,
 )
-from kinematics.types.state import Positions
+from kinematics.types import Positions
 
 # Tolerance on position checks.
 TOL_CHECK = 1e-4

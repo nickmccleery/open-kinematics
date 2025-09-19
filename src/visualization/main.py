@@ -5,7 +5,7 @@ import numpy as np
 
 from kinematics.geometry.points.ids import PointID
 from kinematics.suspensions.double_wishbone.geometry import DoubleWishboneGeometry
-from kinematics.types.state import Positions
+from kinematics.types import Positions
 
 
 @dataclass

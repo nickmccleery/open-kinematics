@@ -13,10 +13,10 @@ from kinematics.points.derived import (
     get_wheel_inboard,
     get_wheel_outboard,
 )
-from kinematics.solver.derived_points import DerivedPointDefinition
+from kinematics.solver.manager import DerivedPointDefinition
 from kinematics.suspensions.base import SuspensionProvider
 from kinematics.suspensions.double_wishbone.geometry import DoubleWishboneGeometry
-from kinematics.types.state import Positions
+from kinematics.types import Positions
 
 
 class DoubleWishboneProvider(SuspensionProvider):

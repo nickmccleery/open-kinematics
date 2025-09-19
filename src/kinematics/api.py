@@ -2,10 +2,9 @@
 from typing import List
 
 from kinematics.geometry.types.base import SuspensionGeometry
-from kinematics.solver.derived_points import DerivedPointManager
-from kinematics.solvers.core import PointTargetSet, solve_sweep
-from kinematics.suspensions.types import PROVIDER_REGISTRY
-from kinematics.types.state import Positions
+from kinematics.solver.core import PointTargetSet, solve_sweep
+from kinematics.solver.manager import DerivedPointManager
+from kinematics.types import PROVIDER_REGISTRY, Positions
 
 
 def solve_kinematics(
@@ -21,6 +20,12 @@ def solve_kinematics(
     3. Sets up the derived point calculation engine.
     4. Calls the core solver to run the simulation sweep.
     """
+    # Ensure registries are populated
+    from kinematics.types import _populate_registries
+
+    if not PROVIDER_REGISTRY:
+        _populate_registries()
+
     # 1. Look up the provider class from the registry based on the geometry's type
     provider_class = PROVIDER_REGISTRY.get(type(geometry))
     if not provider_class:
