@@ -2,8 +2,12 @@
 from functools import partial
 from typing import Dict, List, Set
 
-from kinematics.constraints.types import Constraint, PointOnLine
-from kinematics.constraints.utils import make_point_point_distance, make_vector_angle
+from kinematics.constraints import (
+    Constraint,
+    PointOnLine,
+    make_point_point_distance,
+    make_vector_angle,
+)
 from kinematics.core.types import Positions
 from kinematics.derived_points import (
     get_axle_midpoint,

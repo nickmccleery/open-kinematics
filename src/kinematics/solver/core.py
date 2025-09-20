@@ -4,19 +4,7 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.optimize import least_squares
 
-from kinematics.constraints.ops import (
-    point_fixed_axis_residual,
-    point_on_line_residual,
-    point_point_distance_residual,
-    vector_angle_residual,
-)
-from kinematics.constraints.types import (
-    Constraint,
-    PointFixedAxis,
-    PointOnLine,
-    PointPointDistance,
-    VectorAngle,
-)
+from kinematics.constraints import Constraint
 from kinematics.core.types import Positions
 from kinematics.geometry.constants import CoordinateAxis
 from kinematics.geometry.points.ids import PointID
@@ -95,16 +83,8 @@ def solve_sweep(
 
         # 1. Geometry constraint residuals
         for c in constraints:
-            if isinstance(c, PointPointDistance):
-                residuals.append(point_point_distance_residual(all_positions, c))
-            elif isinstance(c, VectorAngle):
-                residuals.append(vector_angle_residual(all_positions, c))
-            elif isinstance(c, PointFixedAxis):
-                residuals.append(point_fixed_axis_residual(all_positions, c))
-            elif isinstance(c, PointOnLine):
-                residuals.append(point_on_line_residual(all_positions, c))
-            else:
-                raise TypeError(f"Unknown constraint type: {type(c)}")
+            # Extend is used to handle multi-residual constraints gracefully
+            residuals.extend(c.get_residual(all_positions))
 
         # 2. Target residuals
         for target in step_targets:

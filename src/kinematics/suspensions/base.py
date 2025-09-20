@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Dict, List, Set
 
-from kinematics.constraints.types import Constraint
+from kinematics.constraints import Constraint
 from kinematics.core.types import Positions
 from kinematics.geometry.base import SuspensionGeometry
 from kinematics.geometry.points.ids import PointID

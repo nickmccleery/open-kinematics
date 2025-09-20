@@ -90,7 +90,7 @@ def test_run_solver(
 
     # Get only the length constraints for verification
     all_constraints = provider.get_constraints(initial_positions)
-    from kinematics.constraints.types import PointPointDistance
+    from kinematics.constraints import PointPointDistance
 
     length_constraints = [
         c for c in all_constraints if isinstance(c, PointPointDistance)
