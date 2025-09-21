@@ -22,12 +22,12 @@ class DerivedPointManager:
 
     def __init__(self, definitions: Dict[PointID, DerivedPointDefinition]):
         self.definitions = definitions
-        self.dependency_graph = self._build_dependency_graph()
+        self.dependency_graph = self.build_dependency_graph()
 
         # This will raise an error if cycles are detected.
-        self.update_order = self._get_topological_sort()
+        self.update_order = self.get_topological_sort()
 
-    def _build_dependency_graph(self) -> Dict[PointID, Set[PointID]]:
+    def build_dependency_graph(self) -> Dict[PointID, Set[PointID]]:
         graph = defaultdict(set)
         for point_id, (_, dependencies) in self.definitions.items():
             graph[point_id].update(dependencies)
@@ -49,7 +49,7 @@ class DerivedPointManager:
         recursion_stack.remove(node)
         return False
 
-    def _get_topological_sort(self) -> List[PointID]:
+    def get_topological_sort(self) -> List[PointID]:
         """
         Performs a topological sort of the derived points to determine
         the correct calculation order.

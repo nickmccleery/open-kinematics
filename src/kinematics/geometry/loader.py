@@ -9,7 +9,6 @@ import kinematics.geometry.exceptions as exc
 from kinematics.points.main import PointID, get_all_points
 from kinematics.suspensions import DoubleWishboneGeometry, MacPhersonGeometry
 
-# Define geometry types directly here
 GeometryType = Union[DoubleWishboneGeometry, MacPhersonGeometry]
 
 GEOMETRY_TYPES: dict[str, Type[GeometryType]] = {
