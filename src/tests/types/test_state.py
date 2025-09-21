@@ -1,6 +1,6 @@
 import numpy as np
 
-from kinematics.points import PointID
+from kinematics.points.main import PointID
 from kinematics.primitives import GeometryDefinition, KinematicsState
 
 

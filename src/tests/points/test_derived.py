@@ -3,14 +3,14 @@ from functools import partial
 import numpy as np
 import pytest
 
-from kinematics.points import (
-    DerivedPointManager,
-    PointID,
+from kinematics.points.derived.definitions import (
     get_axle_midpoint,
     get_wheel_center,
     get_wheel_inboard,
     get_wheel_outboard,
 )
+from kinematics.points.derived.manager import DerivedPointManager
+from kinematics.points.main import PointID
 
 
 @pytest.fixture

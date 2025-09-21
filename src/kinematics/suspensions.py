@@ -10,14 +10,27 @@ from dataclasses import dataclass
 from functools import partial
 from typing import Dict, List, Set
 
-from .configs import SuspensionConfig, Units
-from .points import (
+from kinematics.configs import SuspensionConfig, Units
+from kinematics.constraints import (
+    PointOnLine,
+    make_point_point_distance,
+    make_vector_angle,
+)
+from kinematics.points.collections import (
     LowerWishbonePoints,
     StrutPoints,
     TrackRodPoints,
     UpperWishbonePoints,
     WheelAxlePoints,
 )
+from kinematics.points.derived.definitions import (
+    get_axle_midpoint,
+    get_wheel_center,
+    get_wheel_inboard,
+    get_wheel_outboard,
+)
+from kinematics.points.main import PointID, get_all_points
+from kinematics.primitives import Direction
 
 
 class SuspensionProvider(ABC):
@@ -119,15 +132,11 @@ class DoubleWishboneProvider(SuspensionProvider):
 
     def get_initial_positions(self):
         """Extracts all hard points from the geometry file into the positions dictionary."""
-        from .points import get_all_points
-
         points = get_all_points(self.geometry.hard_points)
         return {p.id: p.as_array() for p in points}
 
     def get_free_points(self) -> Set:
         """Defines which points the solver is allowed to move."""
-        from .points import PointID
-
         return {
             PointID.UPPER_WISHBONE_OUTBOARD,
             PointID.LOWER_WISHBONE_OUTBOARD,
@@ -141,14 +150,6 @@ class DoubleWishboneProvider(SuspensionProvider):
         """
         Defines all derived points, their calculation functions, and their dependencies.
         """
-        from .points import (
-            PointID,
-            get_axle_midpoint,
-            get_wheel_center,
-            get_wheel_inboard,
-            get_wheel_outboard,
-        )
-
         wheel_cfg = self.geometry.configuration.wheel
         return {
             PointID.AXLE_MIDPOINT: (
@@ -171,14 +172,6 @@ class DoubleWishboneProvider(SuspensionProvider):
 
     def get_constraints(self, initial_positions) -> List:
         """Builds the complete list of constraints that define the suspension's mechanics."""
-        from .constraints import (
-            PointOnLine,
-            make_point_point_distance,
-            make_vector_angle,
-        )
-        from .points import PointID
-        from .primitives import Direction
-
         constraints: List = []
 
         # 1. Fixed distance constraints between points

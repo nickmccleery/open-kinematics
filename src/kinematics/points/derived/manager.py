@@ -7,7 +7,7 @@ Moved from solver/manager.py as it's more logically part of the points subsystem
 from collections import defaultdict
 from typing import Callable, Dict, List, Set, Tuple
 
-from kinematics.points import PointID
+from kinematics.points.main import PointID
 from kinematics.primitives import Position, Positions
 
 # A definition consists of the function to call and a set of its dependencies.

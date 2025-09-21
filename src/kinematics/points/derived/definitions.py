@@ -6,9 +6,8 @@ such as wheel centers, midpoints, and offset positions.
 """
 
 from kinematics.math import normalize_vector
+from kinematics.points.main import PointID
 from kinematics.primitives import Position, Positions
-
-from .main import PointID
 
 
 def get_axle_midpoint(positions: Positions) -> Position:
