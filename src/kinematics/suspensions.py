@@ -29,7 +29,8 @@ from kinematics.points.derived.definitions import (
     get_wheel_inboard,
     get_wheel_outboard,
 )
-from kinematics.points.main import PointID, get_all_points
+from kinematics.points.ids import PointID
+from kinematics.points.utils import get_all_points
 from kinematics.primitives import Direction
 
 

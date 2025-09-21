@@ -8,7 +8,7 @@ from kinematics.math import (
     point_distance,
     update_positions_from_array,
 )
-from kinematics.points.main import PointID
+from kinematics.points.ids import PointID
 
 
 def test_point_distance():

@@ -7,7 +7,7 @@ Moved from solver/manager.py as it's more logically part of the points subsystem
 from collections import defaultdict
 from typing import Callable, Dict, List, Set, Tuple
 
-from kinematics.points.main import PointID
+from kinematics.points.ids import PointID
 from kinematics.primitives import Position, Positions
 
 # A definition consists of the function to call and a set of its dependencies.
@@ -33,7 +33,7 @@ class DerivedPointManager:
             graph[point_id].update(dependencies)
         return graph
 
-    def _detect_cycles_util(
+    def detect_cycles_util(
         self, node: PointID, visited: set, recursion_stack: set
     ) -> bool:
         visited.add(node)
@@ -41,7 +41,7 @@ class DerivedPointManager:
 
         for neighbor in self.dependency_graph.get(node, set()):
             if neighbor not in visited:
-                if self._detect_cycles_util(neighbor, visited, recursion_stack):
+                if self.detect_cycles_util(neighbor, visited, recursion_stack):
                     return True
             elif neighbor in recursion_stack:
                 return True  # Cycle detected
@@ -63,7 +63,7 @@ class DerivedPointManager:
 
         for node in nodes:
             if node not in visited:
-                if self._detect_cycles_util(node, visited, recursion_stack):
+                if self.detect_cycles_util(node, visited, recursion_stack):
                     raise ValueError(
                         "Circular dependency detected in derived point definitions."
                     )

@@ -5,7 +5,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from kinematics.math import compute_vector_angle, normalize_vector, point_distance
-from kinematics.points.main import PointID
+from kinematics.points.ids import PointID
 from kinematics.primitives import CoordinateAxis, Position, Positions
 
 

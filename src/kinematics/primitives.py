@@ -13,14 +13,31 @@ from typing import Dict, Set, TypeAlias
 
 import numpy as np
 
+from kinematics.points.ids import PointID
+
 # --- Core Data Types ---
 Position: TypeAlias = np.ndarray
 Positions: TypeAlias = Dict["PointID", Position]
 
 
+@dataclass
+class Point3D:
+    """Represents a 3D point in space with optional metadata."""
+
+    x: float
+    y: float
+    z: float
+    fixed: bool = False
+    id: PointID = PointID.NOT_ASSIGNED
+
+    def as_array(self) -> np.ndarray:
+        """Convert point to numpy array."""
+        return np.array([self.x, self.y, self.z])
+
+
 # --- Coordinate System ---
 class Direction:
-    """Cardinal direction vectors in 3D space."""
+    """Principal direction vectors in 3D space."""
 
     x = np.array([1, 0, 0])
     y = np.array([0, 1, 0])
@@ -54,4 +71,5 @@ class GeometryDefinition:
     """Defines the geometry of a suspension system."""
 
     hard_points: Positions
+    free_points: Set["PointID"]
     free_points: Set["PointID"]

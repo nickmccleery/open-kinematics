@@ -10,7 +10,7 @@ from kinematics.points.derived.definitions import (
     get_wheel_outboard,
 )
 from kinematics.points.derived.manager import DerivedPointManager
-from kinematics.points.main import PointID
+from kinematics.points.ids import PointID
 
 
 @pytest.fixture

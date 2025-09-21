@@ -6,7 +6,7 @@ such as wheel centers, midpoints, and offset positions.
 """
 
 from kinematics.math import normalize_vector
-from kinematics.points.main import PointID
+from kinematics.points.ids import PointID
 from kinematics.primitives import Position, Positions
 
 

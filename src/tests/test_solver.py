@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from kinematics.constraints import PointPointDistance
-from kinematics.points.main import PointID
+from kinematics.points.ids import PointID
 from kinematics.primitives import CoordinateAxis, Positions
 from kinematics.solver import PointTarget, PointTargetSet, SolverConfig, solve_sweep
 

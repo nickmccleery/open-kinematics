@@ -6,7 +6,8 @@ from marshmallow.exceptions import ValidationError
 from marshmallow_dataclass import class_schema
 
 import kinematics.geometry.exceptions as exc
-from kinematics.points.main import PointID, get_all_points
+from kinematics.points.ids import PointID
+from kinematics.points.utils import get_all_points
 from kinematics.suspensions import DoubleWishboneGeometry, MacPhersonGeometry
 
 GeometryType = Union[DoubleWishboneGeometry, MacPhersonGeometry]

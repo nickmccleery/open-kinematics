@@ -7,7 +7,8 @@ like wishbones, struts, track rods, etc.
 
 from dataclasses import dataclass
 
-from kinematics.points.main import Point3D, PointID
+from kinematics.points.ids import PointID
+from kinematics.primitives import Point3D
 
 
 @dataclass
