@@ -10,7 +10,7 @@ from typing import Callable, Dict, Set
 
 import numpy as np
 
-from kinematics.core.positions import Positions
+from kinematics.core import Positions
 from kinematics.points.ids import PointID
 
 # Function signature for computing a derived point position

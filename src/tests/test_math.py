@@ -1,6 +1,6 @@
 import numpy as np
 
-from kinematics.core.positions import Positions
+from kinematics.core import Positions
 from kinematics.math import (
     compute_midpoint,
     compute_vector_angle,

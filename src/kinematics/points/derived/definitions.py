@@ -5,10 +5,9 @@ Contains functions to calculate secondary points based on primary hard points,
 such as wheel centers, midpoints, and offset positions.
 """
 
-from kinematics.core.positions import Positions
+from kinematics.core import Position, Positions
 from kinematics.math import normalize_vector
 from kinematics.points.ids import PointID
-from kinematics.primitives import Position
 
 
 def get_axle_midpoint(positions: Positions) -> Position:

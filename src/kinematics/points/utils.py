@@ -1,4 +1,4 @@
-from kinematics.primitives import Point3D
+from kinematics.core import Point3D
 
 
 def get_all_points(obj) -> list[Point3D]:

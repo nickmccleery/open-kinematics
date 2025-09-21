@@ -6,7 +6,7 @@ Moved from solver/manager.py as it's more logically part of the points subsystem
 
 from typing import List
 
-from kinematics.core.positions import Positions
+from kinematics.core import Positions
 from kinematics.points.derived.spec import DerivedSpec
 from kinematics.points.ids import PointID
 

@@ -13,7 +13,7 @@ from kinematics.constraints import (
     make_point_point_distance,
     make_vector_angle,
 )
-from kinematics.core.positions import Positions
+from kinematics.core import Direction, Positions
 from kinematics.points.derived.definitions import (
     get_axle_midpoint,
     get_wheel_center,
@@ -23,7 +23,6 @@ from kinematics.points.derived.definitions import (
 from kinematics.points.derived.spec import DerivedSpec
 from kinematics.points.ids import PointID
 from kinematics.points.utils import get_all_points
-from kinematics.primitives import Direction
 from kinematics.suspensions.base import SuspensionProvider
 from kinematics.suspensions.models import DoubleWishboneGeometry
 

@@ -4,11 +4,11 @@ import numpy as np
 import pytest
 
 from kinematics.constraints import PointPointDistance
+from kinematics.core import CoordinateAxis
 from kinematics.geometry.loader import load_geometry
 from kinematics.main import solve_kinematics
 from kinematics.points.derived.manager import DerivedPointManager
 from kinematics.points.ids import PointID
-from kinematics.primitives import CoordinateAxis
 from kinematics.solver import PointTarget, PointTargetSet
 from kinematics.suspensions.models import DoubleWishboneGeometry
 from kinematics.suspensions.providers.double_wishbone import DoubleWishboneProvider

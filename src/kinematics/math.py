@@ -1,6 +1,6 @@
 import numpy as np
 
-from kinematics.primitives import Position
+from kinematics.core import Position
 
 
 def point_distance(p1: Position, p2: Position) -> float:

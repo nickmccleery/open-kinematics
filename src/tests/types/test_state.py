@@ -1,7 +1,7 @@
 import numpy as np
 
+from kinematics.core import GeometryDefinition, KinematicsState
 from kinematics.points.ids import PointID
-from kinematics.primitives import GeometryDefinition, KinematicsState
 
 
 def test_kinematics_state_construction():

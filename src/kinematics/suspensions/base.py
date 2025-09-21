@@ -8,7 +8,7 @@ orchestration logic, constraints, and derived point calculations.
 from abc import ABC, abstractmethod
 from typing import List, Set
 
-from kinematics.core.positions import Positions
+from kinematics.core import Positions
 from kinematics.points.derived.spec import DerivedSpec
 from kinematics.suspensions.models import SuspensionGeometry
 

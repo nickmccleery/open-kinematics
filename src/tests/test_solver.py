@@ -2,9 +2,8 @@ import numpy as np
 import pytest
 
 from kinematics.constraints import PointPointDistance
-from kinematics.core.positions import Positions
+from kinematics.core import CoordinateAxis, Positions
 from kinematics.points.ids import PointID
-from kinematics.primitives import CoordinateAxis
 from kinematics.solver import PointTarget, PointTargetSet, SolverConfig, solve_sweep
 
 # Tolerance on position checks.
