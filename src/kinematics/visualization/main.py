@@ -5,7 +5,7 @@ import numpy as np
 
 from kinematics.core import Positions
 from kinematics.points.ids import PointID
-from kinematics.suspensions.models import DoubleWishboneGeometry
+from kinematics.suspensions.double_wishbone.model import DoubleWishboneModel
 
 
 @dataclass
@@ -30,9 +30,7 @@ class WheelVisualization:
 
 
 class SuspensionVisualizer:
-    def __init__(
-        self, geometry: DoubleWishboneGeometry, wheel_config: WheelVisualization
-    ):
+    def __init__(self, geometry: DoubleWishboneModel, wheel_config: WheelVisualization):
         self.geometry = geometry
         self.wheel_config = wheel_config
         self.links = self.define_links()

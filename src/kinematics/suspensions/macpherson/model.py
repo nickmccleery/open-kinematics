@@ -1,7 +1,7 @@
 """
-Suspension geometry models - pure data structures.
+MacPherson strut suspension geometry models - pure data structures.
 
-Contains dataclasses/types for each suspension geometry (e.g., DoubleWishboneGeometry).
+Contains dataclasses/types for MacPherson strut geometry.
 No imports from solver/constraints/visualization - only configuration and point collections.
 """
 
@@ -12,8 +12,6 @@ from kinematics.configs import SuspensionConfig, Units
 from kinematics.points.collections import (
     LowerWishbonePoints,
     StrutPoints,
-    TrackRodPoints,
-    UpperWishbonePoints,
     WheelAxlePoints,
 )
 
@@ -34,26 +32,6 @@ class SuspensionGeometry(ABC):
 
 
 @dataclass
-class DoubleWishboneHardPoints:
-    """Hard point collection for double wishbone suspension."""
-
-    lower_wishbone: LowerWishbonePoints
-    upper_wishbone: UpperWishbonePoints
-    track_rod: TrackRodPoints
-    wheel_axle: WheelAxlePoints
-
-
-@dataclass
-class DoubleWishboneGeometry(SuspensionGeometry):
-    """Double wishbone suspension geometry definition."""
-
-    hard_points: DoubleWishboneHardPoints
-
-    def validate(self) -> bool:
-        return True
-
-
-@dataclass
 class MacPhersonHardPoints:
     """Hard point collection for MacPherson strut suspension."""
 
@@ -63,7 +41,7 @@ class MacPhersonHardPoints:
 
 
 @dataclass
-class MacPhersonGeometry(SuspensionGeometry):
+class MacPhersonModel(SuspensionGeometry):
     """MacPherson strut suspension geometry definition."""
 
     hard_points: MacPhersonHardPoints

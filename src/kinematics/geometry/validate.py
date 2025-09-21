@@ -10,9 +10,10 @@ from marshmallow.exceptions import ValidationError
 
 from kinematics.points.ids import PointID
 from kinematics.points.utils import get_all_points
-from kinematics.suspensions.models import DoubleWishboneGeometry, MacPhersonGeometry
+from kinematics.suspensions.double_wishbone.model import DoubleWishboneModel
+from kinematics.suspensions.macpherson.model import MacPhersonModel
 
-GeometryType = Union[DoubleWishboneGeometry, MacPhersonGeometry]
+GeometryType = Union[DoubleWishboneModel, MacPhersonModel]
 
 
 def validate_geometry(geometry: GeometryType) -> None:

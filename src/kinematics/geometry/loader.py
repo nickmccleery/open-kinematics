@@ -13,10 +13,10 @@ from marshmallow_dataclass import class_schema
 
 from kinematics.geometry import exceptions as exc
 from kinematics.geometry.validate import GeometryType, validate_geometry
-from kinematics.suspensions.base import SuspensionProvider
-from kinematics.suspensions.registry import REGISTRY
+from kinematics.suspensions.base.provider_base import BaseProvider
+from kinematics.suspensions.base.registry import build_registry
 
-LoadResult = Tuple[GeometryType, Type[SuspensionProvider]]
+LoadResult = Tuple[GeometryType, Type[BaseProvider]]
 
 
 def load_geometry(file_path: Path) -> LoadResult:
@@ -50,13 +50,14 @@ def load_geometry(file_path: Path) -> LoadResult:
             raise exc.InvalidGeometryFileContents("Geometry type not specified in file")
 
         geometry_type_key = yaml_data.pop("type")
-        if geometry_type_key not in REGISTRY:
+        registry = build_registry()
+        if geometry_type_key not in registry:
             raise exc.UnsupportedGeometryType(
                 f"Unsupported geometry type: {geometry_type_key}"
             )
 
         # Get model and provider classes from registry
-        model_class, provider_class = REGISTRY[geometry_type_key]
+        model_class, provider_class = registry[geometry_type_key]
 
         # Create schema for the model and load the data
         GeometrySchema = class_schema(model_class)

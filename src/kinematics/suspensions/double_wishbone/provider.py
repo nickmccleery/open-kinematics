@@ -6,9 +6,10 @@ and derived point calculations specific to double wishbone suspensions.
 """
 
 from functools import partial
-from typing import List, Set
+from typing import Sequence
 
 from kinematics.constraints import (
+    Constraint,
     PointOnLine,
     make_point_point_distance,
     make_vector_angle,
@@ -23,36 +24,34 @@ from kinematics.points.derived.definitions import (
 from kinematics.points.derived.spec import DerivedSpec
 from kinematics.points.ids import PointID
 from kinematics.points.utils import get_all_points
-from kinematics.suspensions.base import SuspensionProvider
-from kinematics.suspensions.models import DoubleWishboneGeometry
+from kinematics.suspensions.base.provider_base import BaseProvider
+from kinematics.suspensions.double_wishbone.model import DoubleWishboneModel
 
 
-class DoubleWishboneProvider(SuspensionProvider):
-    """The concrete implementation of the SuspensionProvider for Double Wishbone geometry."""
+class DoubleWishboneProvider(BaseProvider):
+    """The concrete implementation of the BaseProvider for Double Wishbone geometry."""
 
-    def __init__(self, geometry: DoubleWishboneGeometry):
-        super().__init__(geometry)
-        # Add type hint for more specific geometry access
-        self.geometry: DoubleWishboneGeometry = geometry
+    def __init__(self, geometry: DoubleWishboneModel):
+        self.geometry: DoubleWishboneModel = geometry
 
-    def get_initial_positions(self) -> Positions:
+    def initial_positions(self) -> Positions:
         """Extracts all hard points from the geometry file into a Positions object."""
         points = get_all_points(self.geometry.hard_points)
         data = {p.id: p.as_array() for p in points}
         return Positions(data)
 
-    def get_free_points(self) -> Set:
+    def free_points(self) -> Sequence[PointID]:
         """Defines which points the solver is allowed to move."""
-        return {
+        return [
             PointID.UPPER_WISHBONE_OUTBOARD,
             PointID.LOWER_WISHBONE_OUTBOARD,
             PointID.AXLE_INBOARD,
             PointID.AXLE_OUTBOARD,
             PointID.TRACKROD_OUTBOARD,
             PointID.TRACKROD_INBOARD,
-        }
+        ]
 
-    def get_derived_point_definitions(self) -> DerivedSpec:
+    def derived_spec(self) -> DerivedSpec:
         """
         Returns a DerivedSpec with all derived points, their calculation functions, and dependencies.
         """
@@ -80,9 +79,10 @@ class DoubleWishboneProvider(SuspensionProvider):
 
         return DerivedSpec(functions=functions, dependencies=dependencies)
 
-    def get_constraints(self, initial_positions: Positions) -> List:
+    def constraints(self) -> list[Constraint]:
         """Builds the complete list of constraints that define the suspension's mechanics."""
-        constraints: List = []
+        constraints: list[Constraint] = []
+        initial_positions = self.initial_positions()
 
         # 1. Fixed distance constraints between points
         length_pairs = [
