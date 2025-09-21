@@ -4,10 +4,9 @@ from typing import Set, Union
 import numpy as np
 from numpy.typing import NDArray
 
-from kinematics.core.types import Position, Positions
-from kinematics.geometry.constants import CoordinateAxis
-from kinematics.geometry.points.ids import PointID
 from kinematics.math import compute_vector_angle, normalize_vector, point_distance
+from kinematics.points import PointID
+from kinematics.primitives import CoordinateAxis, Position, Positions
 
 
 class BaseConstraint(ABC):

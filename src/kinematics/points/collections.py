@@ -1,11 +1,19 @@
+"""
+Point collection classes for different suspension components.
+
+Each collection represents the points that define a specific suspension component
+like wishbones, struts, track rods, etc.
+"""
+
 from dataclasses import dataclass
 
-from kinematics.geometry.base import Point3D
-from kinematics.geometry.points.ids import PointID
+from .main import Point3D, PointID
 
 
 @dataclass
 class LowerWishbonePoints:
+    """Points defining the lower wishbone/control arm geometry."""
+
     inboard_front: Point3D
     inboard_rear: Point3D
     outboard: Point3D
@@ -21,6 +29,8 @@ class LowerWishbonePoints:
 
 @dataclass
 class UpperWishbonePoints:
+    """Points defining the upper wishbone/control arm geometry."""
+
     inboard_front: Point3D
     inboard_rear: Point3D
     outboard: Point3D
@@ -36,6 +46,8 @@ class UpperWishbonePoints:
 
 @dataclass
 class StrutPoints:
+    """Points defining the strut geometry."""
+
     inboard: Point3D
     outboard: Point3D
 
@@ -48,6 +60,8 @@ class StrutPoints:
 
 @dataclass
 class WheelAxlePoints:
+    """Points defining the wheel axle geometry."""
+
     inner: Point3D
     outer: Point3D
 
@@ -58,6 +72,8 @@ class WheelAxlePoints:
 
 @dataclass
 class TrackRodPoints:
+    """Points defining the track rod/tie rod geometry."""
+
     inner: Point3D
     outer: Point3D
 

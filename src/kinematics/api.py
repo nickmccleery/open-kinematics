@@ -1,13 +1,15 @@
 # In src/kinematics/api.py
 from typing import Dict, List, Type
 
-from kinematics.core.types import Positions
-from kinematics.geometry.base import SuspensionGeometry
+from kinematics.points import DerivedPointManager
+from kinematics.primitives import Positions
 from kinematics.solver.core import PointTargetSet, solve_sweep
-from kinematics.solver.manager import DerivedPointManager
-from kinematics.suspensions.base import SuspensionProvider
-from kinematics.suspensions.double_wishbone.geometry import DoubleWishboneGeometry
-from kinematics.suspensions.double_wishbone.provider import DoubleWishboneProvider
+from kinematics.suspensions import (
+    DoubleWishboneGeometry,
+    DoubleWishboneProvider,
+    SuspensionGeometry,
+    SuspensionProvider,
+)
 
 # This registry maps a specific geometry class to the provider class
 # that knows how to handle its rules and constraints.

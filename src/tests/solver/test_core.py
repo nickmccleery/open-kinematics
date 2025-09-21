@@ -2,9 +2,8 @@ import numpy as np
 import pytest
 
 from kinematics.constraints import PointPointDistance
-from kinematics.core.types import Positions
-from kinematics.geometry.constants import CoordinateAxis
-from kinematics.geometry.points.ids import PointID
+from kinematics.points import PointID
+from kinematics.primitives import CoordinateAxis, Positions
 from kinematics.solver.core import (
     PointTarget,
     PointTargetSet,

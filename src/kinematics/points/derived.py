@@ -1,6 +1,14 @@
-from kinematics.core.types import Position, Positions
-from kinematics.geometry.points.ids import PointID
+"""
+Derived point calculations for suspension kinematics.
+
+Contains functions to calculate secondary points based on primary hard points,
+such as wheel centers, midpoints, and offset positions.
+"""
+
 from kinematics.math import normalize_vector
+from kinematics.primitives import Position, Positions
+
+from .main import PointID
 
 
 def get_axle_midpoint(positions: Positions) -> Position:

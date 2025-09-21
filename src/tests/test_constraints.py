@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from kinematics.constraints import make_point_point_distance, make_vector_angle
-from kinematics.geometry.points.ids import PointID
+from kinematics.points import PointID
 
 
 @pytest.fixture

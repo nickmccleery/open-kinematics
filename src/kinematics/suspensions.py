@@ -1,26 +1,112 @@
-# In src/kinematics/suspensions/double_wishbone/provider.py
+"""
+Suspension geometry definitions and concrete implementations.
+
+Contains the base suspension geometry class and all concrete suspension
+type implementations like Double Wishbone and MacPherson strut.
+"""
+
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from functools import partial
 from typing import Dict, List, Set
 
-from kinematics.constraints import (
-    Constraint,
-    PointOnLine,
-    make_point_point_distance,
-    make_vector_angle,
+from .configs import SuspensionConfig, Units
+from .points import (
+    LowerWishbonePoints,
+    StrutPoints,
+    TrackRodPoints,
+    UpperWishbonePoints,
+    WheelAxlePoints,
 )
-from kinematics.core.types import Positions
-from kinematics.derived_points import (
-    get_axle_midpoint,
-    get_wheel_center,
-    get_wheel_inboard,
-    get_wheel_outboard,
-)
-from kinematics.geometry.constants import Direction
-from kinematics.geometry.points.ids import PointID
-from kinematics.geometry.utils import get_all_points
-from kinematics.solver.manager import DerivedPointDefinition
-from kinematics.suspensions.base import SuspensionProvider
-from kinematics.suspensions.double_wishbone.geometry import DoubleWishboneGeometry
+
+
+class SuspensionProvider(ABC):
+    """
+    Abstract base class defining the interface for a suspension type.
+
+    Each implementation provides the specific rules (constraints, free points,
+    derived point definitions, etc.) for its corresponding geometry.
+    """
+
+    def __init__(self, geometry: "SuspensionGeometry"):
+        self.geometry = geometry
+
+    @abstractmethod
+    def get_initial_positions(self) -> Dict:
+        """Constructs the initial dictionary of 3D point positions from the geometry."""
+        ...
+
+    @abstractmethod
+    def get_free_points(self) -> Set:
+        """Returns the set of PointIDs that the solver is allowed to move."""
+        ...
+
+    @abstractmethod
+    def get_constraints(self, initial_positions) -> List:
+        """Returns the full list of constraints that define the suspension's movement."""
+        ...
+
+    @abstractmethod
+    def get_derived_point_definitions(self) -> Dict:
+        """
+        Returns a dictionary mapping derived PointIDs to their update function
+        and dependencies.
+        """
+        ...
+
+
+@dataclass
+class SuspensionGeometry:
+    """
+    Base class for all suspension geometry types.
+    """
+
+    name: str
+    version: str
+    units: Units
+    configuration: SuspensionConfig
+
+    def validate(self) -> bool:
+        raise NotImplementedError("Subclasses must implement validate()")
+
+
+@dataclass
+class DoubleWishboneHardPoints:
+    """Hard point collection for double wishbone suspension."""
+
+    lower_wishbone: LowerWishbonePoints
+    upper_wishbone: UpperWishbonePoints
+    track_rod: TrackRodPoints
+    wheel_axle: WheelAxlePoints
+
+
+@dataclass
+class DoubleWishboneGeometry(SuspensionGeometry):
+    """Double wishbone suspension geometry definition."""
+
+    hard_points: DoubleWishboneHardPoints
+
+    def validate(self) -> bool:
+        return True
+
+
+@dataclass
+class MacPhersonHardPoints:
+    """Hard point collection for MacPherson strut suspension."""
+
+    lower_wishbone: LowerWishbonePoints
+    strut: StrutPoints
+    wheel_axle: WheelAxlePoints
+
+
+@dataclass
+class MacPhersonGeometry(SuspensionGeometry):
+    """MacPherson strut suspension geometry definition."""
+
+    hard_points: MacPhersonHardPoints
+
+    def validate(self) -> bool:
+        return True
 
 
 class DoubleWishboneProvider(SuspensionProvider):
@@ -31,13 +117,17 @@ class DoubleWishboneProvider(SuspensionProvider):
         # Add type hint for more specific geometry access
         self.geometry: DoubleWishboneGeometry = geometry
 
-    def get_initial_positions(self) -> Positions:
+    def get_initial_positions(self):
         """Extracts all hard points from the geometry file into the positions dictionary."""
+        from .points import get_all_points
+
         points = get_all_points(self.geometry.hard_points)
         return {p.id: p.as_array() for p in points}
 
-    def get_free_points(self) -> Set[PointID]:
+    def get_free_points(self) -> Set:
         """Defines which points the solver is allowed to move."""
+        from .points import PointID
+
         return {
             PointID.UPPER_WISHBONE_OUTBOARD,
             PointID.LOWER_WISHBONE_OUTBOARD,
@@ -47,10 +137,18 @@ class DoubleWishboneProvider(SuspensionProvider):
             PointID.TRACKROD_INBOARD,
         }
 
-    def get_derived_point_definitions(self) -> Dict[PointID, DerivedPointDefinition]:
+    def get_derived_point_definitions(self) -> Dict:
         """
         Defines all derived points, their calculation functions, and their dependencies.
         """
+        from .points import (
+            PointID,
+            get_axle_midpoint,
+            get_wheel_center,
+            get_wheel_inboard,
+            get_wheel_outboard,
+        )
+
         wheel_cfg = self.geometry.configuration.wheel
         return {
             PointID.AXLE_MIDPOINT: (
@@ -71,9 +169,17 @@ class DoubleWishboneProvider(SuspensionProvider):
             ),
         }
 
-    def get_constraints(self, initial_positions: Positions) -> List[Constraint]:
+    def get_constraints(self, initial_positions) -> List:
         """Builds the complete list of constraints that define the suspension's mechanics."""
-        constraints: List[Constraint] = []
+        from .constraints import (
+            PointOnLine,
+            make_point_point_distance,
+            make_vector_angle,
+        )
+        from .points import PointID
+        from .primitives import Direction
+
+        constraints: List = []
 
         # 1. Fixed distance constraints between points
         length_pairs = [

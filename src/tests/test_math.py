@@ -1,6 +1,5 @@
 import numpy as np
 
-from kinematics.geometry.points.ids import PointID
 from kinematics.math import (
     compute_midpoint,
     compute_vector_angle,
@@ -9,6 +8,7 @@ from kinematics.math import (
     point_distance,
     update_positions_from_array,
 )
+from kinematics.points import PointID
 
 
 def test_point_distance():
