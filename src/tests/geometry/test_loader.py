@@ -5,7 +5,7 @@ import yaml
 
 import kinematics.geometry.exceptions as exc
 from kinematics.geometry.loader import load_geometry
-from kinematics.suspensions import SuspensionGeometry
+from kinematics.suspensions.models import SuspensionGeometry
 
 
 @pytest.fixture
@@ -32,8 +32,9 @@ def invalid_geometry_file(tmp_path: Path):
 
 
 def test_load_geometry_valid(double_wishbone_geometry_file):
-    result = load_geometry(double_wishbone_geometry_file)
-    assert isinstance(result, SuspensionGeometry)
+    geometry, provider_class = load_geometry(double_wishbone_geometry_file)
+    assert isinstance(geometry, SuspensionGeometry)
+    assert provider_class is not None
 
 
 def test_load_geometry_empty(empty_geometry_file):

@@ -1,9 +1,6 @@
-from typing import Dict
-
 import numpy as np
 
-from kinematics.points.ids import PointID
-from kinematics.primitives import Position, Positions
+from kinematics.primitives import Position
 
 
 def point_distance(p1: Position, p2: Position) -> float:
@@ -22,33 +19,3 @@ def compute_vector_angle(v1: Position, v2: Position) -> float:
     v1_norm = normalize_vector(v1)
     v2_norm = normalize_vector(v2)
     return float(np.arccos(np.clip(np.dot(v1_norm, v2_norm), -1.0, 1.0)))
-
-
-def get_positions_as_array(
-    positions: Dict[PointID, Position],
-    point_ids: list[PointID],
-) -> np.ndarray:
-    """
-    Args:
-        positions: Dictionary mapping point IDs to their positions.
-        point_ids: List of point IDs to extract.
-
-    Returns:
-        Array of shape (n, 3) containing the positions in order.
-    """
-    return np.array([positions[pid] for pid in point_ids])
-
-
-def update_positions_from_array(
-    positions: Positions,
-    point_ids: list[PointID],
-    array: np.ndarray,
-) -> None:
-    """
-    Args:
-        positions: Dictionary to update with new positions.
-        point_ids: List of point IDs to update.
-        array: Array of shape (n, 3) containing new positions.
-    """
-    for i, pid in enumerate(point_ids):
-        positions[pid] = array[i].copy()

@@ -4,14 +4,11 @@ Derived point manager for handling point calculations with dependency resolution
 Moved from solver/manager.py as it's more logically part of the points subsystem.
 """
 
-from collections import defaultdict
-from typing import Callable, Dict, List, Set, Tuple
+from typing import List
 
+from kinematics.core.positions import Positions
+from kinematics.points.derived.spec import DerivedSpec
 from kinematics.points.ids import PointID
-from kinematics.primitives import Position, Positions
-
-# A definition consists of the function to call and a set of its dependencies.
-DerivedPointDefinition = Tuple[Callable[[Positions], Position], Set[PointID]]
 
 
 class DerivedPointManager:
@@ -20,18 +17,12 @@ class DerivedPointManager:
     dependency graph to ensure the correct update order.
     """
 
-    def __init__(self, definitions: Dict[PointID, DerivedPointDefinition]):
-        self.definitions = definitions
-        self.dependency_graph = self.build_dependency_graph()
+    def __init__(self, spec: DerivedSpec):
+        self.spec = spec
+        self.dependency_graph = spec.dependencies
 
         # This will raise an error if cycles are detected.
         self.update_order = self.get_topological_sort()
-
-    def build_dependency_graph(self) -> Dict[PointID, Set[PointID]]:
-        graph = defaultdict(set)
-        for point_id, (_, dependencies) in self.definitions.items():
-            graph[point_id].update(dependencies)
-        return graph
 
     def detect_cycles_util(
         self, node: PointID, visited: set, recursion_stack: set
@@ -78,12 +69,12 @@ class DerivedPointManager:
 
             # Recurse on dependencies that are also derived points
             for dep in self.dependency_graph.get(node, set()):
-                if dep in self.definitions:
+                if dep in self.spec.functions:
                     dfs(dep)
 
             order.append(node)
 
-        for point_id in self.definitions:
+        for point_id in self.spec.functions:
             if point_id not in visited:
                 dfs(point_id)
 
@@ -102,7 +93,7 @@ class DerivedPointManager:
         """
         updated_positions = positions.copy()
         for point_id in self.update_order:
-            update_func, _ = self.definitions[point_id]
-            # The update function is called with the progressively updated dictionary
-            updated_positions[point_id] = update_func(updated_positions)
+            update_func = self.spec.functions[point_id]
+            new_position = update_func(updated_positions)
+            updated_positions[point_id] = new_position
         return updated_positions

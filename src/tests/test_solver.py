@@ -2,8 +2,9 @@ import numpy as np
 import pytest
 
 from kinematics.constraints import PointPointDistance
+from kinematics.core.positions import Positions
 from kinematics.points.ids import PointID
-from kinematics.primitives import CoordinateAxis, Positions
+from kinematics.primitives import CoordinateAxis
 from kinematics.solver import PointTarget, PointTargetSet, SolverConfig, solve_sweep
 
 # Tolerance on position checks.
@@ -12,11 +13,12 @@ TOL_CHECK = 1e-4
 
 @pytest.fixture
 def simple_positions():
-    return {
+    positions_dict = {
         PointID.LOWER_WISHBONE_INBOARD_FRONT: np.array([-1.0, 0.0, 0.0]),
         PointID.LOWER_WISHBONE_INBOARD_REAR: np.array([1.0, 0.0, 0.0]),
         PointID.LOWER_WISHBONE_OUTBOARD: np.array([0.0, 1.0, 0.0]),
     }
+    return Positions(positions_dict)
 
 
 @pytest.fixture

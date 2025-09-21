@@ -3,12 +3,15 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from kinematics.constraints import PointPointDistance
 from kinematics.geometry.loader import load_geometry
 from kinematics.main import solve_kinematics
+from kinematics.points.derived.manager import DerivedPointManager
 from kinematics.points.ids import PointID
 from kinematics.primitives import CoordinateAxis
 from kinematics.solver import PointTarget, PointTargetSet
-from kinematics.suspensions import DoubleWishboneGeometry
+from kinematics.suspensions.models import DoubleWishboneGeometry
+from kinematics.suspensions.providers.double_wishbone import DoubleWishboneProvider
 from kinematics.visualization.debug import create_animation
 from kinematics.visualization.main import SuspensionVisualizer, WheelVisualization
 
@@ -67,7 +70,7 @@ def test_run_solver(
 ) -> None:
     hub_displacements, _ = displacements
 
-    geometry = load_geometry(double_wishbone_geometry_file)
+    geometry, _ = load_geometry(double_wishbone_geometry_file)
     if not isinstance(geometry, DoubleWishboneGeometry):
         raise ValueError("Invalid geometry type")
 
@@ -77,8 +80,6 @@ def test_run_solver(
     print("Solve complete, verifying constraints...")
 
     # Get initial positions for comparison using the provider.
-    from kinematics.points.derived.manager import DerivedPointManager
-    from kinematics.suspensions import DoubleWishboneProvider
 
     provider = DoubleWishboneProvider(geometry)
     derived_point_manager = DerivedPointManager(
@@ -90,7 +91,6 @@ def test_run_solver(
 
     # Get only the length constraints for verification
     all_constraints = provider.get_constraints(initial_positions)
-    from kinematics.constraints import PointPointDistance
 
     length_constraints = [
         c for c in all_constraints if isinstance(c, PointPointDistance)

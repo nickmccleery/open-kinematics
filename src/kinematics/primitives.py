@@ -9,15 +9,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import IntEnum
-from typing import Dict, Set, TypeAlias
+from typing import Set, TypeAlias
 
 import numpy as np
 
+from kinematics.core.positions import Positions
 from kinematics.points.ids import PointID
 
 # --- Core Data Types ---
 Position: TypeAlias = np.ndarray
-Positions: TypeAlias = Dict["PointID", Position]
 
 
 @dataclass

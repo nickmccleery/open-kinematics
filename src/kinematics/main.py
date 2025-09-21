@@ -1,22 +1,10 @@
-from typing import Dict, List, Type
+from typing import List
 
+from kinematics.core.positions import Positions
 from kinematics.points.derived.manager import DerivedPointManager
-from kinematics.primitives import Positions
 from kinematics.solver import PointTargetSet, solve_sweep
-from kinematics.suspensions import (
-    DoubleWishboneGeometry,
-    DoubleWishboneProvider,
-    SuspensionGeometry,
-    SuspensionProvider,
-)
-
-# This registry maps a specific geometry class to the provider class
-# that knows how to handle its rules and constraints.
-PROVIDER_REGISTRY: Dict[Type, Type[SuspensionProvider]] = {
-    DoubleWishboneGeometry: DoubleWishboneProvider,
-    # When a MacPhersonProvider is created, it will be added here:
-    # MacPhersonGeometry: MacPhersonProvider,
-}
+from kinematics.suspensions.models import SuspensionGeometry
+from kinematics.suspensions.registry import REGISTRY
 
 
 def solve_kinematics(
@@ -33,7 +21,14 @@ def solve_kinematics(
     4. Calls the core solver to run the simulation sweep.
     """
     # 1. Look up the provider class from the registry based on the geometry's type
-    provider_class = PROVIDER_REGISTRY.get(type(geometry))
+    provider_class = None
+
+    # Find the geometry type in registry
+    for type_name, (model_cls, provider_cls) in REGISTRY.items():
+        if isinstance(geometry, model_cls):
+            provider_class = provider_cls
+            break
+
     if not provider_class:
         raise NotImplementedError(
             f"No provider registered for geometry type: {type(geometry).__name__}"
@@ -42,10 +37,9 @@ def solve_kinematics(
     # 2. Instantiate the provider for this specific geometry instance
     provider = provider_class(geometry)
 
-    # 3. Instantiate the manager for derived points using definitions from the provider
-    derived_point_manager = DerivedPointManager(
-        provider.get_derived_point_definitions()
-    )
+    # 3. Instantiate the manager for derived points using spec from the provider
+    derived_spec = provider.get_derived_point_definitions()
+    derived_point_manager = DerivedPointManager(derived_spec)
 
     # 4. Get the initial state and rules from the provider
     initial_positions = provider.get_initial_positions()

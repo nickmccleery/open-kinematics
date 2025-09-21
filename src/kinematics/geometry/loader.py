@@ -1,31 +1,25 @@
+"""
+YAML geometry loader with validation.
+
+Handles file I/O, schema parsing, and geometry validation.
+"""
+
 from pathlib import Path
-from typing import Type, Union, cast
+from typing import Tuple, Type, cast
 
 import yaml
 from marshmallow.exceptions import ValidationError
 from marshmallow_dataclass import class_schema
 
-import kinematics.geometry.exceptions as exc
-from kinematics.points.ids import PointID
-from kinematics.points.utils import get_all_points
-from kinematics.suspensions import DoubleWishboneGeometry, MacPhersonGeometry
+from kinematics.geometry import exceptions as exc
+from kinematics.geometry.validate import GeometryType, validate_geometry
+from kinematics.suspensions.base import SuspensionProvider
+from kinematics.suspensions.registry import REGISTRY
 
-GeometryType = Union[DoubleWishboneGeometry, MacPhersonGeometry]
-
-GEOMETRY_TYPES: dict[str, Type[GeometryType]] = {
-    "DOUBLE_WISHBONE": DoubleWishboneGeometry,
-    "MACPHERSON_STRUT": MacPhersonGeometry,
-}
+LoadResult = Tuple[GeometryType, Type[SuspensionProvider]]
 
 
-def validate_geometry(geometry: GeometryType) -> None:
-    points = get_all_points(geometry.hard_points)
-    for point in points:
-        if point.id is PointID.NOT_ASSIGNED:
-            raise ValidationError("Found unrecognized point ID in geometry.")
-
-
-def load_geometry(file_path: Path) -> GeometryType:
+def load_geometry(file_path: Path) -> LoadResult:
     """
     Load suspension geometry from a YAML file.
 
@@ -33,7 +27,7 @@ def load_geometry(file_path: Path) -> GeometryType:
         file_path: Path to the YAML geometry file.
 
     Returns:
-        Loaded and validated geometry object
+        Tuple of (loaded geometry, provider class)
 
     Raises:
         exc.GeometryFileNotFound: If the file doesn't exist.
@@ -56,20 +50,22 @@ def load_geometry(file_path: Path) -> GeometryType:
             raise exc.InvalidGeometryFileContents("Geometry type not specified in file")
 
         geometry_type_key = yaml_data.pop("type")
-        if geometry_type_key not in GEOMETRY_TYPES:
+        if geometry_type_key not in REGISTRY:
             raise exc.UnsupportedGeometryType(
                 f"Unsupported geometry type: {geometry_type_key}"
             )
 
-        # Actual geometry loading.
-        geometry_type = GEOMETRY_TYPES[geometry_type_key]
-        GeometrySchema = class_schema(geometry_type)
+        # Get model and provider classes from registry
+        model_class, provider_class = REGISTRY[geometry_type_key]
+
+        # Create schema for the model and load the data
+        GeometrySchema = class_schema(model_class)
         geometry = cast(GeometryType, GeometrySchema().load(yaml_data))
 
-        # Validate the geometry.
+        # Validate the geometry
         validate_geometry(geometry)
 
-        return geometry
+        return geometry, provider_class
 
     except yaml.YAMLError as e:
         raise exc.GeometryFileError(f"Error parsing geometry file: {e}")

@@ -5,8 +5,9 @@ from numpy.typing import NDArray
 from scipy.optimize import least_squares
 
 from kinematics.constraints import Constraint
+from kinematics.core.positions import Positions
 from kinematics.points.ids import PointID
-from kinematics.primitives import CoordinateAxis, Positions
+from kinematics.primitives import CoordinateAxis
 
 AxisVector = Annotated[NDArray[np.float64], "shape=(3,)"]
 
@@ -56,15 +57,15 @@ def solve_sweep(
 
     def get_free_array_from_positions(positions: Positions) -> np.ndarray:
         """Extracts the coordinates of free points into a flat array for the solver."""
-        return np.concatenate([positions[pid] for pid in free_point_ids])
+        return positions.array(free_point_ids)
 
     def update_positions_from_free_array(
         positions: Positions, free_array: np.ndarray
     ) -> Positions:
-        """Updates the positions dictionary with new values for the free points."""
-        for i, pid in enumerate(free_point_ids):
-            positions[pid] = free_array[i * 3 : (i + 1) * 3]
-        return positions
+        """Updates the positions with new values for the free points."""
+        updated = positions.copy()
+        updated.update_from_array(free_point_ids, free_array)
+        return updated
 
     def compute_residuals(
         free_array: np.ndarray, step_targets: List[PointTarget]

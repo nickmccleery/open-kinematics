@@ -1,12 +1,11 @@
 import numpy as np
 
+from kinematics.core.positions import Positions
 from kinematics.math import (
     compute_midpoint,
     compute_vector_angle,
-    get_positions_as_array,
     normalize_vector,
     point_distance,
-    update_positions_from_array,
 )
 from kinematics.points.ids import PointID
 
@@ -42,19 +41,21 @@ def test_compute_vector_angle():
 
 
 def test_positions_array_conversion():
-    positions = {
+    positions_dict = {
         PointID.LOWER_WISHBONE_OUTBOARD: np.array([1.0, 2.0, 3.0]),
         PointID.UPPER_WISHBONE_OUTBOARD: np.array([4.0, 5.0, 6.0]),
     }
+    positions = Positions(positions_dict)
     point_ids = [PointID.LOWER_WISHBONE_OUTBOARD, PointID.UPPER_WISHBONE_OUTBOARD]
 
     # Test extraction
-    arr = get_positions_as_array(positions, point_ids)
-    np.testing.assert_array_equal(arr, np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]))
+    arr = positions.array(point_ids)
+    expected_flat = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+    np.testing.assert_array_equal(arr, expected_flat)
 
     # Test update
-    new_arr = np.array([[7.0, 8.0, 9.0], [10.0, 11.0, 12.0]])
-    update_positions_from_array(positions, point_ids, new_arr)
+    new_flat = np.array([7.0, 8.0, 9.0, 10.0, 11.0, 12.0])
+    positions.update_from_array(point_ids, new_flat)
     np.testing.assert_array_equal(
         positions[PointID.LOWER_WISHBONE_OUTBOARD], np.array([7.0, 8.0, 9.0])
     )
