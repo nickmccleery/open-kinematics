@@ -72,4 +72,3 @@ class GeometryDefinition:
 
     hard_points: Positions
     free_points: Set["PointID"]
-    free_points: Set["PointID"]
