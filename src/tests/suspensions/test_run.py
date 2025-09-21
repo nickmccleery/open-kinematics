@@ -115,9 +115,9 @@ def test_run_solver(
         initial_target_point_position = initial_positions[target_point_id]
         target_z = initial_target_point_position[2] + displacement
 
-        assert (
-            np.abs(target_point_position[2] - target_z) < EPSILON_CHECK
-        ), f"Failed to maintain {target_point_id} at displacement {displacement}"
+        assert np.abs(target_point_position[2] - target_z) < EPSILON_CHECK, (
+            f"Failed to maintain {target_point_id} at displacement {displacement}"
+        )
 
     print("Creating animation...")
 
