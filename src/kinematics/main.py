@@ -1,9 +1,8 @@
-# In src/kinematics/api.py
 from typing import Dict, List, Type
 
 from kinematics.points.derived.manager import DerivedPointManager
 from kinematics.primitives import Positions
-from kinematics.solver.core import PointTargetSet, solve_sweep
+from kinematics.solver import PointTargetSet, solve_sweep
 from kinematics.suspensions import (
     DoubleWishboneGeometry,
     DoubleWishboneProvider,

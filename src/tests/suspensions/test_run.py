@@ -7,7 +7,7 @@ from kinematics.geometry.loader import load_geometry
 from kinematics.main import solve_kinematics
 from kinematics.points.main import PointID
 from kinematics.primitives import CoordinateAxis
-from kinematics.solver.core import PointTarget, PointTargetSet
+from kinematics.solver import PointTarget, PointTargetSet
 from kinematics.suspensions import DoubleWishboneGeometry
 from kinematics.visualization.debug import create_animation
 from kinematics.visualization.main import SuspensionVisualizer, WheelVisualization
