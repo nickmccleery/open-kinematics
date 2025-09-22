@@ -24,8 +24,8 @@ from kinematics.points.derived.definitions import (
 from kinematics.points.derived.spec import DerivedSpec
 from kinematics.points.ids import PointID
 from kinematics.points.utils import get_all_points
-from kinematics.suspensions.base.provider_base import BaseProvider
 from kinematics.suspensions.double_wishbone.model import DoubleWishboneModel
+from kinematics.suspensions.provider import BaseProvider
 
 
 class DoubleWishboneProvider(BaseProvider):

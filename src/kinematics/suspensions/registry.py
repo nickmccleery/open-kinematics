@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Dict, Tuple, Type
 
-from kinematics.suspensions.base.provider_base import BaseProvider
+from kinematics.suspensions.provider import BaseProvider
 
 # Type alias for clarity; concrete Model classes are architecture-specific dataclasses
 ModelCls = Type[object]

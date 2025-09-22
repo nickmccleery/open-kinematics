@@ -13,8 +13,8 @@ from marshmallow_dataclass import class_schema
 
 from kinematics.geometry import exceptions as exc
 from kinematics.geometry.validate import GeometryType, validate_geometry
-from kinematics.suspensions.base.provider_base import BaseProvider
-from kinematics.suspensions.base.registry import build_registry
+from kinematics.suspensions.provider import BaseProvider
+from kinematics.suspensions.registry import build_registry
 
 LoadResult = Tuple[GeometryType, Type[BaseProvider]]
 

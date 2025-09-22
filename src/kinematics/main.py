@@ -3,7 +3,7 @@ from typing import List
 from kinematics.core import Positions
 from kinematics.points.derived.manager import DerivedPointManager
 from kinematics.solver import PointTargetSet, solve_sweep
-from kinematics.suspensions.base.registry import build_registry
+from kinematics.suspensions.registry import build_registry
 
 
 def solve_kinematics(
