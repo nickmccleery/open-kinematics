@@ -10,7 +10,7 @@ from kinematics.main import solve_kinematics
 from kinematics.points.derived.manager import DerivedPointManager
 from kinematics.points.ids import PointID
 from kinematics.solver import PointTarget, PointTargetSet
-from kinematics.suspensions.double_wishbone.model import DoubleWishboneModel
+from kinematics.suspensions.double_wishbone.model import DoubleWishboneGeometry
 from kinematics.suspensions.double_wishbone.provider import DoubleWishboneProvider
 from kinematics.visualization.debug import create_animation
 from kinematics.visualization.main import SuspensionVisualizer, WheelVisualization
@@ -71,7 +71,7 @@ def test_run_solver(
     hub_displacements, _ = displacements
 
     geometry, _ = load_geometry(double_wishbone_geometry_file)
-    if not isinstance(geometry, DoubleWishboneModel):
+    if not isinstance(geometry, DoubleWishboneGeometry):
         raise ValueError("Invalid geometry type")
 
     # Solve for all positions.

@@ -24,15 +24,15 @@ from kinematics.points.derived.definitions import (
 from kinematics.points.derived.spec import DerivedSpec
 from kinematics.points.ids import PointID
 from kinematics.points.utils import get_all_points
-from kinematics.suspensions.double_wishbone.model import DoubleWishboneModel
-from kinematics.suspensions.provider import BaseProvider
+from kinematics.suspensions.base.provider import SuspensionProvider
+from kinematics.suspensions.double_wishbone.model import DoubleWishboneGeometry
 
 
-class DoubleWishboneProvider(BaseProvider):
+class DoubleWishboneProvider(SuspensionProvider):
     """The concrete implementation of the BaseProvider for Double Wishbone geometry."""
 
-    def __init__(self, geometry: DoubleWishboneModel):
-        self.geometry: DoubleWishboneModel = geometry
+    def __init__(self, geometry: DoubleWishboneGeometry):
+        self.geometry: DoubleWishboneGeometry = geometry
 
     def initial_positions(self) -> Positions:
         """Extracts all hard points from the geometry file into a Positions object."""

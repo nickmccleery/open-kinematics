@@ -5,30 +5,14 @@ Contains dataclasses/types for MacPherson strut geometry.
 No imports from solver/constraints/visualization - only configuration and point collections.
 """
 
-from abc import ABC
 from dataclasses import dataclass
 
-from kinematics.configs import SuspensionConfig, Units
 from kinematics.points.collections import (
     LowerWishbonePoints,
     StrutPoints,
     WheelAxlePoints,
 )
-
-
-@dataclass
-class SuspensionGeometry(ABC):
-    """
-    Base class for all suspension geometry types.
-    """
-
-    name: str
-    version: str
-    units: Units
-    configuration: SuspensionConfig
-
-    def validate(self) -> bool:
-        raise NotImplementedError("Subclasses must implement validate()")
+from kinematics.suspensions.base.models import SuspensionGeometry
 
 
 @dataclass
@@ -41,7 +25,7 @@ class MacPhersonHardPoints:
 
 
 @dataclass
-class MacPhersonModel(SuspensionGeometry):
+class MacPhersonGeometry(SuspensionGeometry):
     """MacPherson strut suspension geometry definition."""
 
     hard_points: MacPhersonHardPoints

@@ -9,15 +9,17 @@ from kinematics.points.derived.spec import DerivedSpec
 from kinematics.points.ids import PointID
 
 
-class BaseProvider(ABC):
-    """Binds a concrete geometry model to initial positions, free points, derived points, and constraints."""
+class SuspensionProvider(ABC):
+    """
+    Binds a concrete geometry model to initial positions, free points, derived points,
+    and constraints.
+    """
 
     @abstractmethod
     def initial_positions(self) -> Positions: ...
 
     @abstractmethod
-    def free_points(self) -> Sequence[PointID]:  # stable order
-        ...
+    def free_points(self) -> Sequence[PointID]: ...
 
     @abstractmethod
     def derived_spec(self) -> DerivedSpec: ...

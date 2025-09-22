@@ -19,15 +19,15 @@ from kinematics.points.derived.definitions import (
 from kinematics.points.derived.spec import DerivedSpec
 from kinematics.points.ids import PointID
 from kinematics.points.utils import get_all_points
-from kinematics.suspensions.macpherson.model import MacPhersonModel
-from kinematics.suspensions.provider import BaseProvider
+from kinematics.suspensions.base.provider import SuspensionProvider
+from kinematics.suspensions.macpherson.model import MacPhersonGeometry
 
 
-class MacPhersonProvider(BaseProvider):
+class MacPhersonProvider(SuspensionProvider):
     """The concrete implementation of the BaseProvider for MacPherson strut geometry."""
 
-    def __init__(self, geometry: MacPhersonModel):
-        self.geometry: MacPhersonModel = geometry
+    def __init__(self, geometry: MacPhersonGeometry):
+        self.geometry: MacPhersonGeometry = geometry
 
     def initial_positions(self) -> Positions:
         """Extracts all hard points from the geometry file into a Positions object."""

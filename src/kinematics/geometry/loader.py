@@ -13,10 +13,10 @@ from marshmallow_dataclass import class_schema
 
 from kinematics.geometry import exceptions as exc
 from kinematics.geometry.validate import GeometryType, validate_geometry
-from kinematics.suspensions.provider import BaseProvider
+from kinematics.suspensions.base.provider import SuspensionProvider
 from kinematics.suspensions.registry import build_registry
 
-LoadResult = Tuple[GeometryType, Type[BaseProvider]]
+LoadResult = Tuple[GeometryType, Type[SuspensionProvider]]
 
 
 def load_geometry(file_path: Path) -> LoadResult:

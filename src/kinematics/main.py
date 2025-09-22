@@ -24,7 +24,7 @@ def solve_kinematics(
     registry = build_registry()
 
     # Find the geometry type in registry
-    for type_name, (model_cls, provider_cls) in registry.items():
+    for _, (model_cls, provider_cls) in registry.items():
         if isinstance(geometry, model_cls):
             provider_class = provider_cls
             break
