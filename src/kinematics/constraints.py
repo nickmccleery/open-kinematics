@@ -5,7 +5,11 @@ import numpy as np
 from numpy.typing import NDArray
 
 from kinematics.core import CoordinateAxis, Position, Positions
-from kinematics.math import compute_vector_angle, normalize_vector, point_distance
+from kinematics.math import (
+    compute_point_point_distance,
+    compute_vector_vector_angle,
+    normalize_vector,
+)
 from kinematics.points.ids import PointID
 
 
@@ -47,7 +51,9 @@ class PointPointDistance(BaseConstraint):
         return {self.p1, self.p2}
 
     def get_residual(self, positions: Positions) -> np.ndarray:
-        current_distance = point_distance(positions[self.p1], positions[self.p2])
+        current_distance = compute_point_point_distance(
+            positions[self.p1], positions[self.p2]
+        )
         return np.array([current_distance - self.distance])
 
 
@@ -75,7 +81,7 @@ class VectorAngle(BaseConstraint):
     def get_residual(self, positions: Positions) -> np.ndarray:
         v1 = positions[self.v1_end] - positions[self.v1_start]
         v2 = positions[self.v2_end] - positions[self.v2_start]
-        current_angle = compute_vector_angle(v1, v2)
+        current_angle = compute_vector_vector_angle(v1, v2)
         return np.array([current_angle - self.angle])
 
 
@@ -132,7 +138,7 @@ class PointOnLine(BaseConstraint):
 Constraint = Union[PointPointDistance, VectorAngle, PointFixedAxis, PointOnLine]
 
 
-# Factory functions
+# Factory functions.
 def make_point_point_distance(
     positions: Positions, p1: PointID, p2: PointID
 ) -> PointPointDistance:
