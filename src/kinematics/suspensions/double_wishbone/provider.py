@@ -8,13 +8,15 @@ and derived point calculations specific to double wishbone suspensions.
 from functools import partial
 from typing import Sequence
 
+import numpy as np
+
 from kinematics.constraints import (
     Constraint,
     PointOnLine,
     make_point_point_distance,
     make_vector_angle,
 )
-from kinematics.core import Direction, Positions
+from kinematics.core import Direction, SuspensionState
 from kinematics.points.derived.definitions import (
     get_axle_midpoint,
     get_wheel_center,
@@ -23,7 +25,6 @@ from kinematics.points.derived.definitions import (
 )
 from kinematics.points.derived.spec import DerivedSpec
 from kinematics.points.ids import PointID
-from kinematics.points.utils import get_all_points
 from kinematics.suspensions.base.provider import SuspensionProvider
 from kinematics.suspensions.double_wishbone.model import DoubleWishboneGeometry
 
@@ -34,11 +35,56 @@ class DoubleWishboneProvider(SuspensionProvider):
     def __init__(self, geometry: DoubleWishboneGeometry):
         self.geometry: DoubleWishboneGeometry = geometry
 
-    def initial_positions(self) -> Positions:
-        """Extracts all hard points from the geometry file into a Positions object."""
-        points = get_all_points(self.geometry.hard_points)
-        data = {p.id: p.as_array() for p in points}
-        return Positions(data)
+    def initial_state(self) -> SuspensionState:
+        """Create initial suspension state from geometry."""
+        positions = {}
+
+        # Convert point collections to positions dict
+        hard_points = self.geometry.hard_points
+
+        # Lower wishbone
+        lwb = hard_points.lower_wishbone
+        positions[PointID.LOWER_WISHBONE_INBOARD_FRONT] = np.array(
+            [lwb.inboard_front["x"], lwb.inboard_front["y"], lwb.inboard_front["z"]]
+        )
+        positions[PointID.LOWER_WISHBONE_INBOARD_REAR] = np.array(
+            [lwb.inboard_rear["x"], lwb.inboard_rear["y"], lwb.inboard_rear["z"]]
+        )
+        positions[PointID.LOWER_WISHBONE_OUTBOARD] = np.array(
+            [lwb.outboard["x"], lwb.outboard["y"], lwb.outboard["z"]]
+        )
+
+        # Upper wishbone
+        uwb = hard_points.upper_wishbone
+        positions[PointID.UPPER_WISHBONE_INBOARD_FRONT] = np.array(
+            [uwb.inboard_front["x"], uwb.inboard_front["y"], uwb.inboard_front["z"]]
+        )
+        positions[PointID.UPPER_WISHBONE_INBOARD_REAR] = np.array(
+            [uwb.inboard_rear["x"], uwb.inboard_rear["y"], uwb.inboard_rear["z"]]
+        )
+        positions[PointID.UPPER_WISHBONE_OUTBOARD] = np.array(
+            [uwb.outboard["x"], uwb.outboard["y"], uwb.outboard["z"]]
+        )
+
+        # Track rod
+        tr = hard_points.track_rod
+        positions[PointID.TRACKROD_INBOARD] = np.array(
+            [tr.inner["x"], tr.inner["y"], tr.inner["z"]]
+        )
+        positions[PointID.TRACKROD_OUTBOARD] = np.array(
+            [tr.outer["x"], tr.outer["y"], tr.outer["z"]]
+        )
+
+        # Wheel axle
+        wa = hard_points.wheel_axle
+        positions[PointID.AXLE_INBOARD] = np.array(
+            [wa.inner["x"], wa.inner["y"], wa.inner["z"]]
+        )
+        positions[PointID.AXLE_OUTBOARD] = np.array(
+            [wa.outer["x"], wa.outer["y"], wa.outer["z"]]
+        )
+
+        return SuspensionState(positions=positions, free_points=set(self.free_points()))
 
     def free_points(self) -> Sequence[PointID]:
         """Defines which points the solver is allowed to move."""
@@ -82,7 +128,7 @@ class DoubleWishboneProvider(SuspensionProvider):
     def constraints(self) -> list[Constraint]:
         """Builds the complete list of constraints that define the suspension's mechanics."""
         constraints: list[Constraint] = []
-        initial_positions = self.initial_positions()
+        initial_state = self.initial_state()
 
         # 1. Fixed distance constraints between points
         length_pairs = [
@@ -103,12 +149,14 @@ class DoubleWishboneProvider(SuspensionProvider):
             (PointID.AXLE_OUTBOARD, PointID.TRACKROD_OUTBOARD),
         ]
         for p1, p2 in length_pairs:
-            constraints.append(make_point_point_distance(initial_positions, p1, p2))
+            constraints.append(
+                make_point_point_distance(initial_state.positions, p1, p2)
+            )
 
         # 2. Fixed angle constraints between vectors
         constraints.append(
             make_vector_angle(
-                initial_positions,
+                initial_state.positions,
                 v1_start=PointID.UPPER_WISHBONE_OUTBOARD,
                 v1_end=PointID.LOWER_WISHBONE_OUTBOARD,
                 v2_start=PointID.AXLE_INBOARD,
@@ -120,7 +168,7 @@ class DoubleWishboneProvider(SuspensionProvider):
         constraints.append(
             PointOnLine(
                 point_id=PointID.TRACKROD_INBOARD,
-                line_point=initial_positions[PointID.TRACKROD_INBOARD],
+                line_point=initial_state.positions[PointID.TRACKROD_INBOARD],
                 line_direction=Direction.y,
             )
         )

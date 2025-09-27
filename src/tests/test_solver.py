@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from kinematics.constraints import PointPointDistance
-from kinematics.core import CoordinateAxis, KinematicsState, Positions
+from kinematics.core import CoordinateAxis, SuspensionState
 from kinematics.points.ids import PointID
 from kinematics.solver import PointTarget, PointTargetSet, SolverConfig, solve_sweep
 
@@ -17,7 +17,7 @@ def simple_positions():
         PointID.LOWER_WISHBONE_INBOARD_REAR: np.array([1.0, 0.0, 0.0]),
         PointID.LOWER_WISHBONE_OUTBOARD: np.array([0.0, 1.0, 0.0]),
     }
-    return Positions(positions_dict)
+    return positions_dict
 
 
 @pytest.fixture
@@ -68,7 +68,7 @@ def simple_target_set():
     return PointTargetSet(values=point_targets)
 
 
-def null_derived_points(positions: Positions) -> Positions:
+def null_derived_points(positions):
     return positions.copy()
 
 
@@ -81,8 +81,8 @@ def test_solve_sweep(
 ):
     free_points = {PointID.LOWER_WISHBONE_OUTBOARD}
 
-    # Create KinematicsState instead of separate positions and free_points
-    initial_state = KinematicsState(positions=simple_positions, free_points=free_points)
+    # Create SuspensionState instead of separate positions and free_points
+    initial_state = SuspensionState(positions=simple_positions, free_points=free_points)
 
     # Extract displacement values for assertions
     displacement_values = [target.value for target in simple_target_set.values]

@@ -1,11 +1,11 @@
-from typing import Annotated, Callable, List, NamedTuple
+from typing import Annotated, Callable, Dict, List, NamedTuple
 
 import numpy as np
 from numpy.typing import NDArray
 from scipy.optimize import least_squares
 
 from kinematics.constraints import Constraint
-from kinematics.core import CoordinateAxis, KinematicsState, Positions
+from kinematics.core import CoordinateAxis, SuspensionState
 from kinematics.points.ids import PointID
 
 AxisVector = Annotated[NDArray[np.float64], "shape=(3,)"]
@@ -28,12 +28,14 @@ class SolverConfig(NamedTuple):
 
 
 def solve_sweep(
-    initial_state: KinematicsState,
+    initial_state: SuspensionState,
     constraints: list[Constraint],
     targets: list[PointTargetSet],
-    compute_derived_points_func: Callable[[Positions], Positions],
+    compute_derived_points_func: Callable[
+        [Dict[PointID, np.ndarray]], Dict[PointID, np.ndarray]
+    ],
     solver_config: SolverConfig = SolverConfig(),
-) -> list[KinematicsState]:
+) -> list[SuspensionState]:
     """
     Solves a series of kinematic states using damped non-linear least squares.
     """
@@ -51,25 +53,24 @@ def solve_sweep(
 
     # Initialize state for the entire sweep - this object will only be updated after each successful step
     current_state = initial_state.copy()
-    states: List[KinematicsState] = []  # Will store the final results
+    states: List[SuspensionState] = []  # Will store the final results
 
-    # Create the single, reusable "scratchpad" object for calculations
+    # Create the single, reusable "scratchpad" state for calculations
     # This eliminates allocations inside the compute_residuals function
-    scratch_positions = current_state.positions.copy()
-    free_point_order = current_state.free_points_order  # Capture for stability
+    scratch_state = current_state.copy()
 
     def compute_residuals(
         free_array: np.ndarray, step_targets: List[PointTarget]
     ) -> np.ndarray:
         """
-        Calculates residuals by modifying the scratch_positions in-place.
+        Calculates residuals by modifying the scratch_state in-place.
         NO NEW OBJECTS ARE CREATED HERE.
         """
         # 1. Update the scratchpad with the solver's current guess (IN-PLACE)
-        scratch_positions.update_from_array(free_point_order, free_array)
+        scratch_state.update_from_array(free_array)
 
         # 2. Compute derived points using the updated scratchpad
-        all_positions = compute_derived_points_func(scratch_positions)
+        all_positions = compute_derived_points_func(scratch_state.positions)
 
         residuals = []
 
@@ -97,7 +98,7 @@ def solve_sweep(
         return np.array(residuals, dtype=float)
 
     # Use the initial state as the first guess for the first step
-    initial_guess = current_state.get_free_points_as_array()
+    initial_guess = current_state.get_free_array()
 
     for step_targets in sweep_targets:
         result = least_squares(
@@ -118,17 +119,20 @@ def solve_sweep(
 
         # ---- On Success ----
         # 1. Update the main state's positions with the solution
-        current_state.positions.update_from_array(free_point_order, result.x)
+        current_state.update_from_array(result.x)
 
         # 2. Re-calculate final derived points on the now-correct main state
-        current_state.positions = compute_derived_points_func(current_state.positions)
+        updated_positions = compute_derived_points_func(current_state.positions)
+        current_state = SuspensionState(
+            positions=updated_positions, free_points=current_state.free_points
+        )
 
         # 3. Store a snapshot of the successful state
         states.append(current_state.copy())
 
-        # 4. Sync the scratchpad's fixed points for the next step's calculations.
+        # 4. Sync the scratchpad state for the next step's calculations.
         #    This is critical.
-        scratch_positions = current_state.positions.copy()
+        scratch_state = current_state.copy()
 
         # 5. The new guess is the successful result from this step
         initial_guess = result.x

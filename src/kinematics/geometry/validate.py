@@ -8,8 +8,6 @@ from typing import Union
 
 from marshmallow.exceptions import ValidationError
 
-from kinematics.points.ids import PointID
-from kinematics.points.utils import get_all_points
 from kinematics.suspensions.double_wishbone.model import DoubleWishboneGeometry
 from kinematics.suspensions.macpherson.model import MacPhersonGeometry
 
@@ -26,7 +24,8 @@ def validate_geometry(geometry: GeometryType) -> None:
     Raises:
         ValidationError: If validation fails
     """
-    points = get_all_points(geometry.hard_points)
-    for point in points:
-        if point.id is PointID.NOT_ASSIGNED:
-            raise ValidationError("Found unrecognized point ID in geometry.")
+    # With the new simplified structure, basic validation is handled
+    # by the dataclass structure itself. Additional validation can be
+    # added here as needed for specific business rules.
+    if not geometry.validate():
+        raise ValidationError("Geometry validation failed.")

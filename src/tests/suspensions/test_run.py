@@ -84,8 +84,8 @@ def test_run_solver(
     provider = DoubleWishboneProvider(geometry)
     derived_point_manager = DerivedPointManager(provider.derived_spec())
 
-    initial_positions = provider.initial_positions()
-    initial_positions = derived_point_manager.update(initial_positions)
+    initial_state = provider.initial_state()
+    initial_positions = derived_point_manager.update(initial_state.positions)
 
     # Get only the length constraints for verification
     all_constraints = provider.constraints()
@@ -119,7 +119,7 @@ def test_run_solver(
 
     print("Creating animation...")
 
-    # Extract positions from KinematicsState objects for animation
+    # Extract positions from SuspensionState objects for animation
     position_states_positions = [state.positions for state in position_states]
     position_states_animate = (
         position_states_positions + position_states_positions[::-1]

@@ -8,8 +8,10 @@ and derived point calculations specific to MacPherson strut suspensions.
 from functools import partial
 from typing import Sequence
 
+import numpy as np
+
 from kinematics.constraints import Constraint, make_point_point_distance
-from kinematics.core import Positions
+from kinematics.core import SuspensionState
 from kinematics.points.derived.definitions import (
     get_axle_midpoint,
     get_wheel_center,
@@ -18,7 +20,6 @@ from kinematics.points.derived.definitions import (
 )
 from kinematics.points.derived.spec import DerivedSpec
 from kinematics.points.ids import PointID
-from kinematics.points.utils import get_all_points
 from kinematics.suspensions.base.provider import SuspensionProvider
 from kinematics.suspensions.macpherson.model import MacPhersonGeometry
 
@@ -29,11 +30,44 @@ class MacPhersonProvider(SuspensionProvider):
     def __init__(self, geometry: MacPhersonGeometry):
         self.geometry: MacPhersonGeometry = geometry
 
-    def initial_positions(self) -> Positions:
-        """Extracts all hard points from the geometry file into a Positions object."""
-        points = get_all_points(self.geometry.hard_points)
-        data = {p.id: p.as_array() for p in points}
-        return Positions(data)
+    def initial_state(self) -> SuspensionState:
+        """Create initial suspension state from geometry."""
+        positions = {}
+
+        # Convert point collections to positions dict
+        hard_points = self.geometry.hard_points
+
+        # Lower wishbone
+        lwb = hard_points.lower_wishbone
+        positions[PointID.LOWER_WISHBONE_INBOARD_FRONT] = np.array(
+            [lwb.inboard_front["x"], lwb.inboard_front["y"], lwb.inboard_front["z"]]
+        )
+        positions[PointID.LOWER_WISHBONE_INBOARD_REAR] = np.array(
+            [lwb.inboard_rear["x"], lwb.inboard_rear["y"], lwb.inboard_rear["z"]]
+        )
+        positions[PointID.LOWER_WISHBONE_OUTBOARD] = np.array(
+            [lwb.outboard["x"], lwb.outboard["y"], lwb.outboard["z"]]
+        )
+
+        # Strut
+        strut = hard_points.strut
+        positions[PointID.STRUT_INBOARD] = np.array(
+            [strut.inboard["x"], strut.inboard["y"], strut.inboard["z"]]
+        )
+        positions[PointID.STRUT_OUTBOARD] = np.array(
+            [strut.outboard["x"], strut.outboard["y"], strut.outboard["z"]]
+        )
+
+        # Wheel axle
+        wa = hard_points.wheel_axle
+        positions[PointID.AXLE_INBOARD] = np.array(
+            [wa.inner["x"], wa.inner["y"], wa.inner["z"]]
+        )
+        positions[PointID.AXLE_OUTBOARD] = np.array(
+            [wa.outer["x"], wa.outer["y"], wa.outer["z"]]
+        )
+
+        return SuspensionState(positions=positions, free_points=set(self.free_points()))
 
     def free_points(self) -> Sequence[PointID]:
         """Defines which points the solver is allowed to move."""
@@ -75,7 +109,7 @@ class MacPhersonProvider(SuspensionProvider):
     def constraints(self) -> list[Constraint]:
         """Builds the complete list of constraints that define the suspension's mechanics."""
         constraints: list[Constraint] = []
-        initial_positions = self.initial_positions()
+        initial_state = self.initial_state()
 
         # 1. Fixed distance constraints between points
         length_pairs = [
@@ -89,6 +123,8 @@ class MacPhersonProvider(SuspensionProvider):
             (PointID.AXLE_OUTBOARD, PointID.STRUT_OUTBOARD),
         ]
         for p1, p2 in length_pairs:
-            constraints.append(make_point_point_distance(initial_positions, p1, p2))
+            constraints.append(
+                make_point_point_distance(initial_state.positions, p1, p2)
+            )
 
         return constraints

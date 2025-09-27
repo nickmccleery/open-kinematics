@@ -10,11 +10,10 @@ from typing import Callable, Dict, Set
 
 import numpy as np
 
-from kinematics.core import Positions
 from kinematics.points.ids import PointID
 
 # Function signature for computing a derived point position
-PositionFn = Callable[[Positions], np.ndarray]
+PositionFn = Callable[[Dict[PointID, np.ndarray]], np.ndarray]
 
 
 @dataclass(frozen=True)

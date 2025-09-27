@@ -5,19 +5,25 @@ Contains functions to calculate secondary points based on primary hard points,
 such as wheel centers, midpoints, and offset positions.
 """
 
-from kinematics.core import Position, Positions
+from typing import Dict
+
+import numpy as np
+
+from kinematics.core import Position
 from kinematics.math import normalize_vector
 from kinematics.points.ids import PointID
 
 
-def get_axle_midpoint(positions: Positions) -> Position:
+def get_axle_midpoint(positions: Dict[PointID, np.ndarray]) -> Position:
     """Calculates the midpoint of the axle."""
     p1 = positions[PointID.AXLE_INBOARD]
     p2 = positions[PointID.AXLE_OUTBOARD]
     return (p1 + p2) / 2
 
 
-def get_wheel_center(positions: Positions, wheel_offset: float) -> Position:
+def get_wheel_center(
+    positions: Dict[PointID, np.ndarray], wheel_offset: float
+) -> Position:
     """Calculates the wheel center point, offset from the axle outboard face."""
     p1 = positions[PointID.AXLE_OUTBOARD]
     p2 = positions[PointID.AXLE_INBOARD]
@@ -26,7 +32,9 @@ def get_wheel_center(positions: Positions, wheel_offset: float) -> Position:
     return p1 + v * wheel_offset
 
 
-def get_wheel_inboard(positions: Positions, wheel_width: float) -> Position:
+def get_wheel_inboard(
+    positions: Dict[PointID, np.ndarray], wheel_width: float
+) -> Position:
     """Calculates the inboard lip of the wheel."""
     p1 = positions[PointID.AXLE_INBOARD]
     p2 = positions[PointID.WHEEL_CENTER]
@@ -35,7 +43,9 @@ def get_wheel_inboard(positions: Positions, wheel_width: float) -> Position:
     return p2 - v * (wheel_width / 2)
 
 
-def get_wheel_outboard(positions: Positions, wheel_width: float) -> Position:
+def get_wheel_outboard(
+    positions: Dict[PointID, np.ndarray], wheel_width: float
+) -> Position:
     """Calculates the outboard lip of the wheel."""
     p1 = positions[PointID.WHEEL_CENTER]
     p2 = positions[PointID.AXLE_INBOARD]

@@ -4,9 +4,10 @@ Derived point manager for handling point calculations with dependency resolution
 Moved from solver/manager.py as it's more logically part of the points subsystem.
 """
 
-from typing import List
+from typing import Dict, List
 
-from kinematics.core import Positions
+import numpy as np
+
 from kinematics.points.derived.spec import DerivedSpec
 from kinematics.points.ids import PointID
 
@@ -80,10 +81,11 @@ class DerivedPointManager:
 
         return order
 
-    def update(self, positions: Positions) -> Positions:
+    def update(self, positions: Dict[PointID, np.ndarray]) -> Dict[PointID, np.ndarray]:
         """
-        Calculates all derived points based on the provided hard points and
-        other derived points, respecting the dependency order.
+        Calculates all derived points based on the provided positions.
+
+        Note: Keep this as positions dict to maintain clean separation of concerns.
 
         Args:
             positions: A dictionary containing at least all hard point positions.
