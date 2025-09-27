@@ -11,12 +11,13 @@ from typing import Sequence
 import numpy as np
 
 from kinematics.constraints import (
+    AngleConstraint,
     Constraint,
-    PointOnLine,
-    make_point_point_distance,
-    make_vector_angle,
+    DistanceConstraint,
+    PointOnLineConstraint,
 )
 from kinematics.core import Direction, SuspensionState
+from kinematics.math import compute_point_point_distance, compute_vector_vector_angle
 from kinematics.points.derived.definitions import (
     get_axle_midpoint,
     get_wheel_center,
@@ -149,24 +150,36 @@ class DoubleWishboneProvider(SuspensionProvider):
             (PointID.AXLE_OUTBOARD, PointID.TRACKROD_OUTBOARD),
         ]
         for p1, p2 in length_pairs:
-            constraints.append(
-                make_point_point_distance(initial_state.positions, p1, p2)
+            target_distance = compute_point_point_distance(
+                initial_state.positions[p1], initial_state.positions[p2]
             )
+            constraints.append(DistanceConstraint(p1, p2, target_distance))
 
         # 2. Fixed angle constraints between vectors
+        # Calculate target angle from initial positions using utility function
+        v1 = (
+            initial_state.positions[PointID.LOWER_WISHBONE_OUTBOARD]
+            - initial_state.positions[PointID.UPPER_WISHBONE_OUTBOARD]
+        )
+        v2 = (
+            initial_state.positions[PointID.AXLE_OUTBOARD]
+            - initial_state.positions[PointID.AXLE_INBOARD]
+        )
+        target_angle = compute_vector_vector_angle(v1, v2)
+
         constraints.append(
-            make_vector_angle(
-                initial_state.positions,
+            AngleConstraint(
                 v1_start=PointID.UPPER_WISHBONE_OUTBOARD,
                 v1_end=PointID.LOWER_WISHBONE_OUTBOARD,
                 v2_start=PointID.AXLE_INBOARD,
                 v2_end=PointID.AXLE_OUTBOARD,
+                target_angle=target_angle,
             )
         )
 
         # 3. Point-on-line constraints (for steering rack)
         constraints.append(
-            PointOnLine(
+            PointOnLineConstraint(
                 point_id=PointID.TRACKROD_INBOARD,
                 line_point=initial_state.positions[PointID.TRACKROD_INBOARD],
                 line_direction=Direction.y,

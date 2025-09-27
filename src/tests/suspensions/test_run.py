@@ -3,7 +3,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from kinematics.constraints import PointPointDistance
+from kinematics.constraints import DistanceConstraint
 from kinematics.core import CoordinateAxis
 from kinematics.geometry.loader import load_geometry
 from kinematics.main import solve_kinematics
@@ -91,7 +91,7 @@ def test_run_solver(
     all_constraints = provider.constraints()
 
     length_constraints = [
-        c for c in all_constraints if isinstance(c, PointPointDistance)
+        c for c in all_constraints if isinstance(c, DistanceConstraint)
     ]
     target_point_id = PointID.WHEEL_CENTER
 
@@ -103,7 +103,9 @@ def test_run_solver(
             p2 = state.positions[constraint.p2]
             current_length = np.linalg.norm(p1 - p2)
 
-            assert np.abs(current_length - constraint.distance) < EPSILON_CHECK, (
+            assert (
+                np.abs(current_length - constraint.target_distance) < EPSILON_CHECK
+            ), (
                 f"Constraint violation at displacement {displacement}: "
                 f"{constraint.p1.name} to {constraint.p2.name}"
             )

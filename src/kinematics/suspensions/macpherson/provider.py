@@ -10,8 +10,9 @@ from typing import Sequence
 
 import numpy as np
 
-from kinematics.constraints import Constraint, make_point_point_distance
+from kinematics.constraints import Constraint, DistanceConstraint
 from kinematics.core import SuspensionState
+from kinematics.math import compute_point_point_distance
 from kinematics.points.derived.definitions import (
     get_axle_midpoint,
     get_wheel_center,
@@ -123,8 +124,9 @@ class MacPhersonProvider(SuspensionProvider):
             (PointID.AXLE_OUTBOARD, PointID.STRUT_OUTBOARD),
         ]
         for p1, p2 in length_pairs:
-            constraints.append(
-                make_point_point_distance(initial_state.positions, p1, p2)
+            target_distance = compute_point_point_distance(
+                initial_state.positions[p1], initial_state.positions[p2]
             )
+            constraints.append(DistanceConstraint(p1, p2, target_distance))
 
         return constraints

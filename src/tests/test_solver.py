@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from kinematics.constraints import PointPointDistance
+from kinematics.constraints import DistanceConstraint
 from kinematics.core import CoordinateAxis, SuspensionState
 from kinematics.points.ids import PointID
 from kinematics.solver import PointTarget, PointTargetSet, SolverConfig, solve_sweep
@@ -41,15 +41,15 @@ def length_rearward_leg(simple_positions):
 @pytest.fixture
 def simple_constraints(simple_positions, length_forward_leg, length_rearward_leg):
     return [
-        PointPointDistance(
+        DistanceConstraint(
             p1=PointID.LOWER_WISHBONE_INBOARD_FRONT,
             p2=PointID.LOWER_WISHBONE_OUTBOARD,
-            distance=length_forward_leg,
+            target_distance=length_forward_leg,
         ),
-        PointPointDistance(
+        DistanceConstraint(
             p1=PointID.LOWER_WISHBONE_INBOARD_REAR,
             p2=PointID.LOWER_WISHBONE_OUTBOARD,
-            distance=length_rearward_leg,
+            target_distance=length_rearward_leg,
         ),
     ]
 

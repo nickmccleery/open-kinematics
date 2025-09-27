@@ -75,9 +75,15 @@ def solve_sweep(
         residuals = []
 
         # 3. Geometry constraint residuals
-        for c in constraints:
-            # Extend is used to handle multi-residual constraints gracefully
-            residuals.extend(c.get_residual(all_positions))
+        for constraint in constraints:
+            residual_value = constraint.residual(all_positions)
+
+            # Handle both scalar and array residuals
+            if np.isscalar(residual_value):
+                residuals.append(residual_value)
+            else:
+                # For array residuals, extend the list
+                residuals.extend(np.asarray(residual_value).flatten())
 
         # 4. Target residuals
         for target in step_targets:
