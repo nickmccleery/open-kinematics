@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from kinematics.constraints import PointPointDistance
-from kinematics.core import CoordinateAxis, Positions
+from kinematics.core import CoordinateAxis, KinematicsState, Positions
 from kinematics.points.ids import PointID
 from kinematics.solver import PointTarget, PointTargetSet, SolverConfig, solve_sweep
 
@@ -81,13 +81,15 @@ def test_solve_sweep(
 ):
     free_points = {PointID.LOWER_WISHBONE_OUTBOARD}
 
+    # Create KinematicsState instead of separate positions and free_points
+    initial_state = KinematicsState(positions=simple_positions, free_points=free_points)
+
     # Extract displacement values for assertions
     displacement_values = [target.value for target in simple_target_set.values]
 
     states = solve_sweep(
-        initial_positions=simple_positions,
+        initial_state=initial_state,
         constraints=simple_constraints,
-        free_points=free_points,
         targets=[simple_target_set],  # Wrapped in a list for the new API
         compute_derived_points_func=null_derived_points,
         solver_config=SolverConfig(ftol=1e-6, xtol=1e-6, verbose=0),

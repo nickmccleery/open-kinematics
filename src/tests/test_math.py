@@ -1,13 +1,11 @@
 import numpy as np
 
-from kinematics.core import Positions
 from kinematics.math import (
     compute_point_point_distance,
     compute_point_point_midpoint,
     compute_vector_vector_angle,
     normalize_vector,
 )
-from kinematics.points.ids import PointID
 
 
 def test_point_distance():
@@ -38,24 +36,3 @@ def test_compute_vector_angle():
     v2 = np.array([0.0, 1.0, 0.0])
     angle = compute_vector_vector_angle(v1, v2)
     assert np.isclose(angle, np.pi / 2)
-
-
-def test_positions_array_conversion():
-    positions_dict = {
-        PointID.LOWER_WISHBONE_OUTBOARD: np.array([1.0, 2.0, 3.0]),
-        PointID.UPPER_WISHBONE_OUTBOARD: np.array([4.0, 5.0, 6.0]),
-    }
-    positions = Positions(positions_dict)
-    point_ids = [PointID.LOWER_WISHBONE_OUTBOARD, PointID.UPPER_WISHBONE_OUTBOARD]
-
-    # Test extraction
-    arr = positions.array(point_ids)
-    expected_flat = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
-    np.testing.assert_array_equal(arr, expected_flat)
-
-    # Test update
-    new_flat = np.array([7.0, 8.0, 9.0, 10.0, 11.0, 12.0])
-    positions.update_from_array(point_ids, new_flat)
-    np.testing.assert_array_equal(
-        positions[PointID.LOWER_WISHBONE_OUTBOARD], np.array([7.0, 8.0, 9.0])
-    )

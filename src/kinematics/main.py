@@ -1,6 +1,6 @@
 from typing import List
 
-from kinematics.core import Positions
+from kinematics.core import KinematicsState, Positions
 from kinematics.points.derived.manager import DerivedPointManager
 from kinematics.solver import PointTargetSet, solve_sweep
 from kinematics.suspensions.registry import build_registry
@@ -45,17 +45,26 @@ def solve_kinematics(
     initial_positions = provider.initial_positions()
     free_points = set(provider.free_points())
 
-    # 5. Calculate derived points on the initial state to create a complete reference
-    initial_state_with_derived = derived_point_manager.update(initial_positions)
+    # 5. Create KinematicsState instance
+    initial_state = KinematicsState(
+        positions=initial_positions, free_points=free_points
+    )
 
-    # 6. Create the constraints based on the complete initial state
+    # 6. Calculate derived points on the initial state to create a complete reference
+    initial_state_with_derived_positions = derived_point_manager.update(
+        initial_state.positions
+    )
+    initial_state_with_derived = KinematicsState(
+        positions=initial_state_with_derived_positions, free_points=free_points
+    )
+
+    # 7. Create the constraints based on the complete initial state
     constraints = provider.constraints()
 
-    # 7. Call the generic solver with all the necessary data
+    # 8. Call the generic solver with all the necessary data
     position_states = solve_sweep(
-        initial_positions=initial_state_with_derived,
+        initial_state=initial_state_with_derived,
         constraints=constraints,
-        free_points=free_points,
         targets=point_targets,
         compute_derived_points_func=derived_point_manager.update,
     )

@@ -7,15 +7,14 @@ data structures that form the foundation of the kinematics system.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import IntEnum
-from typing import Dict, Iterable, Iterator, Set, Tuple, TypeAlias
+from typing import Dict, Iterator, Set, Tuple, TypeAlias
 
 import numpy as np
 
 from kinematics.points.ids import PointID
 
-# --- Core Data Types ---
 Position: TypeAlias = np.ndarray
 
 
@@ -53,13 +52,6 @@ class CoordinateAxis(IntEnum):
 
 @dataclass
 class Positions:
-    """
-    Container for managing point positions with typed operations.
-
-    Provides methods for converting between dictionary format and flat arrays
-    for solver operations while maintaining a stable ordering of free points.
-    """
-
     data: Dict[PointID, np.ndarray]
 
     def get(self, point_id: PointID) -> np.ndarray:
@@ -69,44 +61,6 @@ class Positions:
     def set(self, point_id: PointID, position: np.ndarray) -> None:
         """Set position of a specific point."""
         self.data[point_id] = position.copy()
-
-    def array(self, free_points: Iterable[PointID]) -> np.ndarray:
-        """
-        Convert free points to flat array for solver.
-
-        Args:
-            free_points: Iterable of point IDs to extract (order preserved)
-
-        Returns:
-            Array of shape (n_points * 3,) containing flattened positions
-        """
-        free_points_list = list(free_points)  # Ensure stable order
-        positions = [self.data[pid] for pid in free_points_list]
-        return np.concatenate(positions)
-
-    def update_from_array(
-        self, free_points: Iterable[PointID], array: np.ndarray
-    ) -> None:
-        """
-        Update positions from flat array returned by solver.
-
-        Args:
-            free_points: Iterable of point IDs (must match order used in array())
-            array: Flat array of shape (n_points * 3,) containing new positions
-        """
-        free_points_list = list(free_points)  # Ensure stable order
-        n_points = len(free_points_list)
-
-        if array.shape != (n_points * 3,):
-            raise ValueError(
-                f"Array shape {array.shape} doesn't match expected ({n_points * 3},) "
-                f"for {n_points} points"
-            )
-
-        # Reshape and update
-        positions_2d = array.reshape(n_points, 3)
-        for i, point_id in enumerate(free_points_list):
-            self.data[point_id] = positions_2d[i].copy()
 
     def copy(self) -> "Positions":
         """Create a deep copy of the positions."""
@@ -141,18 +95,64 @@ class Positions:
         return len(self.data)
 
 
-# --- Core Data Models ---
-@dataclass(frozen=True)
+@dataclass
 class KinematicsState:
-    """Represents the state of a kinematic system at a specific configuration."""
+    """
+    Represents the state of a kinematic system at a specific configuration.
+
+    Manages solver state including positions and free points, providing array
+    conversion methods for solver operations with consistent ordering.
+    """
 
     positions: Positions
     free_points: Set["PointID"]
+    free_points_order: list[PointID] = field(init=False)
+
+    def __post_init__(self) -> None:
+        """Initialize free_points_order by sorting free_points for consistent ordering."""
+        self.free_points_order = sorted(list(self.free_points))
 
     @property
     def fixed_points(self) -> Set["PointID"]:
         """Points that are fixed (not free to move)."""
         return set(self.positions.keys()) - self.free_points
+
+    def get_free_points_as_array(self) -> np.ndarray:
+        """
+        Convert free points to flat array for solver.
+
+        Returns:
+            Array of shape (n_points * 3,) containing flattened positions
+            in consistent order determined by _free_point_order.
+        """
+        positions = [self.positions.data[pid] for pid in self.free_points_order]
+        return np.concatenate(positions)
+
+    def update_positions_from_array(self, array: np.ndarray) -> None:
+        """
+        Update positions from flat array returned by solver.
+
+        Args:
+            array: Flat array of shape (n_points * 3,) containing new positions
+        """
+        n_points = len(self.free_points_order)
+
+        if array.shape != (n_points * 3,):
+            raise ValueError(
+                f"Array shape {array.shape} doesn't match expected ({n_points * 3},) "
+                f"for {n_points} points"
+            )
+
+        # Reshape and update
+        positions_2d = array.reshape(n_points, 3)
+        for i, point_id in enumerate(self.free_points_order):
+            self.positions.data[point_id] = positions_2d[i].copy()
+
+    def copy(self) -> "KinematicsState":
+        """Create a deep copy of the kinematics state."""
+        return KinematicsState(
+            positions=self.positions.copy(), free_points=self.free_points.copy()
+        )
 
 
 @dataclass(frozen=True)

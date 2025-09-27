@@ -1,11 +1,11 @@
-from typing import Annotated, Callable, List, NamedTuple, Set
+from typing import Annotated, Callable, List, NamedTuple
 
 import numpy as np
 from numpy.typing import NDArray
 from scipy.optimize import least_squares
 
 from kinematics.constraints import Constraint
-from kinematics.core import CoordinateAxis, Positions
+from kinematics.core import CoordinateAxis, KinematicsState, Positions
 from kinematics.points.ids import PointID
 
 AxisVector = Annotated[NDArray[np.float64], "shape=(3,)"]
@@ -28,9 +28,8 @@ class SolverConfig(NamedTuple):
 
 
 def solve_sweep(
-    initial_positions: Positions,
+    initial_state: KinematicsState,
     constraints: list[Constraint],
-    free_points: Set[PointID],
     targets: list[PointTargetSet],
     compute_derived_points_func: Callable[[Positions], Positions],
     solver_config: SolverConfig = SolverConfig(),
@@ -51,20 +50,7 @@ def solve_sweep(
     ]
 
     states: List[Positions] = []
-    current_positions = initial_positions.copy()
-    free_point_ids = sorted(list(free_points))
-
-    def get_free_array_from_positions(positions: Positions) -> np.ndarray:
-        """Extracts the coordinates of free points into a flat array for the solver."""
-        return positions.array(free_point_ids)
-
-    def update_positions_from_free_array(
-        positions: Positions, free_array: np.ndarray
-    ) -> Positions:
-        """Updates the positions with new values for the free points."""
-        updated = positions.copy()
-        updated.update_from_array(free_point_ids, free_array)
-        return updated
+    current_state = initial_state.copy()
 
     def compute_residuals(
         free_array: np.ndarray, step_targets: List[PointTarget]
@@ -73,10 +59,9 @@ def solve_sweep(
         Calculates the error (residual) for all constraints and targets for a given state.
         The solver's goal is to drive this vector of residuals to zero.
         """
-        temp_positions = update_positions_from_free_array(
-            current_positions.copy(), free_array
-        )
-        all_positions = compute_derived_points_func(temp_positions)
+        temp_state = current_state.copy()
+        temp_state.update_positions_from_array(free_array)
+        all_positions = compute_derived_points_func(temp_state.positions)
 
         residuals = []
 
@@ -88,7 +73,7 @@ def solve_sweep(
         # 2. Target residuals
         for target in step_targets:
             current_pos = all_positions[target.point_id]
-            initial_pos = initial_positions[target.point_id]
+            initial_pos = initial_state.positions[target.point_id]
 
             if isinstance(target.axis, CoordinateAxis):
                 axis_idx = int(target.axis)
@@ -104,7 +89,7 @@ def solve_sweep(
         return np.array(residuals, dtype=float)
 
     # Use the initial state as the first guess for the first step
-    initial_guess = get_free_array_from_positions(current_positions)
+    initial_guess = current_state.get_free_points_as_array()
 
     for step_targets in sweep_targets:
         result = least_squares(
@@ -124,11 +109,9 @@ def solve_sweep(
             )
 
         # Update the current state with the successful solution
-        current_positions = update_positions_from_free_array(
-            current_positions, result.x
-        )
-        final_positions = compute_derived_points_func(current_positions)
-        states.append(final_positions)
+        current_state.update_positions_from_array(result.x)
+        final_positions = compute_derived_points_func(current_state.positions)
+        states.append(final_positions.copy())
 
         # Use the solution from this step as the initial guess for the next
         initial_guess = result.x
