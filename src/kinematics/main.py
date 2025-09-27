@@ -1,9 +1,9 @@
 from typing import List
 
 from kinematics.core import SuspensionState
-from kinematics.points.derived.manager import DerivedPointManager
+from kinematics.derived import DerivedPointManager
 from kinematics.solver import PointTargetSet, solve_sweep
-from kinematics.suspensions.registry import build_registry
+from kinematics.suspensions import build_registry
 
 
 def solve_kinematics(

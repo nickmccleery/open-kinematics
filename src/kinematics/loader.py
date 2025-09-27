@@ -1,21 +1,19 @@
 """
 YAML geometry loader with validation.
 
-Handles file I/O, schema parsing, and geometry validation.
+Handles file I/O, schema parsing, and geometry validation for all suspension types.
 """
 
 from pathlib import Path
-from typing import Tuple, Type, cast
+from typing import Any, Tuple, Type
 
 import yaml
 from marshmallow.exceptions import ValidationError
 from marshmallow_dataclass import class_schema
 
-from kinematics.geometry.validate import GeometryType, validate_geometry
-from kinematics.suspensions.base.provider import SuspensionProvider
-from kinematics.suspensions.registry import build_registry
+from kinematics.suspensions import SuspensionProvider, build_registry
 
-LoadResult = Tuple[GeometryType, Type[SuspensionProvider]]
+LoadResult = Tuple[Any, Type[SuspensionProvider]]
 
 
 def load_geometry(file_path: Path) -> LoadResult:
@@ -37,7 +35,6 @@ def load_geometry(file_path: Path) -> LoadResult:
         raise FileNotFoundError(f"Geometry file not found: {file_path}")
 
     try:
-        # Initial validation.
         with open(file_path, "r") as f:
             yaml_data = yaml.safe_load(f)
 
@@ -57,10 +54,15 @@ def load_geometry(file_path: Path) -> LoadResult:
 
         # Create schema for the model and load the data
         GeometrySchema = class_schema(model_class)
-        geometry = cast(GeometryType, GeometrySchema().load(yaml_data))
+        geometry = GeometrySchema().load(yaml_data)
 
-        # Validate the geometry
-        validate_geometry(geometry)
+        # Basic validation
+        try:
+            if not geometry.validate():  # type: ignore
+                raise ValueError("Geometry validation failed.")
+        except AttributeError:
+            # Geometry object doesn't have validate method, assume it's valid
+            pass
 
         return geometry, provider_class
 

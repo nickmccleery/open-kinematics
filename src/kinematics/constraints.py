@@ -3,9 +3,8 @@ from typing import Set, Union
 
 import numpy as np
 
-from kinematics.core import CoordinateAxis
+from kinematics.core import CoordinateAxis, PointID
 from kinematics.math import compute_point_point_distance, compute_vector_vector_angle
-from kinematics.points.ids import PointID
 
 
 class Constraint(ABC):

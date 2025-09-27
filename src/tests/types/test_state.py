@@ -1,7 +1,6 @@
 import numpy as np
 
-from kinematics.core import GeometryDefinition, SuspensionState
-from kinematics.points.ids import PointID
+from kinematics.core import GeometryDefinition, PointID, SuspensionState
 
 
 def test_suspension_state_construction():

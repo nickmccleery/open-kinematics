@@ -3,8 +3,8 @@ from typing import Dict, List
 
 import numpy as np
 
-from kinematics.points.ids import PointID
-from kinematics.suspensions.double_wishbone.model import DoubleWishboneGeometry
+from kinematics.core import PointID
+from kinematics.suspensions.double_wishbone import DoubleWishboneGeometry
 
 
 @dataclass

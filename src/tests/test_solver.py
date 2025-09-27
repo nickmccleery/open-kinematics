@@ -2,8 +2,7 @@ import numpy as np
 import pytest
 
 from kinematics.constraints import DistanceConstraint
-from kinematics.core import CoordinateAxis, SuspensionState
-from kinematics.points.ids import PointID
+from kinematics.core import CoordinateAxis, PointID, SuspensionState
 from kinematics.solver import PointTarget, PointTargetSet, SolverConfig, solve_sweep
 
 # Tolerance on position checks.

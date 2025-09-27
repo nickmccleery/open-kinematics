@@ -1,41 +1,120 @@
 """
-MacPherson strut suspension provider implementation.
+Complete MacPherson strut suspension implementation.
 
-Contains orchestration logic for constraint building, free points definition,
-and derived point calculations specific to MacPherson strut suspensions.
+Contains geometry models, provider logic, and derived point calculations
+all in one place for the MacPherson strut suspension type.
 """
 
+from dataclasses import dataclass
 from functools import partial
-from typing import Sequence
+from typing import Dict, Sequence
 
 import numpy as np
 
 from kinematics.constraints import Constraint, DistanceConstraint
-from kinematics.core import SuspensionState
-from kinematics.math import compute_point_point_distance
-from kinematics.points.derived.definitions import (
-    get_axle_midpoint,
-    get_wheel_center,
-    get_wheel_inboard,
-    get_wheel_outboard,
-)
-from kinematics.points.derived.spec import DerivedSpec
-from kinematics.points.ids import PointID
-from kinematics.suspensions.base.provider import SuspensionProvider
-from kinematics.suspensions.macpherson.model import MacPhersonGeometry
+from kinematics.core import PointID, SuspensionState
+from kinematics.derived import DerivedSpec
+from kinematics.math import compute_point_point_distance, normalize_vector
+from kinematics.suspensions import SuspensionGeometry, SuspensionProvider
 
 
+# Point collection classes
+@dataclass
+class LowerWishbonePoints:
+    """Points defining the lower wishbone geometry."""
+
+    inboard_front: Dict[str, float]
+    inboard_rear: Dict[str, float]
+    outboard: Dict[str, float]
+
+
+@dataclass
+class StrutPoints:
+    """Points defining the strut geometry."""
+
+    inboard: Dict[str, float]
+    outboard: Dict[str, float]
+
+
+@dataclass
+class WheelAxlePoints:
+    """Points defining the wheel axle geometry."""
+
+    inner: Dict[str, float]
+    outer: Dict[str, float]
+
+
+@dataclass
+class MacPhersonHardPoints:
+    """Hard point collection for MacPherson strut suspension."""
+
+    lower_wishbone: LowerWishbonePoints
+    strut: StrutPoints
+    wheel_axle: WheelAxlePoints
+
+
+# Geometry model
+@dataclass
+class MacPhersonGeometry(SuspensionGeometry):
+    """MacPherson strut suspension geometry definition."""
+
+    hard_points: MacPhersonHardPoints
+
+    def validate(self) -> bool:
+        return True
+
+
+# Derived point calculations (same as double wishbone)
+def get_axle_midpoint(positions: Dict[PointID, np.ndarray]) -> np.ndarray:
+    """Calculates the midpoint of the axle."""
+    p1 = positions[PointID.AXLE_INBOARD]
+    p2 = positions[PointID.AXLE_OUTBOARD]
+    return (p1 + p2) / 2
+
+
+def get_wheel_center(
+    positions: Dict[PointID, np.ndarray], wheel_offset: float
+) -> np.ndarray:
+    """Calculates the wheel center point, offset from the axle outboard face."""
+    p1 = positions[PointID.AXLE_OUTBOARD]
+    p2 = positions[PointID.AXLE_INBOARD]
+    v = p1 - p2  # Vector pointing outboard
+    v = normalize_vector(v)
+    return p1 + v * wheel_offset
+
+
+def get_wheel_inboard(
+    positions: Dict[PointID, np.ndarray], wheel_width: float
+) -> np.ndarray:
+    """Calculates the inboard lip of the wheel."""
+    p1 = positions[PointID.AXLE_INBOARD]
+    p2 = positions[PointID.WHEEL_CENTER]
+    v = p2 - p1  # Vector from axle inboard to wheel center
+    v = normalize_vector(v)
+    return p2 - v * (wheel_width / 2)
+
+
+def get_wheel_outboard(
+    positions: Dict[PointID, np.ndarray], wheel_width: float
+) -> np.ndarray:
+    """Calculates the outboard lip of the wheel."""
+    p1 = positions[PointID.WHEEL_CENTER]
+    p2 = positions[PointID.AXLE_INBOARD]
+    v = p1 - p2  # Vector from axle inboard to wheel center
+    v = normalize_vector(v)
+    return p1 + v * (wheel_width / 2)
+
+
+# Provider implementation
 class MacPhersonProvider(SuspensionProvider):
-    """The concrete implementation of the BaseProvider for MacPherson strut geometry."""
+    """The concrete implementation for MacPherson strut geometry."""
 
     def __init__(self, geometry: MacPhersonGeometry):
-        self.geometry: MacPhersonGeometry = geometry
+        self.geometry = geometry
 
     def initial_state(self) -> SuspensionState:
         """Create initial suspension state from geometry."""
         positions = {}
-
-        # Convert point collections to positions dict
         hard_points = self.geometry.hard_points
 
         # Lower wishbone
@@ -80,9 +159,7 @@ class MacPhersonProvider(SuspensionProvider):
         ]
 
     def derived_spec(self) -> DerivedSpec:
-        """
-        Returns a DerivedSpec with all derived points, their calculation functions, and dependencies.
-        """
+        """Returns derived point specifications."""
         wheel_cfg = self.geometry.configuration.wheel
 
         functions = {
@@ -108,11 +185,11 @@ class MacPhersonProvider(SuspensionProvider):
         return DerivedSpec(functions=functions, dependencies=dependencies)
 
     def constraints(self) -> list[Constraint]:
-        """Builds the complete list of constraints that define the suspension's mechanics."""
+        """Builds the complete list of constraints."""
         constraints: list[Constraint] = []
         initial_state = self.initial_state()
 
-        # 1. Fixed distance constraints between points
+        # Distance constraints
         length_pairs = [
             (PointID.LOWER_WISHBONE_INBOARD_FRONT, PointID.LOWER_WISHBONE_OUTBOARD),
             (PointID.LOWER_WISHBONE_INBOARD_REAR, PointID.LOWER_WISHBONE_OUTBOARD),
@@ -130,3 +207,7 @@ class MacPhersonProvider(SuspensionProvider):
             constraints.append(DistanceConstraint(p1, p2, target_distance))
 
         return constraints
+
+
+# Export the main classes
+__all__ = ["MacPhersonGeometry", "MacPhersonProvider"]

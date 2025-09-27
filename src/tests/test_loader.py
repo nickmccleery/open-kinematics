@@ -3,8 +3,8 @@ from pathlib import Path
 import pytest
 import yaml
 
-from kinematics.geometry.loader import load_geometry
-from kinematics.suspensions.double_wishbone.model import SuspensionGeometry
+from kinematics.loader import load_geometry
+from kinematics.suspensions import SuspensionGeometry
 
 
 @pytest.fixture

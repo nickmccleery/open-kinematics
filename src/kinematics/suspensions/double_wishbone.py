@@ -1,12 +1,13 @@
 """
-Double wishbone suspension provider implementation.
+Complete double wishbone suspension implementation.
 
-Contains orchestration logic for constraint building, free points definition,
-and derived point calculations specific to double wishbone suspensions.
+Contains geometry models, provider logic, and derived point calculations
+all in one place for the double wishbone suspension type.
 """
 
+from dataclasses import dataclass
 from functools import partial
-from typing import Sequence
+from typing import Dict, Sequence
 
 import numpy as np
 
@@ -16,31 +17,123 @@ from kinematics.constraints import (
     DistanceConstraint,
     PointOnLineConstraint,
 )
-from kinematics.core import Direction, SuspensionState
-from kinematics.math import compute_point_point_distance, compute_vector_vector_angle
-from kinematics.points.derived.definitions import (
-    get_axle_midpoint,
-    get_wheel_center,
-    get_wheel_inboard,
-    get_wheel_outboard,
+from kinematics.core import Direction, PointID, SuspensionState
+from kinematics.derived import DerivedSpec
+from kinematics.math import (
+    compute_point_point_distance,
+    compute_vector_vector_angle,
+    normalize_vector,
 )
-from kinematics.points.derived.spec import DerivedSpec
-from kinematics.points.ids import PointID
-from kinematics.suspensions.base.provider import SuspensionProvider
-from kinematics.suspensions.double_wishbone.model import DoubleWishboneGeometry
+from kinematics.suspensions import SuspensionGeometry, SuspensionProvider
 
 
+# Point collection classes
+@dataclass
+class LowerWishbonePoints:
+    """Points defining the lower wishbone geometry."""
+
+    inboard_front: Dict[str, float]
+    inboard_rear: Dict[str, float]
+    outboard: Dict[str, float]
+
+
+@dataclass
+class UpperWishbonePoints:
+    """Points defining the upper wishbone geometry."""
+
+    inboard_front: Dict[str, float]
+    inboard_rear: Dict[str, float]
+    outboard: Dict[str, float]
+
+
+@dataclass
+class WheelAxlePoints:
+    """Points defining the wheel axle geometry."""
+
+    inner: Dict[str, float]
+    outer: Dict[str, float]
+
+
+@dataclass
+class TrackRodPoints:
+    """Points defining the track rod/tie rod geometry."""
+
+    inner: Dict[str, float]
+    outer: Dict[str, float]
+
+
+@dataclass
+class DoubleWishboneHardPoints:
+    """Hard point collection for double wishbone suspension."""
+
+    lower_wishbone: LowerWishbonePoints
+    upper_wishbone: UpperWishbonePoints
+    track_rod: TrackRodPoints
+    wheel_axle: WheelAxlePoints
+
+
+# Geometry model
+@dataclass
+class DoubleWishboneGeometry(SuspensionGeometry):
+    """Double wishbone suspension geometry definition."""
+
+    hard_points: DoubleWishboneHardPoints
+
+    def validate(self) -> bool:
+        return True
+
+
+# Derived point calculations
+def get_axle_midpoint(positions: Dict[PointID, np.ndarray]) -> np.ndarray:
+    """Calculates the midpoint of the axle."""
+    p1 = positions[PointID.AXLE_INBOARD]
+    p2 = positions[PointID.AXLE_OUTBOARD]
+    return (p1 + p2) / 2
+
+
+def get_wheel_center(
+    positions: Dict[PointID, np.ndarray], wheel_offset: float
+) -> np.ndarray:
+    """Calculates the wheel center point, offset from the axle outboard face."""
+    p1 = positions[PointID.AXLE_OUTBOARD]
+    p2 = positions[PointID.AXLE_INBOARD]
+    v = p1 - p2  # Vector pointing outboard
+    v = normalize_vector(v)
+    return p1 + v * wheel_offset
+
+
+def get_wheel_inboard(
+    positions: Dict[PointID, np.ndarray], wheel_width: float
+) -> np.ndarray:
+    """Calculates the inboard lip of the wheel."""
+    p1 = positions[PointID.AXLE_INBOARD]
+    p2 = positions[PointID.WHEEL_CENTER]
+    v = p2 - p1  # Vector from axle inboard to wheel center
+    v = normalize_vector(v)
+    return p2 - v * (wheel_width / 2)
+
+
+def get_wheel_outboard(
+    positions: Dict[PointID, np.ndarray], wheel_width: float
+) -> np.ndarray:
+    """Calculates the outboard lip of the wheel."""
+    p1 = positions[PointID.WHEEL_CENTER]
+    p2 = positions[PointID.AXLE_INBOARD]
+    v = p1 - p2  # Vector from axle inboard to wheel center
+    v = normalize_vector(v)
+    return p1 + v * (wheel_width / 2)
+
+
+# Provider implementation
 class DoubleWishboneProvider(SuspensionProvider):
-    """The concrete implementation of the BaseProvider for Double Wishbone geometry."""
+    """The concrete implementation for Double Wishbone geometry."""
 
     def __init__(self, geometry: DoubleWishboneGeometry):
-        self.geometry: DoubleWishboneGeometry = geometry
+        self.geometry = geometry
 
     def initial_state(self) -> SuspensionState:
         """Create initial suspension state from geometry."""
         positions = {}
-
-        # Convert point collections to positions dict
         hard_points = self.geometry.hard_points
 
         # Lower wishbone
@@ -99,9 +192,7 @@ class DoubleWishboneProvider(SuspensionProvider):
         ]
 
     def derived_spec(self) -> DerivedSpec:
-        """
-        Returns a DerivedSpec with all derived points, their calculation functions, and dependencies.
-        """
+        """Returns derived point specifications."""
         wheel_cfg = self.geometry.configuration.wheel
 
         functions = {
@@ -127,11 +218,11 @@ class DoubleWishboneProvider(SuspensionProvider):
         return DerivedSpec(functions=functions, dependencies=dependencies)
 
     def constraints(self) -> list[Constraint]:
-        """Builds the complete list of constraints that define the suspension's mechanics."""
+        """Builds the complete list of constraints."""
         constraints: list[Constraint] = []
         initial_state = self.initial_state()
 
-        # 1. Fixed distance constraints between points
+        # Distance constraints
         length_pairs = [
             (PointID.UPPER_WISHBONE_INBOARD_FRONT, PointID.UPPER_WISHBONE_OUTBOARD),
             (PointID.UPPER_WISHBONE_INBOARD_REAR, PointID.UPPER_WISHBONE_OUTBOARD),
@@ -155,8 +246,7 @@ class DoubleWishboneProvider(SuspensionProvider):
             )
             constraints.append(DistanceConstraint(p1, p2, target_distance))
 
-        # 2. Fixed angle constraints between vectors
-        # Calculate target angle from initial positions using utility function
+        # Angle constraints
         v1 = (
             initial_state.positions[PointID.LOWER_WISHBONE_OUTBOARD]
             - initial_state.positions[PointID.UPPER_WISHBONE_OUTBOARD]
@@ -177,7 +267,7 @@ class DoubleWishboneProvider(SuspensionProvider):
             )
         )
 
-        # 3. Point-on-line constraints (for steering rack)
+        # Point-on-line constraints
         constraints.append(
             PointOnLineConstraint(
                 point_id=PointID.TRACKROD_INBOARD,
@@ -187,3 +277,7 @@ class DoubleWishboneProvider(SuspensionProvider):
         )
 
         return constraints
+
+
+# Export the main classes
+__all__ = ["DoubleWishboneGeometry", "DoubleWishboneProvider"]

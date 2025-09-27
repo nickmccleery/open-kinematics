@@ -4,14 +4,15 @@ import numpy as np
 import pytest
 
 from kinematics.constraints import DistanceConstraint
-from kinematics.core import CoordinateAxis
-from kinematics.geometry.loader import load_geometry
+from kinematics.core import CoordinateAxis, PointID
+from kinematics.derived import DerivedPointManager
+from kinematics.loader import load_geometry
 from kinematics.main import solve_kinematics
-from kinematics.points.derived.manager import DerivedPointManager
-from kinematics.points.ids import PointID
 from kinematics.solver import PointTarget, PointTargetSet
-from kinematics.suspensions.double_wishbone.model import DoubleWishboneGeometry
-from kinematics.suspensions.double_wishbone.provider import DoubleWishboneProvider
+from kinematics.suspensions.double_wishbone import (
+    DoubleWishboneGeometry,
+    DoubleWishboneProvider,
+)
 from kinematics.visualization.debug import create_animation
 from kinematics.visualization.main import SuspensionVisualizer, WheelVisualization
 

@@ -5,8 +5,7 @@ from numpy.typing import NDArray
 from scipy.optimize import least_squares
 
 from kinematics.constraints import Constraint
-from kinematics.core import CoordinateAxis, SuspensionState
-from kinematics.points.ids import PointID
+from kinematics.core import CoordinateAxis, PointID, SuspensionState
 
 AxisVector = Annotated[NDArray[np.float64], "shape=(3,)"]
 

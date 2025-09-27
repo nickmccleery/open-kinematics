@@ -5,7 +5,7 @@ import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import numpy as np
 
-from kinematics.points.ids import PointID
+from kinematics.core import PointID
 from kinematics.visualization.main import SuspensionVisualizer
 
 

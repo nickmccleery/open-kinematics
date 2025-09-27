@@ -4,9 +4,8 @@ from abc import ABC, abstractmethod
 from typing import Sequence
 
 from kinematics.constraints import Constraint
-from kinematics.core import SuspensionState
+from kinematics.core import PointID, SuspensionState
 from kinematics.points.derived.spec import DerivedSpec
-from kinematics.points.ids import PointID
 
 
 class SuspensionProvider(ABC):

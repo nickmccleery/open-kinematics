@@ -9,9 +9,8 @@ from typing import Dict
 
 import numpy as np
 
-from kinematics.core import Position
+from kinematics.core import PointID, Position
 from kinematics.math import normalize_vector
-from kinematics.points.ids import PointID
 
 
 def get_axle_midpoint(positions: Dict[PointID, np.ndarray]) -> Position:
