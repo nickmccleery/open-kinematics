@@ -96,11 +96,11 @@ def test_run_solver(
     target_point_id = PointID.WHEEL_CENTER
 
     # Verify constraints are maintained.
-    for positions, displacement in zip(position_states, hub_displacements):
+    for state, displacement in zip(position_states, hub_displacements):
         # Verify length constraints.
         for constraint in length_constraints:
-            p1 = positions[constraint.p1]
-            p2 = positions[constraint.p2]
+            p1 = state.positions[constraint.p1]
+            p2 = state.positions[constraint.p2]
             current_length = np.linalg.norm(p1 - p2)
 
             assert np.abs(current_length - constraint.distance) < EPSILON_CHECK, (
@@ -109,7 +109,7 @@ def test_run_solver(
             )
 
         # Verify target point z position.
-        target_point_position = positions[target_point_id]
+        target_point_position = state.positions[target_point_id]
         initial_target_point_position = initial_positions[target_point_id]
         target_z = initial_target_point_position[2] + displacement
 
@@ -119,7 +119,11 @@ def test_run_solver(
 
     print("Creating animation...")
 
-    position_states_animate = position_states + position_states[::-1]
+    # Extract positions from KinematicsState objects for animation
+    position_states_positions = [state.positions for state in position_states]
+    position_states_animate = (
+        position_states_positions + position_states_positions[::-1]
+    )
     output_path = Path("suspension_motion.gif")
 
     r_aspect = 0.55

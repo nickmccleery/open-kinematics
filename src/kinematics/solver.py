@@ -33,7 +33,7 @@ def solve_sweep(
     targets: list[PointTargetSet],
     compute_derived_points_func: Callable[[Positions], Positions],
     solver_config: SolverConfig = SolverConfig(),
-) -> list[Positions]:
+) -> list[KinematicsState]:
     """
     Solves a series of kinematic states using damped non-linear least squares.
     """
@@ -49,28 +49,36 @@ def solve_sweep(
         [target_set.values[i] for target_set in targets] for i in range(n_steps)
     ]
 
-    states: List[Positions] = []
+    # Initialize state for the entire sweep - this object will only be updated after each successful step
     current_state = initial_state.copy()
+    states: List[KinematicsState] = []  # Will store the final results
+
+    # Create the single, reusable "scratchpad" object for calculations
+    # This eliminates allocations inside the compute_residuals function
+    scratch_positions = current_state.positions.copy()
+    free_point_order = current_state.free_points_order  # Capture for stability
 
     def compute_residuals(
         free_array: np.ndarray, step_targets: List[PointTarget]
     ) -> np.ndarray:
         """
-        Calculates the error (residual) for all constraints and targets for a given state.
-        The solver's goal is to drive this vector of residuals to zero.
+        Calculates residuals by modifying the scratch_positions in-place.
+        NO NEW OBJECTS ARE CREATED HERE.
         """
-        temp_state = current_state.copy()
-        temp_state.update_positions_from_array(free_array)
-        all_positions = compute_derived_points_func(temp_state.positions)
+        # 1. Update the scratchpad with the solver's current guess (IN-PLACE)
+        scratch_positions.update_from_array(free_point_order, free_array)
+
+        # 2. Compute derived points using the updated scratchpad
+        all_positions = compute_derived_points_func(scratch_positions)
 
         residuals = []
 
-        # 1. Geometry constraint residuals
+        # 3. Geometry constraint residuals
         for c in constraints:
             # Extend is used to handle multi-residual constraints gracefully
             residuals.extend(c.get_residual(all_positions))
 
-        # 2. Target residuals
+        # 4. Target residuals
         for target in step_targets:
             current_pos = all_positions[target.point_id]
             initial_pos = initial_state.positions[target.point_id]
@@ -108,12 +116,21 @@ def solve_sweep(
                 f"\nMessage: {result.message}"
             )
 
-        # Update the current state with the successful solution
-        current_state.update_positions_from_array(result.x)
-        final_positions = compute_derived_points_func(current_state.positions)
-        states.append(final_positions.copy())
+        # ---- On Success ----
+        # 1. Update the main state's positions with the solution
+        current_state.positions.update_from_array(free_point_order, result.x)
 
-        # Use the solution from this step as the initial guess for the next
+        # 2. Re-calculate final derived points on the now-correct main state
+        current_state.positions = compute_derived_points_func(current_state.positions)
+
+        # 3. Store a snapshot of the successful state
+        states.append(current_state.copy())
+
+        # 4. Sync the scratchpad's fixed points for the next step's calculations.
+        #    This is critical.
+        scratch_positions = current_state.positions.copy()
+
+        # 5. The new guess is the successful result from this step
         initial_guess = result.x
 
     return states

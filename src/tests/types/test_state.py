@@ -29,7 +29,7 @@ def test_kinematics_state_construction():
 
 
 def test_kinematics_state_array_conversion():
-    """Test the array conversion methods moved from Positions to KinematicsState."""
+    """Test the array conversion methods in KinematicsState."""
     positions_data = {
         PointID.LOWER_WISHBONE_OUTBOARD: np.array([1.0, 2.0, 3.0]),
         PointID.UPPER_WISHBONE_OUTBOARD: np.array([4.0, 5.0, 6.0]),
@@ -40,21 +40,11 @@ def test_kinematics_state_array_conversion():
     # Create state
     state = KinematicsState(positions=positions, free_points=free_points)
 
-    # Test extraction
+    # Test extraction - only testing get_free_points_as_array since update is now in Positions
     arr = state.get_free_points_as_array()
     # Should be sorted order: LOWER_WISHBONE_OUTBOARD, UPPER_WISHBONE_OUTBOARD
     expected_flat = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
     np.testing.assert_array_equal(arr, expected_flat)
-
-    # Test update
-    new_flat = np.array([7.0, 8.0, 9.0, 10.0, 11.0, 12.0])
-    state.update_positions_from_array(new_flat)
-    np.testing.assert_array_equal(
-        state.positions[PointID.LOWER_WISHBONE_OUTBOARD], np.array([7.0, 8.0, 9.0])
-    )
-    np.testing.assert_array_equal(
-        state.positions[PointID.UPPER_WISHBONE_OUTBOARD], np.array([10.0, 11.0, 12.0])
-    )
 
 
 def test_geometry_definition_construction():

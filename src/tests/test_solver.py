@@ -99,9 +99,9 @@ def test_solve_sweep(
 
     # Check each state maintains constraints
     for i, state in enumerate(states):
-        p_front = state[PointID.LOWER_WISHBONE_INBOARD_FRONT]
-        p_rear = state[PointID.LOWER_WISHBONE_INBOARD_REAR]
-        p_outboard = state[PointID.LOWER_WISHBONE_OUTBOARD]
+        p_front = state.positions[PointID.LOWER_WISHBONE_INBOARD_FRONT]
+        p_rear = state.positions[PointID.LOWER_WISHBONE_INBOARD_REAR]
+        p_outboard = state.positions[PointID.LOWER_WISHBONE_OUTBOARD]
 
         # Distance constraints
         assert np.linalg.norm(p_outboard - p_front) == pytest.approx(

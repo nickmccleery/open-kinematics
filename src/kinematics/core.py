@@ -62,6 +62,27 @@ class Positions:
         """Set position of a specific point."""
         self.data[point_id] = position.copy()
 
+    def update_from_array(self, free_points: list[PointID], array: np.ndarray) -> None:
+        """
+        Update positions in-place from flat array.
+
+        Args:
+            free_points: Ordered list of point IDs corresponding to array values
+            array: Flat array of shape (n_points * 3,) containing new positions
+        """
+        n_points = len(free_points)
+
+        if array.shape != (n_points * 3,):
+            raise ValueError(
+                f"Array shape {array.shape} doesn't match expected ({n_points * 3},) "
+                f"for {n_points} points"
+            )
+
+        # Reshape and update in-place
+        positions_2d = array.reshape(n_points, 3)
+        for i, point_id in enumerate(free_points):
+            self.data[point_id] = positions_2d[i].copy()
+
     def copy(self) -> "Positions":
         """Create a deep copy of the positions."""
         return Positions({pid: pos.copy() for pid, pos in self.data.items()})
@@ -123,30 +144,10 @@ class KinematicsState:
 
         Returns:
             Array of shape (n_points * 3,) containing flattened positions
-            in consistent order determined by _free_point_order.
+            in consistent order determined by free_points_order.
         """
         positions = [self.positions.data[pid] for pid in self.free_points_order]
         return np.concatenate(positions)
-
-    def update_positions_from_array(self, array: np.ndarray) -> None:
-        """
-        Update positions from flat array returned by solver.
-
-        Args:
-            array: Flat array of shape (n_points * 3,) containing new positions
-        """
-        n_points = len(self.free_points_order)
-
-        if array.shape != (n_points * 3,):
-            raise ValueError(
-                f"Array shape {array.shape} doesn't match expected ({n_points * 3},) "
-                f"for {n_points} points"
-            )
-
-        # Reshape and update
-        positions_2d = array.reshape(n_points, 3)
-        for i, point_id in enumerate(self.free_points_order):
-            self.positions.data[point_id] = positions_2d[i].copy()
 
     def copy(self) -> "KinematicsState":
         """Create a deep copy of the kinematics state."""

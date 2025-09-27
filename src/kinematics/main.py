@@ -1,6 +1,6 @@
 from typing import List
 
-from kinematics.core import KinematicsState, Positions
+from kinematics.core import KinematicsState
 from kinematics.points.derived.manager import DerivedPointManager
 from kinematics.solver import PointTargetSet, solve_sweep
 from kinematics.suspensions.registry import build_registry
@@ -9,7 +9,7 @@ from kinematics.suspensions.registry import build_registry
 def solve_kinematics(
     geometry,
     point_targets: List[PointTargetSet],
-) -> List[Positions]:
+) -> List[KinematicsState]:
     """
     Generic, high-level function to orchestrate the solving of any suspension geometry.
 
@@ -62,11 +62,11 @@ def solve_kinematics(
     constraints = provider.constraints()
 
     # 8. Call the generic solver with all the necessary data
-    position_states = solve_sweep(
+    kinematic_states = solve_sweep(
         initial_state=initial_state_with_derived,
         constraints=constraints,
         targets=point_targets,
         compute_derived_points_func=derived_point_manager.update,
     )
 
-    return position_states
+    return kinematic_states
