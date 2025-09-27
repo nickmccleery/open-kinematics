@@ -11,7 +11,6 @@ import yaml
 from marshmallow.exceptions import ValidationError
 from marshmallow_dataclass import class_schema
 
-from kinematics.geometry import exceptions as exc
 from kinematics.geometry.validate import GeometryType, validate_geometry
 from kinematics.suspensions.base.provider import SuspensionProvider
 from kinematics.suspensions.registry import build_registry
@@ -30,13 +29,12 @@ def load_geometry(file_path: Path) -> LoadResult:
         Tuple of (loaded geometry, provider class)
 
     Raises:
-        exc.GeometryFileNotFound: If the file doesn't exist.
-        exc.InvalidGeometryFileContents: If the file contents are invalid.
-        exc.GeometryFileError: For general file handling errors.
-        exc.UnsupportedGeometryType: If the geometry type is not recognized.
+        FileNotFoundError: If the file doesn't exist.
+        ValueError: If the file contents are invalid or geometry type is unsupported.
+        OSError: For general file handling errors.
     """
     if not file_path.exists():
-        raise exc.GeometryFileNotFound(f"Geometry file not found: {file_path}")
+        raise FileNotFoundError(f"Geometry file not found: {file_path}")
 
     try:
         # Initial validation.
@@ -44,17 +42,15 @@ def load_geometry(file_path: Path) -> LoadResult:
             yaml_data = yaml.safe_load(f)
 
         if yaml_data is None:
-            raise exc.InvalidGeometryFileContents("Geometry file is empty.")
+            raise ValueError("Geometry file is empty.")
 
         if "type" not in yaml_data:
-            raise exc.InvalidGeometryFileContents("Geometry type not specified in file")
+            raise ValueError("Geometry type not specified in file")
 
         geometry_type_key = yaml_data.pop("type")
         registry = build_registry()
         if geometry_type_key not in registry:
-            raise exc.UnsupportedGeometryType(
-                f"Unsupported geometry type: {geometry_type_key}"
-            )
+            raise ValueError(f"Unsupported geometry type: {geometry_type_key}")
 
         # Get model and provider classes from registry
         model_class, provider_class = registry[geometry_type_key]
@@ -69,8 +65,8 @@ def load_geometry(file_path: Path) -> LoadResult:
         return geometry, provider_class
 
     except yaml.YAMLError as e:
-        raise exc.GeometryFileError(f"Error parsing geometry file: {e}")
+        raise ValueError(f"Error parsing geometry file: {e}") from e
     except ValidationError as e:
-        raise exc.InvalidGeometryFileContents(f"Error validating geometry: {e}")
+        raise ValueError(f"Error validating geometry: {e}") from e
     except (IOError, OSError) as e:
-        raise exc.GeometryFileError(f"Error reading geometry file: {e}")
+        raise OSError(f"Error reading geometry file: {e}") from e

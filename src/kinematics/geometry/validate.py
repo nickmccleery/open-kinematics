@@ -6,8 +6,6 @@ Contains validation functions for geometry constraints and business rules.
 
 from typing import Union
 
-from marshmallow.exceptions import ValidationError
-
 from kinematics.suspensions.double_wishbone.model import DoubleWishboneGeometry
 from kinematics.suspensions.macpherson.model import MacPhersonGeometry
 
@@ -22,10 +20,10 @@ def validate_geometry(geometry: GeometryType) -> None:
         geometry: The geometry instance to validate
 
     Raises:
-        ValidationError: If validation fails
+        ValueError: If validation fails
     """
     # With the new simplified structure, basic validation is handled
     # by the dataclass structure itself. Additional validation can be
     # added here as needed for specific business rules.
     if not geometry.validate():
-        raise ValidationError("Geometry validation failed.")
+        raise ValueError("Geometry validation failed.")

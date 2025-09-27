@@ -3,7 +3,6 @@ from pathlib import Path
 import pytest
 import yaml
 
-import kinematics.geometry.exceptions as exc
 from kinematics.geometry.loader import load_geometry
 from kinematics.suspensions.double_wishbone.model import SuspensionGeometry
 
@@ -24,7 +23,10 @@ def invalid_yaml_geometry_file(tmp_path: Path):
 
 @pytest.fixture
 def invalid_geometry_file(tmp_path: Path):
-    data = {"invalid_attribute": "value"}
+    data = {
+        "type": "DOUBLE_WISHBONE",
+        "invalid_attribute": "value",
+    }  # Valid type but invalid geometry
     file_path = tmp_path / "invalid_geometry.yaml"
     with open(file_path, "w") as f:
         yaml.dump(data, f)
@@ -38,15 +40,46 @@ def test_load_geometry_valid(double_wishbone_geometry_file):
 
 
 def test_load_geometry_empty(empty_geometry_file):
-    with pytest.raises(exc.InvalidGeometryFileContents):
+    with pytest.raises(ValueError, match="Geometry file is empty"):
         load_geometry(empty_geometry_file)
 
 
 def test_load_geometry_not_found(tmp_path: Path):
-    with pytest.raises(exc.GeometryFileNotFound):
+    with pytest.raises(FileNotFoundError, match="Geometry file not found"):
         load_geometry(tmp_path / "file_not_found.yaml")
 
 
 def test_load_geometry_invalid(invalid_geometry_file):
-    with pytest.raises(exc.InvalidGeometryFileContents):
+    with pytest.raises(ValueError, match="Error validating geometry"):
         load_geometry(invalid_geometry_file)
+
+
+def test_load_geometry_unsupported_type(tmp_path: Path):
+    """Test handling of unsupported geometry types."""
+    data = {"type": "UNSUPPORTED_TYPE", "name": "test"}
+    file_path = tmp_path / "unsupported.yaml"
+    with open(file_path, "w") as f:
+        yaml.dump(data, f)
+
+    with pytest.raises(ValueError, match="Unsupported geometry type"):
+        load_geometry(file_path)
+
+
+def test_load_geometry_missing_type(tmp_path: Path):
+    """Test handling of missing geometry type."""
+    data = {"name": "test"}  # Missing 'type' field
+    file_path = tmp_path / "missing_type.yaml"
+    with open(file_path, "w") as f:
+        yaml.dump(data, f)
+
+    with pytest.raises(ValueError, match="Geometry type not specified"):
+        load_geometry(file_path)
+
+
+def test_load_geometry_yaml_error(tmp_path: Path):
+    """Test handling of malformed YAML."""
+    file_path = tmp_path / "malformed.yaml"
+    file_path.write_text("invalid: yaml: content: [")
+
+    with pytest.raises(ValueError, match="Error parsing geometry file"):
+        load_geometry(file_path)
