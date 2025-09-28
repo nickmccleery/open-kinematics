@@ -5,7 +5,7 @@ from typing import Sequence
 
 from kinematics.constraints import Constraint
 from kinematics.core import PointID, SuspensionState
-from kinematics.points.derived.spec import DerivedSpec
+from kinematics.points.derived.manager import DerivedSpec
 
 
 class SuspensionProvider(ABC):

@@ -5,9 +5,9 @@ import pytest
 
 from kinematics.constraints import DistanceConstraint
 from kinematics.core import CoordinateAxis, PointID
-from kinematics.derived import DerivedPointManager
 from kinematics.loader import load_geometry
 from kinematics.main import solve_kinematics
+from kinematics.points.derived.manager import DerivedPointManager
 from kinematics.solver import PointTarget, PointTargetSet
 from kinematics.suspensions.double_wishbone import (
     DoubleWishboneGeometry,

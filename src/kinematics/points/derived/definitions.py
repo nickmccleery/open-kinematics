@@ -1,19 +1,20 @@
 """
-Derived point calculations for suspension kinematics.
+Common derived point calculation functions.
 
-Contains functions to calculate secondary points based on primary hard points,
-such as wheel centers, midpoints, and offset positions.
+These functions calculate positions of derived points based on the positions of
+other points in the suspension system. They are shared across different suspension
+types to avoid code duplication.
 """
 
 from typing import Dict
 
 import numpy as np
 
-from kinematics.core import PointID, Position
+from kinematics.core import PointID
 from kinematics.math import normalize_vector
 
 
-def get_axle_midpoint(positions: Dict[PointID, np.ndarray]) -> Position:
+def get_axle_midpoint(positions: Dict[PointID, np.ndarray]) -> np.ndarray:
     """Calculates the midpoint of the axle."""
     p1 = positions[PointID.AXLE_INBOARD]
     p2 = positions[PointID.AXLE_OUTBOARD]
@@ -22,7 +23,7 @@ def get_axle_midpoint(positions: Dict[PointID, np.ndarray]) -> Position:
 
 def get_wheel_center(
     positions: Dict[PointID, np.ndarray], wheel_offset: float
-) -> Position:
+) -> np.ndarray:
     """Calculates the wheel center point, offset from the axle outboard face."""
     p1 = positions[PointID.AXLE_OUTBOARD]
     p2 = positions[PointID.AXLE_INBOARD]
@@ -33,7 +34,7 @@ def get_wheel_center(
 
 def get_wheel_inboard(
     positions: Dict[PointID, np.ndarray], wheel_width: float
-) -> Position:
+) -> np.ndarray:
     """Calculates the inboard lip of the wheel."""
     p1 = positions[PointID.AXLE_INBOARD]
     p2 = positions[PointID.WHEEL_CENTER]
@@ -44,7 +45,7 @@ def get_wheel_inboard(
 
 def get_wheel_outboard(
     positions: Dict[PointID, np.ndarray], wheel_width: float
-) -> Position:
+) -> np.ndarray:
     """Calculates the outboard lip of the wheel."""
     p1 = positions[PointID.WHEEL_CENTER]
     p2 = positions[PointID.AXLE_INBOARD]

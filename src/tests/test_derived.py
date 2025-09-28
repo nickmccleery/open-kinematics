@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from kinematics.core import PointID
-from kinematics.derived import DerivedPointManager, DerivedSpec
+from kinematics.points.derived.manager import DerivedPointManager, DerivedSpec
 
 
 def test_simple_derived_point_calculation():

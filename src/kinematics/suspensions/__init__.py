@@ -13,7 +13,7 @@ from typing import Dict, Sequence, Tuple, Type
 
 from kinematics.constraints import Constraint
 from kinematics.core import PointID, SuspensionState
-from kinematics.derived import DerivedSpec
+from kinematics.points.derived.manager import DerivedSpec
 
 
 # Configuration classes
