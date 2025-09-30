@@ -71,12 +71,12 @@ def test_run_solver(
 ) -> None:
     hub_displacements, _ = displacements
 
-    geometry, _ = load_geometry(double_wishbone_geometry_file)
+    geometry, provider_class = load_geometry(double_wishbone_geometry_file)
     if not isinstance(geometry, DoubleWishboneGeometry):
         raise ValueError("Invalid geometry type")
 
     # Solve for all positions.
-    position_states = solve_kinematics(geometry, target_set)
+    position_states = solve_kinematics(geometry, provider_class, target_set)
 
     print("Solve complete, verifying constraints...")
 

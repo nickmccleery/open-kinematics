@@ -11,7 +11,8 @@ import yaml
 from marshmallow.exceptions import ValidationError
 from marshmallow_dataclass import class_schema
 
-from kinematics.suspensions import SuspensionProvider, build_registry
+from kinematics.suspensions.base.provider import SuspensionProvider
+from kinematics.suspensions.registry import build_registry
 
 LoadResult = Tuple[Any, Type[SuspensionProvider]]
 

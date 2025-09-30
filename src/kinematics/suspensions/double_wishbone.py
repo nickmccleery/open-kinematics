@@ -25,8 +25,9 @@ from kinematics.points.derived.definitions import (
     get_wheel_inboard,
     get_wheel_outboard,
 )
-from kinematics.points.derived.manager import DerivedSpec
-from kinematics.suspensions import SuspensionGeometry, SuspensionProvider
+from kinematics.points.derived.manager import DerivedPointManager, DerivedSpec
+from kinematics.suspensions.base.geometry import SuspensionGeometry
+from kinematics.suspensions.base.provider import SuspensionProvider
 
 
 # Point collection classes
@@ -139,7 +140,14 @@ class DoubleWishboneProvider(SuspensionProvider):
             [wa.outer["x"], wa.outer["y"], wa.outer["z"]]
         )
 
-        return SuspensionState(positions=positions, free_points=set(self.free_points()))
+        # Calculate derived points to create a complete initial state
+        derived_spec = self.derived_spec()
+        derived_point_manager = DerivedPointManager(derived_spec)
+        all_positions = derived_point_manager.update(positions)
+
+        return SuspensionState(
+            positions=all_positions, free_points=set(self.free_points())
+        )
 
     def free_points(self) -> Sequence[PointID]:
         """Defines which points the solver is allowed to move."""

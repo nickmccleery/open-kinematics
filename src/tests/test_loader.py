@@ -4,7 +4,7 @@ import pytest
 import yaml
 
 from kinematics.loader import load_geometry
-from kinematics.suspensions import SuspensionGeometry
+from kinematics.suspensions.base.geometry import SuspensionGeometry
 
 
 @pytest.fixture
