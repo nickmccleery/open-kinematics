@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
-from kinematics.constraints import make_point_point_distance, make_vector_angle
-from kinematics.points.ids import PointID
+from kinematics.constraints import AngleConstraint, DistanceConstraint
+from kinematics.core import PointID
 
 
 @pytest.fixture
@@ -16,39 +16,46 @@ def positions():
     }
 
 
-def test_make_point_point_distance(positions):
-    constraint = make_point_point_distance(
-        positions, PointID.LOWER_WISHBONE_INBOARD_FRONT, PointID.LOWER_WISHBONE_OUTBOARD
+def test_distance_constraint(positions):
+    target_distance = float(
+        np.linalg.norm(
+            positions[PointID.LOWER_WISHBONE_INBOARD_FRONT]
+            - positions[PointID.LOWER_WISHBONE_OUTBOARD]
+        )
     )
 
-    # Check the constraint was created correctly
-    assert constraint.p1 == PointID.LOWER_WISHBONE_INBOARD_FRONT
-    assert constraint.p2 == PointID.LOWER_WISHBONE_OUTBOARD
-    assert constraint.distance == pytest.approx(np.sqrt(1.25))  # sqrt(0.5^2 + 1.0^2)
-
-
-def test_make_vector_angle():
-    # Create a simpler test case with known angle
-    positions = {
-        PointID.LOWER_WISHBONE_INBOARD_FRONT: np.array([0.0, 0.0, 0.0]),
-        PointID.LOWER_WISHBONE_OUTBOARD: np.array([1.0, 0.0, 0.0]),  # Along x-axis
-        PointID.UPPER_WISHBONE_INBOARD_FRONT: np.array([0.0, 0.0, 0.0]),
-        PointID.UPPER_WISHBONE_OUTBOARD: np.array([0.0, 1.0, 0.0]),  # Along y-axis
-    }
-
-    constraint = make_vector_angle(
-        positions,
+    constraint = DistanceConstraint(
         PointID.LOWER_WISHBONE_INBOARD_FRONT,
         PointID.LOWER_WISHBONE_OUTBOARD,
-        PointID.UPPER_WISHBONE_INBOARD_FRONT,
-        PointID.UPPER_WISHBONE_OUTBOARD,
+        target_distance,
     )
 
-    # Check the constraint was created correctly
-    assert constraint.v1_start == PointID.LOWER_WISHBONE_INBOARD_FRONT
-    assert constraint.v1_end == PointID.LOWER_WISHBONE_OUTBOARD
-    assert constraint.v2_start == PointID.UPPER_WISHBONE_INBOARD_FRONT
-    assert constraint.v2_end == PointID.UPPER_WISHBONE_OUTBOARD
+    # Test that constraint is satisfied at initial positions
+    assert abs(constraint.residual(positions)) < 1e-10
 
-    # Vectors should be at right angles (pi/2 radians)
-    assert constraint.angle == pytest.approx(np.pi / 2)
+    # Test that constraint detects violations
+    modified_positions = positions.copy()
+    modified_positions[PointID.LOWER_WISHBONE_OUTBOARD] += np.array([1.0, 0.0, 0.0])
+
+    residual = constraint.residual(modified_positions)
+    assert abs(residual) > 0.1  # Should be approximately 1.0
+
+
+def test_angle_constraint():
+    positions = {
+        PointID.LOWER_WISHBONE_INBOARD_FRONT: np.array([0.0, 0.0, 0.0]),
+        PointID.LOWER_WISHBONE_OUTBOARD: np.array([1.0, 0.0, 0.0]),
+        PointID.UPPER_WISHBONE_INBOARD_FRONT: np.array([0.0, 0.0, 0.0]),
+        PointID.UPPER_WISHBONE_OUTBOARD: np.array([0.0, 1.0, 0.0]),
+    }
+
+    constraint = AngleConstraint(
+        v1_start=PointID.LOWER_WISHBONE_INBOARD_FRONT,
+        v1_end=PointID.LOWER_WISHBONE_OUTBOARD,
+        v2_start=PointID.UPPER_WISHBONE_INBOARD_FRONT,
+        v2_end=PointID.UPPER_WISHBONE_OUTBOARD,
+        target_angle=np.pi / 2,  # 90 degrees
+    )
+
+    # Should be satisfied at right angle
+    assert abs(constraint.residual(positions)) < 1e-10

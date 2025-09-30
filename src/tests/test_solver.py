@@ -1,9 +1,8 @@
 import numpy as np
 import pytest
 
-from kinematics.constraints import PointPointDistance
-from kinematics.core import CoordinateAxis, KinematicsState, Positions
-from kinematics.points.ids import PointID
+from kinematics.constraints import DistanceConstraint
+from kinematics.core import CoordinateAxis, PointID, SuspensionState
 from kinematics.solver import PointTarget, PointTargetSet, SolverConfig, solve_sweep
 
 # Tolerance on position checks.
@@ -17,7 +16,7 @@ def simple_positions():
         PointID.LOWER_WISHBONE_INBOARD_REAR: np.array([1.0, 0.0, 0.0]),
         PointID.LOWER_WISHBONE_OUTBOARD: np.array([0.0, 1.0, 0.0]),
     }
-    return Positions(positions_dict)
+    return positions_dict
 
 
 @pytest.fixture
@@ -41,15 +40,15 @@ def length_rearward_leg(simple_positions):
 @pytest.fixture
 def simple_constraints(simple_positions, length_forward_leg, length_rearward_leg):
     return [
-        PointPointDistance(
+        DistanceConstraint(
             p1=PointID.LOWER_WISHBONE_INBOARD_FRONT,
             p2=PointID.LOWER_WISHBONE_OUTBOARD,
-            distance=length_forward_leg,
+            target_distance=length_forward_leg,
         ),
-        PointPointDistance(
+        DistanceConstraint(
             p1=PointID.LOWER_WISHBONE_INBOARD_REAR,
             p2=PointID.LOWER_WISHBONE_OUTBOARD,
-            distance=length_rearward_leg,
+            target_distance=length_rearward_leg,
         ),
     ]
 
@@ -68,7 +67,7 @@ def simple_target_set():
     return PointTargetSet(values=point_targets)
 
 
-def null_derived_points(positions: Positions) -> Positions:
+def null_derived_points(positions):
     return positions.copy()
 
 
@@ -81,8 +80,8 @@ def test_solve_sweep(
 ):
     free_points = {PointID.LOWER_WISHBONE_OUTBOARD}
 
-    # Create KinematicsState instead of separate positions and free_points
-    initial_state = KinematicsState(positions=simple_positions, free_points=free_points)
+    # Create SuspensionState instead of separate positions and free_points
+    initial_state = SuspensionState(positions=simple_positions, free_points=free_points)
 
     # Extract displacement values for assertions
     displacement_values = [target.value for target in simple_target_set.values]

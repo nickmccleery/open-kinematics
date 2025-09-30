@@ -1,11 +1,10 @@
 from dataclasses import dataclass
-from typing import List
+from typing import Dict, List
 
 import numpy as np
 
-from kinematics.core import Positions
-from kinematics.points.ids import PointID
-from kinematics.suspensions.double_wishbone.model import DoubleWishboneGeometry
+from kinematics.core import PointID
+from kinematics.suspensions.double_wishbone import DoubleWishboneGeometry
 
 
 @dataclass
@@ -82,7 +81,7 @@ class SuspensionVisualizer:
     def draw_wheel(
         self,
         ax,
-        positions: Positions,
+        positions: Dict[PointID, np.ndarray],
     ) -> None:
         wheel_center = positions[PointID.WHEEL_CENTER]
         wheel_inboard = positions[PointID.WHEEL_INBOARD]

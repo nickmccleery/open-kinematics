@@ -1,9 +1,10 @@
 """
-Configuration structures for suspension systems.
+Suspension configuration classes and enums.
 
-Contains classes and enums for configuring suspension geometry,
-wheel parameters, and static setup characteristics.
+Contains all configuration-related classes for suspension systems.
 """
+
+from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum

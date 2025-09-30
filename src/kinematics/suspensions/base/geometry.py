@@ -1,18 +1,20 @@
 """
-Contains the abstract base classes for all suspension geometry models.
+Base classes for suspension geometry.
+
+Contains abstract base classes that all suspension geometries must implement.
 """
+
+from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
-from kinematics.configs import SuspensionConfig, Units
+from ..config import SuspensionConfig, Units
 
 
 @dataclass
 class SuspensionGeometry(ABC):
-    """
-    Base class for all suspension geometry types.
-    """
+    """Base class for all suspension geometry types."""
 
     name: str
     version: str

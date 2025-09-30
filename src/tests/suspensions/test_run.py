@@ -3,15 +3,16 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from kinematics.constraints import PointPointDistance
-from kinematics.core import CoordinateAxis
-from kinematics.geometry.loader import load_geometry
+from kinematics.constraints import DistanceConstraint
+from kinematics.core import CoordinateAxis, PointID
+from kinematics.loader import load_geometry
 from kinematics.main import solve_kinematics
 from kinematics.points.derived.manager import DerivedPointManager
-from kinematics.points.ids import PointID
 from kinematics.solver import PointTarget, PointTargetSet
-from kinematics.suspensions.double_wishbone.model import DoubleWishboneGeometry
-from kinematics.suspensions.double_wishbone.provider import DoubleWishboneProvider
+from kinematics.suspensions.double_wishbone import (
+    DoubleWishboneGeometry,
+    DoubleWishboneProvider,
+)
 from kinematics.visualization.debug import create_animation
 from kinematics.visualization.main import SuspensionVisualizer, WheelVisualization
 
@@ -70,12 +71,12 @@ def test_run_solver(
 ) -> None:
     hub_displacements, _ = displacements
 
-    geometry, _ = load_geometry(double_wishbone_geometry_file)
+    geometry, provider_class = load_geometry(double_wishbone_geometry_file)
     if not isinstance(geometry, DoubleWishboneGeometry):
         raise ValueError("Invalid geometry type")
 
     # Solve for all positions.
-    position_states = solve_kinematics(geometry, target_set)
+    position_states = solve_kinematics(geometry, provider_class, target_set)
 
     print("Solve complete, verifying constraints...")
 
@@ -84,14 +85,14 @@ def test_run_solver(
     provider = DoubleWishboneProvider(geometry)
     derived_point_manager = DerivedPointManager(provider.derived_spec())
 
-    initial_positions = provider.initial_positions()
-    initial_positions = derived_point_manager.update(initial_positions)
+    initial_state = provider.initial_state()
+    initial_positions = derived_point_manager.update(initial_state.positions)
 
     # Get only the length constraints for verification
     all_constraints = provider.constraints()
 
     length_constraints = [
-        c for c in all_constraints if isinstance(c, PointPointDistance)
+        c for c in all_constraints if isinstance(c, DistanceConstraint)
     ]
     target_point_id = PointID.WHEEL_CENTER
 
@@ -103,7 +104,9 @@ def test_run_solver(
             p2 = state.positions[constraint.p2]
             current_length = np.linalg.norm(p1 - p2)
 
-            assert np.abs(current_length - constraint.distance) < EPSILON_CHECK, (
+            assert (
+                np.abs(current_length - constraint.target_distance) < EPSILON_CHECK
+            ), (
                 f"Constraint violation at displacement {displacement}: "
                 f"{constraint.p1.name} to {constraint.p2.name}"
             )
@@ -119,7 +122,7 @@ def test_run_solver(
 
     print("Creating animation...")
 
-    # Extract positions from KinematicsState objects for animation
+    # Extract positions from SuspensionState objects for animation
     position_states_positions = [state.positions for state in position_states]
     position_states_animate = (
         position_states_positions + position_states_positions[::-1]

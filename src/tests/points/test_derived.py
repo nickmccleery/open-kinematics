@@ -3,16 +3,14 @@ from functools import partial
 import numpy as np
 import pytest
 
-from kinematics.core import Positions
+from kinematics.core import PointID
 from kinematics.points.derived.definitions import (
     get_axle_midpoint,
     get_wheel_center,
     get_wheel_inboard,
     get_wheel_outboard,
 )
-from kinematics.points.derived.manager import DerivedPointManager
-from kinematics.points.derived.spec import DerivedSpec
-from kinematics.points.ids import PointID
+from kinematics.points.derived.manager import DerivedPointManager, DerivedSpec
 
 
 @pytest.fixture
@@ -21,28 +19,27 @@ def sample_positions():
     # - Axle inboard at origin
     # - Axle outboard at x=2
     # - This makes the axle 2 units wide pointing along x-axis
-    data = {
+    return {
         PointID.AXLE_INBOARD: np.array([0.0, 0.0, 0.0]),
         PointID.AXLE_OUTBOARD: np.array([2.0, 0.0, 0.0]),
     }
-    return Positions(data)
 
 
 def test_axle_midpoint(sample_positions):
-    result = get_axle_midpoint(sample_positions.data)
+    result = get_axle_midpoint(sample_positions)
     np.testing.assert_array_equal(result, np.array([1.0, 0.0, 0.0]))
 
 
 def test_wheel_center(sample_positions):
     # With axle outboard at x=2.0 and offset of 0.5, wheel center should be at x=2.5
-    result = get_wheel_center(sample_positions.data, wheel_offset=0.5)
+    result = get_wheel_center(sample_positions, wheel_offset=0.5)
     np.testing.assert_array_equal(result, np.array([2.5, 0.0, 0.0]))
 
 
 def test_wheel_inboard_outboard(sample_positions):
     # First compute wheel center
-    wheel_center = get_wheel_center(sample_positions.data, wheel_offset=0.5)
-    positions_dict = sample_positions.data.copy()
+    wheel_center = get_wheel_center(sample_positions, wheel_offset=0.5)
+    positions_dict = sample_positions.copy()
     positions_dict[PointID.WHEEL_CENTER] = wheel_center
 
     # Test inboard point (should be 0.5 units inboard of wheel center)

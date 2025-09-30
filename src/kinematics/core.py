@@ -9,28 +9,42 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import IntEnum
-from typing import Dict, Iterator, Set, Tuple, TypeAlias
+from typing import Dict, List, Set, TypeAlias
 
 import numpy as np
-
-from kinematics.points.ids import PointID
 
 Position: TypeAlias = np.ndarray
 
 
-@dataclass
-class Point3D:
-    """Represents a 3D point in space with optional metadata."""
+class PointID(IntEnum):
+    """Enumeration of all suspension system point identifiers."""
 
-    x: float
-    y: float
-    z: float
-    fixed: bool = False
-    id: PointID = PointID.NOT_ASSIGNED
+    NOT_ASSIGNED = 0
 
-    def as_array(self) -> np.ndarray:
-        """Convert point to numpy array."""
-        return np.array([self.x, self.y, self.z])
+    LOWER_WISHBONE_INBOARD_FRONT = 1
+    LOWER_WISHBONE_INBOARD_REAR = 2
+    LOWER_WISHBONE_OUTBOARD = 3
+
+    UPPER_WISHBONE_INBOARD_FRONT = 4
+    UPPER_WISHBONE_INBOARD_REAR = 5
+    UPPER_WISHBONE_OUTBOARD = 6
+
+    PUSHROD_INBOARD = 7
+    PUSHROD_OUTBOARD = 8
+
+    TRACKROD_INBOARD = 9
+    TRACKROD_OUTBOARD = 10
+
+    AXLE_INBOARD = 11
+    AXLE_OUTBOARD = 12
+    AXLE_MIDPOINT = 13
+
+    STRUT_INBOARD = 14
+    STRUT_OUTBOARD = 15
+
+    WHEEL_CENTER = 16
+    WHEEL_INBOARD = 17
+    WHEEL_OUTBOARD = 18
 
 
 # --- Coordinate System ---
@@ -51,114 +65,85 @@ class CoordinateAxis(IntEnum):
 
 
 @dataclass
-class Positions:
-    data: Dict[PointID, np.ndarray]
-
-    def get(self, point_id: PointID) -> np.ndarray:
-        """Get position of a specific point."""
-        return self.data[point_id]
-
-    def set(self, point_id: PointID, position: np.ndarray) -> None:
-        """Set position of a specific point."""
-        self.data[point_id] = position.copy()
-
-    def update_from_array(self, free_points: list[PointID], array: np.ndarray) -> None:
-        """
-        Update positions in-place from flat array.
-
-        Args:
-            free_points: Ordered list of point IDs corresponding to array values
-            array: Flat array of shape (n_points * 3,) containing new positions
-        """
-        n_points = len(free_points)
-
-        if array.shape != (n_points * 3,):
-            raise ValueError(
-                f"Array shape {array.shape} doesn't match expected ({n_points * 3},) "
-                f"for {n_points} points"
-            )
-
-        # Reshape and update in-place
-        positions_2d = array.reshape(n_points, 3)
-        for i, point_id in enumerate(free_points):
-            self.data[point_id] = positions_2d[i].copy()
-
-    def copy(self) -> "Positions":
-        """Create a deep copy of the positions."""
-        return Positions({pid: pos.copy() for pid, pos in self.data.items()})
-
-    def items(self) -> Iterator[Tuple[PointID, np.ndarray]]:
-        """Iterate over (point_id, position) pairs."""
-        return iter(self.data.items())
-
-    def keys(self) -> Iterator[PointID]:
-        """Iterate over point IDs."""
-        return iter(self.data.keys())
-
-    def values(self) -> Iterator[np.ndarray]:
-        """Iterate over positions."""
-        return iter(self.data.values())
-
-    def __getitem__(self, point_id: PointID) -> np.ndarray:
-        """Allow dict-like access: positions[point_id]."""
-        return self.data[point_id]
-
-    def __setitem__(self, point_id: PointID, position: np.ndarray) -> None:
-        """Allow dict-like assignment: positions[point_id] = pos."""
-        self.data[point_id] = position.copy()
-
-    def __contains__(self, point_id: PointID) -> bool:
-        """Check if point exists: point_id in positions."""
-        return point_id in self.data
-
-    def __len__(self) -> int:
-        """Get number of points."""
-        return len(self.data)
-
-
-@dataclass
-class KinematicsState:
+class SuspensionState:
     """
-    Represents the state of a kinematic system at a specific configuration.
-
-    Manages solver state including positions and free points, providing array
-    conversion methods for solver operations with consistent ordering.
+    Unified state representation for suspension geometry.
+    Combines positions and solver metadata in one structure.
     """
 
-    positions: Positions
-    free_points: Set["PointID"]
-    free_points_order: list[PointID] = field(init=False)
+    positions: Dict[PointID, np.ndarray]
+    free_points: Set[PointID]
+    free_points_order: List[PointID] = field(init=False)
 
     def __post_init__(self) -> None:
-        """Initialize free_points_order by sorting free_points for consistent ordering."""
+        """Initialize consistent ordering for free points."""
         self.free_points_order = sorted(list(self.free_points))
 
     @property
-    def fixed_points(self) -> Set["PointID"]:
+    def fixed_points(self) -> Set[PointID]:
         """Points that are fixed (not free to move)."""
         return set(self.positions.keys()) - self.free_points
 
-    def get_free_points_as_array(self) -> np.ndarray:
-        """
-        Convert free points to flat array for solver.
-
-        Returns:
-            Array of shape (n_points * 3,) containing flattened positions
-            in consistent order determined by free_points_order.
-        """
-        positions = [self.positions.data[pid] for pid in self.free_points_order]
+    def get_free_array(self) -> np.ndarray:
+        """Convert free points to flat array for solver."""
+        positions = [self.positions[pid] for pid in self.free_points_order]
         return np.concatenate(positions)
 
-    def copy(self) -> "KinematicsState":
-        """Create a deep copy of the kinematics state."""
-        return KinematicsState(
-            positions=self.positions.copy(), free_points=self.free_points.copy()
+    def update_from_array(self, array: np.ndarray) -> None:
+        """Update free points from solver array in-place."""
+        n_points = len(self.free_points_order)
+        if array.shape != (n_points * 3,):
+            raise ValueError(
+                f"Array shape {array.shape} doesn't match expected ({n_points * 3},)"
+            )
+
+        positions_2d = array.reshape(n_points, 3)
+        for i, point_id in enumerate(self.free_points_order):
+            self.positions[point_id] = positions_2d[i].copy()
+
+    def copy(self) -> "SuspensionState":
+        """Create a deep copy."""
+        return SuspensionState(
+            positions={pid: pos.copy() for pid, pos in self.positions.items()},
+            free_points=self.free_points.copy(),
         )
+
+    def get(self, point_id: PointID) -> np.ndarray:
+        """Get position of a specific point."""
+        return self.positions[point_id]
+
+    def set(self, point_id: PointID, position: np.ndarray) -> None:
+        """Set position of a specific point."""
+        self.positions[point_id] = position.copy()
+
+    def __getitem__(self, point_id: PointID) -> np.ndarray:
+        """Allow dict-like access."""
+        return self.positions[point_id]
+
+    def __setitem__(self, point_id: PointID, position: np.ndarray) -> None:
+        """Allow dict-like assignment."""
+        self.positions[point_id] = position.copy()
+
+    def __contains__(self, point_id: PointID) -> bool:
+        """Check if point exists."""
+        return point_id in self.positions
+
+    def items(self):
+        """Iterate over (point_id, position) pairs."""
+        return self.positions.items()
+
+    def keys(self):
+        """Iterate over point IDs."""
+        return self.positions.keys()
+
+    def values(self):
+        """Iterate over positions."""
+        return self.positions.values()
 
 
 @dataclass(frozen=True)
 class GeometryDefinition:
     """Defines the geometry of a suspension system."""
 
-    hard_points: Positions
-    free_points: Set["PointID"]
+    hard_points: Dict[PointID, np.ndarray]
+    free_points: Set[PointID]

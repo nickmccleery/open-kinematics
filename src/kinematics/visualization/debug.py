@@ -1,17 +1,17 @@
 from pathlib import Path
+from typing import Dict
 
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import numpy as np
 
-from kinematics.core import Positions
-from kinematics.points.ids import PointID
+from kinematics.core import PointID
 from kinematics.visualization.main import SuspensionVisualizer
 
 
 def create_animation(
-    position_states: list[Positions],
-    initial_positions: Positions,
+    position_states: list[Dict[PointID, np.ndarray]],
+    initial_positions: Dict[PointID, np.ndarray],
     visualizer: SuspensionVisualizer,
     output_path: Path,
     fps: int = 20,
