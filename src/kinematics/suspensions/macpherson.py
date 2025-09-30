@@ -180,7 +180,3 @@ class MacPhersonProvider(SuspensionProvider):
             constraints.append(DistanceConstraint(p1, p2, target_distance))
 
         return constraints
-
-
-# Export the main classes
-__all__ = ["MacPhersonGeometry", "MacPhersonProvider"]

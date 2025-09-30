@@ -246,7 +246,3 @@ class DoubleWishboneProvider(SuspensionProvider):
         )
 
         return constraints
-
-
-# Export the main classes
-__all__ = ["DoubleWishboneGeometry", "DoubleWishboneProvider"]

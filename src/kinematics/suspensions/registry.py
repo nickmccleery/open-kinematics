@@ -9,7 +9,12 @@ from __future__ import annotations
 
 from typing import Dict, Tuple, Type
 
-from .base.provider import SuspensionProvider
+from kinematics.suspensions.base.provider import SuspensionProvider
+from kinematics.suspensions.double_wishbone import (
+    DoubleWishboneGeometry,
+    DoubleWishboneProvider,
+)
+from kinematics.suspensions.macpherson import MacPhersonGeometry, MacPhersonProvider
 
 # Registry type definitions
 ModelCls = Type[object]
@@ -21,19 +26,7 @@ def build_registry() -> Registry:
     """
     Return the plugin registry mapping: type_string -> (ModelClass, ProviderClass)
     """
-    # Import here to avoid circular dependencies
-    from .double_wishbone import DoubleWishboneGeometry, DoubleWishboneProvider
-    from .macpherson import MacPhersonGeometry, MacPhersonProvider
-
     return {
         "DOUBLE_WISHBONE": (DoubleWishboneGeometry, DoubleWishboneProvider),
         "MACPHERSON_STRUT": (MacPhersonGeometry, MacPhersonProvider),
     }
-
-
-__all__ = [
-    "ModelCls",
-    "ProviderCls",
-    "Registry",
-    "build_registry",
-]
