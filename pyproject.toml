@@ -7,7 +7,6 @@ requires-python = ">=3.12"
 dependencies = [
     "jax>=0.4.38",
     "marshmallow-dataclass>=8.7.1",
-    "matplotlib>=3.10.0",
     "numpy>=2.2.0",
     "pyright>=1.1.391",
     "pytest-dotenv>=0.5.2",
@@ -15,13 +14,12 @@ dependencies = [
     "pyyaml>=6.0.2",
     "ruff>=0.8.3",
     "scipy>=1.14.1",
+    "typer>=0.19.2",
 ]
 
 [project.optional-dependencies]
-plot = [
-    "matplotlib>=3.10.0",
-    "pyqt5>=5.15.11",
-]
+viz = ["matplotlib>=3.8"]
+cli = ["typer>=0.12"]
 
 [tool.uv.workspace]
 members = ["kinematics"]

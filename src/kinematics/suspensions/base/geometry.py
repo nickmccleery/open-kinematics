@@ -9,7 +9,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
-from ..config import SuspensionConfig, Units
+from kinematics.suspensions.config import SuspensionConfig, Units
 
 
 @dataclass

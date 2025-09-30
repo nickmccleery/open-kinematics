@@ -143,3 +143,26 @@ def solve_sweep(
         initial_guess = result.x
 
     return states
+
+
+def solve(
+    initial_state: SuspensionState,
+    constraints: list[Constraint],
+    targets: list[PointTarget],
+    compute_derived_points_func: Callable[
+        [Dict[PointID, np.ndarray]], Dict[PointID, np.ndarray]
+    ],
+    solver_config: SolverConfig = SolverConfig(),
+) -> SuspensionState:
+    """
+    Solves a single kinematic state.
+    """
+    target_set = PointTargetSet(values=targets)
+    states = solve_sweep(
+        initial_state=initial_state,
+        constraints=constraints,
+        targets=[target_set],
+        compute_derived_points_func=compute_derived_points_func,
+        solver_config=solver_config,
+    )
+    return states[0]
