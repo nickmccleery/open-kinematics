@@ -1,20 +1,15 @@
 """
-Double wishbone suspension provider implementation.
+MacPherson strut suspension provider implementation.
 
 Contains orchestration logic for constraint building, free points definition,
-and derived point calculations specific to double wishbone suspensions.
+and derived point calculations specific to MacPherson strut suspensions.
 """
 
 from functools import partial
 from typing import Sequence
 
-from kinematics.constraints import (
-    Constraint,
-    PointOnLine,
-    make_point_point_distance,
-    make_vector_angle,
-)
-from kinematics.core import Direction, Positions
+from kinematics.constraints import Constraint, make_point_point_distance
+from kinematics.core import Positions
 from kinematics.points.derived.definitions import (
     get_axle_midpoint,
     get_wheel_center,
@@ -25,14 +20,14 @@ from kinematics.points.derived.spec import DerivedSpec
 from kinematics.points.ids import PointID
 from kinematics.points.utils import get_all_points
 from kinematics.suspensions.base.provider import SuspensionProvider
-from kinematics.suspensions.double_wishbone.model import DoubleWishboneGeometry
+from kinematics.suspensions.macpherson.model import MacPhersonGeometry
 
 
-class DoubleWishboneProvider(SuspensionProvider):
-    """The concrete implementation of the BaseProvider for Double Wishbone geometry."""
+class MacPhersonProvider(SuspensionProvider):
+    """The concrete implementation of the BaseProvider for MacPherson strut geometry."""
 
-    def __init__(self, geometry: DoubleWishboneGeometry):
-        self.geometry: DoubleWishboneGeometry = geometry
+    def __init__(self, geometry: MacPhersonGeometry):
+        self.geometry: MacPhersonGeometry = geometry
 
     def initial_positions(self) -> Positions:
         """Extracts all hard points from the geometry file into a Positions object."""
@@ -43,12 +38,10 @@ class DoubleWishboneProvider(SuspensionProvider):
     def free_points(self) -> Sequence[PointID]:
         """Defines which points the solver is allowed to move."""
         return [
-            PointID.UPPER_WISHBONE_OUTBOARD,
             PointID.LOWER_WISHBONE_OUTBOARD,
+            PointID.STRUT_OUTBOARD,
             PointID.AXLE_INBOARD,
             PointID.AXLE_OUTBOARD,
-            PointID.TRACKROD_OUTBOARD,
-            PointID.TRACKROD_INBOARD,
         ]
 
     def derived_spec(self) -> DerivedSpec:
@@ -86,43 +79,16 @@ class DoubleWishboneProvider(SuspensionProvider):
 
         # 1. Fixed distance constraints between points
         length_pairs = [
-            (PointID.UPPER_WISHBONE_INBOARD_FRONT, PointID.UPPER_WISHBONE_OUTBOARD),
-            (PointID.UPPER_WISHBONE_INBOARD_REAR, PointID.UPPER_WISHBONE_OUTBOARD),
             (PointID.LOWER_WISHBONE_INBOARD_FRONT, PointID.LOWER_WISHBONE_OUTBOARD),
             (PointID.LOWER_WISHBONE_INBOARD_REAR, PointID.LOWER_WISHBONE_OUTBOARD),
-            (PointID.UPPER_WISHBONE_OUTBOARD, PointID.LOWER_WISHBONE_OUTBOARD),
+            (PointID.STRUT_INBOARD, PointID.STRUT_OUTBOARD),
             (PointID.AXLE_INBOARD, PointID.AXLE_OUTBOARD),
-            (PointID.AXLE_INBOARD, PointID.UPPER_WISHBONE_OUTBOARD),
             (PointID.AXLE_INBOARD, PointID.LOWER_WISHBONE_OUTBOARD),
-            (PointID.AXLE_OUTBOARD, PointID.UPPER_WISHBONE_OUTBOARD),
             (PointID.AXLE_OUTBOARD, PointID.LOWER_WISHBONE_OUTBOARD),
-            (PointID.TRACKROD_INBOARD, PointID.TRACKROD_OUTBOARD),
-            (PointID.UPPER_WISHBONE_OUTBOARD, PointID.TRACKROD_OUTBOARD),
-            (PointID.LOWER_WISHBONE_OUTBOARD, PointID.TRACKROD_OUTBOARD),
-            (PointID.AXLE_INBOARD, PointID.TRACKROD_OUTBOARD),
-            (PointID.AXLE_OUTBOARD, PointID.TRACKROD_OUTBOARD),
+            (PointID.AXLE_INBOARD, PointID.STRUT_OUTBOARD),
+            (PointID.AXLE_OUTBOARD, PointID.STRUT_OUTBOARD),
         ]
         for p1, p2 in length_pairs:
             constraints.append(make_point_point_distance(initial_positions, p1, p2))
-
-        # 2. Fixed angle constraints between vectors
-        constraints.append(
-            make_vector_angle(
-                initial_positions,
-                v1_start=PointID.UPPER_WISHBONE_OUTBOARD,
-                v1_end=PointID.LOWER_WISHBONE_OUTBOARD,
-                v2_start=PointID.AXLE_INBOARD,
-                v2_end=PointID.AXLE_OUTBOARD,
-            )
-        )
-
-        # 3. Point-on-line constraints (for steering rack)
-        constraints.append(
-            PointOnLine(
-                point_id=PointID.TRACKROD_INBOARD,
-                line_point=initial_positions[PointID.TRACKROD_INBOARD],
-                line_direction=Direction.y,
-            )
-        )
 
         return constraints

@@ -1,21 +1,30 @@
-from typing import Dict, Type, Union
+from __future__ import annotations
 
-from kinematics.suspensions.base import SuspensionProvider
-from kinematics.suspensions.double_wishbone.geometry import DoubleWishboneGeometry
-from kinematics.suspensions.double_wishbone.provider import DoubleWishboneProvider
-from kinematics.suspensions.macpherson.geometry import MacPhersonGeometry
+from typing import Dict, Tuple, Type
 
-# This registry maps a specific geometry class to the provider class
-# that knows how to handle its rules and constraints.
-PROVIDER_REGISTRY: Dict[Type, Type[SuspensionProvider]] = {
-    DoubleWishboneGeometry: DoubleWishboneProvider,
-    # When a MacPhersonProvider is created, it will be added here:
-    # MacPhersonGeometry: MacPhersonProvider,
-}
+from kinematics.suspensions.base.provider import SuspensionProvider
 
-GeometryType = Union[DoubleWishboneGeometry, MacPhersonGeometry]
+# Type alias for clarity; concrete Model classes are architecture-specific dataclasses
+ModelCls = Type[object]
+ProviderCls = Type[SuspensionProvider]
+Registry = Dict[str, Tuple[ModelCls, ProviderCls]]
 
-GEOMETRY_TYPES: dict[str, Type[GeometryType]] = {
-    "DOUBLE_WISHBONE": DoubleWishboneGeometry,
-    "MACPHERSON_STRUT": MacPhersonGeometry,
-}
+
+def build_registry() -> Registry:
+    """
+    Return the plugin registry mapping:
+        type_string -> (ModelClass, ProviderClass)
+    No imports occur at module import time; all imports are local to avoid cycles and side-effects.
+    """
+    # Local imports keep this file import-time cheap and avoid accidental cycles
+    from kinematics.suspensions.double_wishbone.model import DoubleWishboneGeometry
+    from kinematics.suspensions.double_wishbone.provider import DoubleWishboneProvider
+
+    # Add more architectures here:
+    from kinematics.suspensions.macpherson.model import MacPhersonGeometry
+    from kinematics.suspensions.macpherson.provider import MacPhersonProvider
+
+    return {
+        "DOUBLE_WISHBONE": (DoubleWishboneGeometry, DoubleWishboneProvider),
+        "MACPHERSON_STRUT": (MacPhersonGeometry, MacPhersonProvider),
+    }
