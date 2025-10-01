@@ -2,13 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import IntEnum
-from typing import Annotated, Literal, NamedTuple, Union
+from typing import Annotated, Final, Literal, NamedTuple, Union
 
 import numpy as np
 from numpy.typing import NDArray
 
 from kinematics.core import PointID
-from kinematics.vector_utils.generic import normalize_vector
 
 Vec3 = Annotated[NDArray[np.float64], Literal[3]]
 
@@ -33,29 +32,19 @@ class Axis(IntEnum):
     Z = 2
 
 
-@dataclass(slots=True)
-class AxisFrame:
+class WorldAxisSystem:
     """
-    Right-handed, orthonormal basis expressed in world coordinates.
-    See: https://en.wikipedia.org/wiki/Standard_basis
+    World coordinate system unit axis vectors.
+
+    Usage:
+        WorldAxisSystem.X  # -> np.array([1.0, 0.0, 0.0])
+        WorldAxisSystem.Y  # -> np.array([0.0, 1.0, 0.0])
+        WorldAxisSystem.Z  # -> np.array([0.0, 0.0, 1.0])
     """
 
-    ex: Vec3
-    ey: Vec3
-    ez: Vec3
-
-    def __post_init__(self):
-        self.ex = normalize_vector(self.ex)
-        self.ey = normalize_vector(self.ey)
-        self.ez = normalize_vector(self.ez)
-
-    @classmethod
-    def create_standard_basis(cls) -> AxisFrame:
-        return cls(
-            np.array([1.0, 0.0, 0.0], dtype=np.float64),
-            np.array([0.0, 1.0, 0.0], dtype=np.float64),
-            np.array([0.0, 0.0, 1.0], dtype=np.float64),
-        )
+    X: Final[Vec3] = np.array([1.0, 0.0, 0.0], dtype=np.float64)
+    Y: Final[Vec3] = np.array([0.0, 1.0, 0.0], dtype=np.float64)
+    Z: Final[Vec3] = np.array([0.0, 0.0, 1.0], dtype=np.float64)
 
 
 class PointTarget(NamedTuple):
