@@ -4,7 +4,7 @@ from typing import Set, Union
 import numpy as np
 
 from kinematics.core import CoordinateAxis, PointID
-from kinematics.math import compute_point_point_distance, compute_vector_vector_angle
+from kinematics.linalg import compute_point_point_distance, compute_vector_vector_angle
 
 
 class Constraint(ABC):

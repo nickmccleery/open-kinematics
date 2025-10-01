@@ -1,18 +1,17 @@
-from typing import Annotated, Callable, Dict, List, NamedTuple
+from typing import Callable, Dict, List, NamedTuple
 
 import numpy as np
-from numpy.typing import NDArray
 from scipy.optimize import least_squares
 
 from kinematics.constraints import Constraint
-from kinematics.core import CoordinateAxis, PointID, SuspensionState
-
-AxisVector = Annotated[NDArray[np.float64], "shape=(3,)"]
+from kinematics.core import PointID, SuspensionState
+from kinematics.targets import DEFAULT_WORLD_FRAME, resolve_target
+from kinematics.types import PointTargetDirection
 
 
 class PointTarget(NamedTuple):
     point_id: PointID
-    axis: CoordinateAxis | AxisVector
+    direction: PointTargetDirection
     value: float
 
 
@@ -89,16 +88,11 @@ def solve_sweep(
             current_pos = all_positions[target.point_id]
             initial_pos = initial_state.positions[target.point_id]
 
-            if isinstance(target.axis, CoordinateAxis):
-                axis_idx = int(target.axis)
-                target_value = initial_pos[axis_idx] + target.value
-                residuals.append(current_pos[axis_idx] - target_value)
-            else:  # Vector axis
-                direction = np.asarray(target.axis, dtype=float)
-                initial_proj = np.dot(initial_pos, direction)
-                target_proj = initial_proj + target.value
-                current_proj = np.dot(current_pos, direction)
-                residuals.append(current_proj - target_proj)
+            direction = resolve_target(target.direction, DEFAULT_WORLD_FRAME)
+            initial_proj = float(np.dot(initial_pos, direction))
+            target_proj = initial_proj + target.value
+            current_proj = float(np.dot(current_pos, direction))
+            residuals.append(current_proj - target_proj)
 
         return np.array(residuals, dtype=float)
 

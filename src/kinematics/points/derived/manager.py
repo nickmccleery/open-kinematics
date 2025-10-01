@@ -14,7 +14,7 @@ PositionFn = Callable[[Dict[PointID, np.ndarray]], np.ndarray]
 
 
 @dataclass(frozen=True)
-class DerivedSpec:
+class DerivedPointsSpec:
     """
     Specification for derived point calculations.
 
@@ -57,13 +57,13 @@ class DerivedSpec:
         self.validate()
 
 
-class DerivedPointManager:
+class DerivedPointsManager:
     """
     Manages the calculation of derived points by building and resolving a
     dependency graph to ensure the correct update order.
     """
 
-    def __init__(self, spec: DerivedSpec):
+    def __init__(self, spec: DerivedPointsSpec):
         self.spec = spec
         self.dependency_graph = spec.dependencies
 

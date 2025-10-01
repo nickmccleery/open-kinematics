@@ -5,7 +5,7 @@ from typing import Sequence
 
 from kinematics.constraints import Constraint
 from kinematics.core import PointID, SuspensionState
-from kinematics.points.derived.manager import DerivedSpec
+from kinematics.points.derived.manager import DerivedPointsSpec
 
 
 class SuspensionProvider(ABC):
@@ -21,7 +21,7 @@ class SuspensionProvider(ABC):
     def free_points(self) -> Sequence[PointID]: ...
 
     @abstractmethod
-    def derived_spec(self) -> DerivedSpec: ...
+    def derived_spec(self) -> DerivedPointsSpec: ...
 
     @abstractmethod
     def constraints(self) -> list[Constraint]: ...

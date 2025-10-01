@@ -4,15 +4,16 @@ import numpy as np
 import pytest
 
 from kinematics.constraints import DistanceConstraint
-from kinematics.core import CoordinateAxis, PointID
+from kinematics.core import PointID
 from kinematics.loader import load_geometry
 from kinematics.main import solve_kinematics
-from kinematics.points.derived.manager import DerivedPointManager
+from kinematics.points.derived.manager import DerivedPointsManager
 from kinematics.solver import PointTarget, PointTargetSet
 from kinematics.suspensions.double_wishbone import (
     DoubleWishboneGeometry,
     DoubleWishboneProvider,
 )
+from kinematics.types import Axis, AxisTarget
 from kinematics.visualization.debug import create_animation
 from kinematics.visualization.main import SuspensionVisualizer, WheelVisualization
 
@@ -41,7 +42,7 @@ def target_set(displacements):
     hub_targets = [
         PointTarget(
             point_id=PointID.WHEEL_CENTER,
-            axis=CoordinateAxis.Z,
+            direction=AxisTarget(Axis.Z),
             value=x,
         )
         for x in hub_displacements
@@ -51,7 +52,7 @@ def target_set(displacements):
     steer_targets = [
         PointTarget(
             point_id=PointID.TRACKROD_INBOARD,
-            axis=CoordinateAxis.Y,
+            direction=AxisTarget(Axis.Y),
             value=x,
         )
         for x in steer_displacements
@@ -83,10 +84,10 @@ def test_run_solver(
     # Get initial positions for comparison using the provider.
 
     provider = DoubleWishboneProvider(geometry)
-    derived_point_manager = DerivedPointManager(provider.derived_spec())
+    derived_resolver = DerivedPointsManager(provider.derived_spec())
 
     initial_state = provider.initial_state()
-    initial_positions = derived_point_manager.update(initial_state.positions)
+    initial_positions = derived_resolver.update(initial_state.positions)
 
     # Get only the length constraints for verification
     all_constraints = provider.constraints()
