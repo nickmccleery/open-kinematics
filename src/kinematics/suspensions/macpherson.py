@@ -7,7 +7,7 @@ all in one place for the MacPherson strut suspension type.
 
 from dataclasses import dataclass
 from functools import partial
-from typing import Dict, Sequence
+from typing import Sequence
 
 import numpy as np
 
@@ -33,8 +33,8 @@ from kinematics.vector_utils.geometric import compute_point_point_distance
 class StrutPoints:
     """Points defining the strut geometry."""
 
-    inboard: Dict[str, float]
-    outboard: Dict[str, float]
+    inboard: dict[str, float]
+    outboard: dict[str, float]
 
 
 @dataclass

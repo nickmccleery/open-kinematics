@@ -6,7 +6,7 @@ import typer
 
 from kinematics.core import PointID
 from kinematics.loader import load_geometry
-from kinematics.main import solve_kinematics
+from kinematics.main import solve_suspension_sweep
 from kinematics.solver import PointTarget, PointTargetSet
 from kinematics.types import Axis, PointTargetAxis
 
@@ -33,7 +33,7 @@ def solve(
     ]
     target_set = PointTargetSet(values=targets)
 
-    solution = solve_kinematics(geom, provider, [target_set])
+    solution = solve_suspension_sweep(geom, provider, [target_set])
     typer.echo(f"converged=True steps={len(solution)}")
 
 

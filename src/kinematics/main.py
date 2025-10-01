@@ -5,7 +5,7 @@ from kinematics.points.derived.manager import DerivedPointsManager
 from kinematics.solver import PointTargetSet, solve_sweep
 
 
-def solve_kinematics(
+def solve_suspension_sweep(
     geometry,
     provider_class,
     point_targets: List[PointTargetSet],

@@ -3,14 +3,14 @@ Derived point specifications and management.
 """
 
 from dataclasses import dataclass
-from typing import Callable, Dict, Set
+from typing import Callable, Set
 
 import numpy as np
 
 from kinematics.core import PointID
 
 # Function signature for computing a derived point position
-PositionFn = Callable[[Dict[PointID, np.ndarray]], np.ndarray]
+PositionFn = Callable[[dict[PointID, np.ndarray]], np.ndarray]
 
 
 @dataclass(frozen=True)
@@ -22,8 +22,8 @@ class DerivedPointsSpec:
     in a self-describing format that can be validated and sorted.
     """
 
-    functions: Dict[PointID, PositionFn]
-    dependencies: Dict[PointID, Set[PointID]]
+    functions: dict[PointID, PositionFn]
+    dependencies: dict[PointID, Set[PointID]]
 
     def all_points(self) -> Set[PointID]:
         """Get all derived point IDs defined in this spec."""
@@ -126,7 +126,7 @@ class DerivedPointsManager:
 
         return order
 
-    def update(self, positions: Dict[PointID, np.ndarray]) -> Dict[PointID, np.ndarray]:
+    def update(self, positions: dict[PointID, np.ndarray]) -> dict[PointID, np.ndarray]:
         """
         Calculates all derived points based on the provided positions.
 

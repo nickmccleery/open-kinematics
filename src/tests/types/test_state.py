@@ -1,6 +1,6 @@
 import numpy as np
 
-from kinematics.core import GeometryDefinition, PointID, SuspensionState
+from kinematics.core import PointID, SuspensionState
 
 
 def test_suspension_state_construction():
@@ -54,23 +54,3 @@ def test_suspension_state_array_conversion():
     np.testing.assert_array_equal(
         state.positions[PointID.UPPER_WISHBONE_OUTBOARD], np.array([10.0, 11.0, 12.0])
     )
-
-
-def test_geometry_definition_construction():
-    # Test data setup.
-    hard_points_data = {
-        PointID.LOWER_WISHBONE_OUTBOARD: np.array([1.0, 2.0, 3.0]),
-        PointID.UPPER_WISHBONE_OUTBOARD: np.array([4.0, 5.0, 6.0]),
-    }
-    free_points = {PointID.LOWER_WISHBONE_OUTBOARD}
-
-    # Create definition.
-    geom = GeometryDefinition(hard_points=hard_points_data, free_points=free_points)
-
-    # Verify points are stored correctly.
-    np.testing.assert_array_equal(
-        geom.hard_points[PointID.LOWER_WISHBONE_OUTBOARD], np.array([1.0, 2.0, 3.0])
-    )
-
-    # Verify free points are stored.
-    assert geom.free_points == {PointID.LOWER_WISHBONE_OUTBOARD}

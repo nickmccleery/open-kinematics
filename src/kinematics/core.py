@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import IntEnum
-from typing import Dict, List, Set
+from typing import List, Set
 
 import numpy as np
 
@@ -47,15 +47,6 @@ class PointID(IntEnum):
     WHEEL_OUTBOARD = 18
 
 
-# --- Coordinate System ---
-class Direction:
-    """Principal direction vectors in 3D space."""
-
-    x = np.array([1, 0, 0])
-    y = np.array([0, 1, 0])
-    z = np.array([0, 0, 1])
-
-
 @dataclass
 class SuspensionState:
     """
@@ -63,7 +54,7 @@ class SuspensionState:
     Combines positions and solver metadata in one structure.
     """
 
-    positions: Dict[PointID, np.ndarray]
+    positions: dict[PointID, np.ndarray]
     free_points: Set[PointID]
     free_points_order: List[PointID] = field(init=False)
 
@@ -131,11 +122,3 @@ class SuspensionState:
     def values(self):
         """Iterate over positions."""
         return self.positions.values()
-
-
-@dataclass(frozen=True)
-class GeometryDefinition:
-    """Defines the geometry of a suspension system."""
-
-    hard_points: Dict[PointID, np.ndarray]
-    free_points: Set[PointID]
