@@ -22,17 +22,11 @@ from kinematics.points.derived.definitions import (
 from kinematics.points.derived.manager import DerivedPointsManager, DerivedPointsSpec
 from kinematics.suspensions.base.geometry import SuspensionGeometry
 from kinematics.suspensions.base.provider import SuspensionProvider
+from kinematics.suspensions.common.collections import (
+    LowerWishbonePoints,
+    WheelAxlePoints,
+)
 from kinematics.vector_utils.geometric import compute_point_point_distance
-
-
-# Point collection classes
-@dataclass
-class LowerWishbonePoints:
-    """Points defining the lower wishbone geometry."""
-
-    inboard_front: Dict[str, float]
-    inboard_rear: Dict[str, float]
-    outboard: Dict[str, float]
 
 
 @dataclass
@@ -41,14 +35,6 @@ class StrutPoints:
 
     inboard: Dict[str, float]
     outboard: Dict[str, float]
-
-
-@dataclass
-class WheelAxlePoints:
-    """Points defining the wheel axle geometry."""
-
-    inner: Dict[str, float]
-    outer: Dict[str, float]
 
 
 @dataclass

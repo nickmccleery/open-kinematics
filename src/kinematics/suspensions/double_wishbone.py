@@ -7,7 +7,7 @@ all in one place for the double wishbone suspension type.
 
 from dataclasses import dataclass
 from functools import partial
-from typing import Dict, Sequence
+from typing import Sequence
 
 import numpy as np
 
@@ -27,45 +27,16 @@ from kinematics.points.derived.definitions import (
 from kinematics.points.derived.manager import DerivedPointsManager, DerivedPointsSpec
 from kinematics.suspensions.base.geometry import SuspensionGeometry
 from kinematics.suspensions.base.provider import SuspensionProvider
+from kinematics.suspensions.common.collections import (
+    LowerWishbonePoints,
+    TrackRodPoints,
+    UpperWishbonePoints,
+    WheelAxlePoints,
+)
 from kinematics.vector_utils.geometric import (
     compute_point_point_distance,
     compute_vector_vector_angle,
 )
-
-
-# Point collection classes
-@dataclass
-class LowerWishbonePoints:
-    """Points defining the lower wishbone geometry."""
-
-    inboard_front: Dict[str, float]
-    inboard_rear: Dict[str, float]
-    outboard: Dict[str, float]
-
-
-@dataclass
-class UpperWishbonePoints:
-    """Points defining the upper wishbone geometry."""
-
-    inboard_front: Dict[str, float]
-    inboard_rear: Dict[str, float]
-    outboard: Dict[str, float]
-
-
-@dataclass
-class WheelAxlePoints:
-    """Points defining the wheel axle geometry."""
-
-    inner: Dict[str, float]
-    outer: Dict[str, float]
-
-
-@dataclass
-class TrackRodPoints:
-    """Points defining the track rod/tie rod geometry."""
-
-    inner: Dict[str, float]
-    outer: Dict[str, float]
 
 
 @dataclass

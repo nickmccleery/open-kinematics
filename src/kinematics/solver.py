@@ -12,6 +12,7 @@ from kinematics.types import PointTarget, PointTargetSet
 class SolverConfig(NamedTuple):
     ftol: float = 1e-8
     xtol: float = 1e-8
+    gtol: float = 1e-8
     verbose: int = 0
 
 
