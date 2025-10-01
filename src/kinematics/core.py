@@ -9,15 +9,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import IntEnum
-from typing import Dict, List, Set, TypeAlias
+from typing import Dict, List, Set
 
 import numpy as np
 
-Position: TypeAlias = np.ndarray
-
 
 class PointID(IntEnum):
-    """Enumeration of all suspension system point identifiers."""
+    """
+    Enumeration of all suspension system point identifiers.
+    """
 
     NOT_ASSIGNED = 0
 
@@ -54,14 +54,6 @@ class Direction:
     x = np.array([1, 0, 0])
     y = np.array([0, 1, 0])
     z = np.array([0, 0, 1])
-
-
-class CoordinateAxis(IntEnum):
-    """Enumeration of coordinate axes."""
-
-    X = 0
-    Y = 1
-    Z = 2
 
 
 @dataclass

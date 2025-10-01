@@ -18,7 +18,6 @@ from kinematics.constraints import (
     PointOnLineConstraint,
 )
 from kinematics.core import Direction, PointID, SuspensionState
-from kinematics.linalg import compute_point_point_distance, compute_vector_vector_angle
 from kinematics.points.derived.definitions import (
     get_axle_midpoint,
     get_wheel_center,
@@ -28,6 +27,10 @@ from kinematics.points.derived.definitions import (
 from kinematics.points.derived.manager import DerivedPointsManager, DerivedPointsSpec
 from kinematics.suspensions.base.geometry import SuspensionGeometry
 from kinematics.suspensions.base.provider import SuspensionProvider
+from kinematics.vector_utils.geometric import (
+    compute_point_point_distance,
+    compute_vector_vector_angle,
+)
 
 
 # Point collection classes

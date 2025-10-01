@@ -4,11 +4,11 @@ from pathlib import Path
 
 import typer
 
-from . import load_geometry
-from .core import PointID
-from .main import solve_kinematics
-from .solver import PointTarget, PointTargetSet
-from .types import Axis, AxisTarget
+from kinematics.core import PointID
+from kinematics.loader import load_geometry
+from kinematics.main import solve_kinematics
+from kinematics.solver import PointTarget, PointTargetSet
+from kinematics.types import Axis, PointTargetAxis
 
 app = typer.Typer(add_completion=False)
 
@@ -26,7 +26,7 @@ def solve(
     targets = [
         PointTarget(
             point_id=PointID.WHEEL_CENTER,
-            direction=AxisTarget(Axis.Z),
+            direction=PointTargetAxis(Axis.Z),
             value=0.01 * i,
         )
         for i in range(steps)

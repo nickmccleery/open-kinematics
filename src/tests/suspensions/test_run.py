@@ -13,7 +13,7 @@ from kinematics.suspensions.double_wishbone import (
     DoubleWishboneGeometry,
     DoubleWishboneProvider,
 )
-from kinematics.types import Axis, AxisTarget
+from kinematics.types import Axis, PointTargetAxis
 from kinematics.visualization.debug import create_animation
 from kinematics.visualization.main import SuspensionVisualizer, WheelVisualization
 
@@ -42,7 +42,7 @@ def target_set(displacements):
     hub_targets = [
         PointTarget(
             point_id=PointID.WHEEL_CENTER,
-            direction=AxisTarget(Axis.Z),
+            direction=PointTargetAxis(Axis.Z),
             value=x,
         )
         for x in hub_displacements
@@ -52,7 +52,7 @@ def target_set(displacements):
     steer_targets = [
         PointTarget(
             point_id=PointID.TRACKROD_INBOARD,
-            direction=AxisTarget(Axis.Y),
+            direction=PointTargetAxis(Axis.Y),
             value=x,
         )
         for x in steer_displacements

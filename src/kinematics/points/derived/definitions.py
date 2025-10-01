@@ -11,7 +11,7 @@ from typing import Dict
 import numpy as np
 
 from kinematics.core import PointID
-from kinematics.linalg import normalize_vector
+from kinematics.vector_utils.generic import normalize_vector
 
 
 def get_axle_midpoint(positions: Dict[PointID, np.ndarray]) -> np.ndarray:

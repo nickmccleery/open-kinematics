@@ -5,18 +5,8 @@ from scipy.optimize import least_squares
 
 from kinematics.constraints import Constraint
 from kinematics.core import PointID, SuspensionState
-from kinematics.targets import DEFAULT_WORLD_FRAME, resolve_target
-from kinematics.types import PointTargetDirection
-
-
-class PointTarget(NamedTuple):
-    point_id: PointID
-    direction: PointTargetDirection
-    value: float
-
-
-class PointTargetSet(NamedTuple):
-    values: list[PointTarget]
+from kinematics.targets import resolve_target
+from kinematics.types import PointTarget, PointTargetSet
 
 
 class SolverConfig(NamedTuple):
@@ -88,7 +78,7 @@ def solve_sweep(
             current_pos = all_positions[target.point_id]
             initial_pos = initial_state.positions[target.point_id]
 
-            direction = resolve_target(target.direction, DEFAULT_WORLD_FRAME)
+            direction = resolve_target(target.direction)
             initial_proj = float(np.dot(initial_pos, direction))
             target_proj = initial_proj + target.value
             current_proj = float(np.dot(current_pos, direction))

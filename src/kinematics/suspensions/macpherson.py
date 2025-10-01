@@ -13,7 +13,6 @@ import numpy as np
 
 from kinematics.constraints import Constraint, DistanceConstraint
 from kinematics.core import PointID, SuspensionState
-from kinematics.linalg import compute_point_point_distance
 from kinematics.points.derived.definitions import (
     get_axle_midpoint,
     get_wheel_center,
@@ -23,6 +22,7 @@ from kinematics.points.derived.definitions import (
 from kinematics.points.derived.manager import DerivedPointsManager, DerivedPointsSpec
 from kinematics.suspensions.base.geometry import SuspensionGeometry
 from kinematics.suspensions.base.provider import SuspensionProvider
+from kinematics.vector_utils.geometric import compute_point_point_distance
 
 
 # Point collection classes

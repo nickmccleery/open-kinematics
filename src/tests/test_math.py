@@ -1,10 +1,10 @@
 import numpy as np
 
-from kinematics.linalg import (
+from kinematics.vector_utils.generic import normalize_vector
+from kinematics.vector_utils.geometric import (
     compute_point_point_distance,
     compute_point_point_midpoint,
     compute_vector_vector_angle,
-    normalize_vector,
 )
 
 
