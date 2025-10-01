@@ -2,8 +2,9 @@ import numpy as np
 import pytest
 
 from kinematics.constraints import DistanceConstraint
-from kinematics.core import CoordinateAxis, PointID, SuspensionState
+from kinematics.core import PointID, SuspensionState
 from kinematics.solver import PointTarget, PointTargetSet, SolverConfig, solve_sweep
+from kinematics.types import Axis, PointTargetAxis
 
 # Tolerance on position checks.
 TOL_CHECK = 1e-4
@@ -59,7 +60,7 @@ def simple_target_set():
     point_targets = [
         PointTarget(
             point_id=PointID.LOWER_WISHBONE_OUTBOARD,
-            axis=CoordinateAxis.Z,
+            direction=PointTargetAxis(Axis.Z),
             value=d,
         )
         for d in displacements

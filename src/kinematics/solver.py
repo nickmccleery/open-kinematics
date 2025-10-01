@@ -1,28 +1,18 @@
-from typing import Annotated, Callable, Dict, List, NamedTuple
+from typing import Callable, NamedTuple
 
 import numpy as np
-from numpy.typing import NDArray
 from scipy.optimize import least_squares
 
 from kinematics.constraints import Constraint
-from kinematics.core import CoordinateAxis, PointID, SuspensionState
-
-AxisVector = Annotated[NDArray[np.float64], "shape=(3,)"]
-
-
-class PointTarget(NamedTuple):
-    point_id: PointID
-    axis: CoordinateAxis | AxisVector
-    value: float
-
-
-class PointTargetSet(NamedTuple):
-    values: list[PointTarget]
+from kinematics.core import PointID, SuspensionState
+from kinematics.targets import resolve_target
+from kinematics.types import PointTarget, PointTargetSet
 
 
 class SolverConfig(NamedTuple):
     ftol: float = 1e-8
     xtol: float = 1e-8
+    gtol: float = 1e-8
     verbose: int = 0
 
 
@@ -31,7 +21,7 @@ def solve_sweep(
     constraints: list[Constraint],
     targets: list[PointTargetSet],
     compute_derived_points_func: Callable[
-        [Dict[PointID, np.ndarray]], Dict[PointID, np.ndarray]
+        [dict[PointID, np.ndarray]], dict[PointID, np.ndarray]
     ],
     solver_config: SolverConfig = SolverConfig(),
 ) -> list[SuspensionState]:
@@ -52,14 +42,14 @@ def solve_sweep(
 
     # Initialize state for the entire sweep - this object will only be updated after each successful step
     current_state = initial_state.copy()
-    states: List[SuspensionState] = []  # Will store the final results
+    states: list[SuspensionState] = []  # Will store the final results
 
     # Create the single, reusable "scratchpad" state for calculations
     # This eliminates allocations inside the compute_residuals function
     scratch_state = current_state.copy()
 
     def compute_residuals(
-        free_array: np.ndarray, step_targets: List[PointTarget]
+        free_array: np.ndarray, step_targets: list[PointTarget]
     ) -> np.ndarray:
         """
         Calculates residuals by modifying the scratch_state in-place.
@@ -89,16 +79,11 @@ def solve_sweep(
             current_pos = all_positions[target.point_id]
             initial_pos = initial_state.positions[target.point_id]
 
-            if isinstance(target.axis, CoordinateAxis):
-                axis_idx = int(target.axis)
-                target_value = initial_pos[axis_idx] + target.value
-                residuals.append(current_pos[axis_idx] - target_value)
-            else:  # Vector axis
-                direction = np.asarray(target.axis, dtype=float)
-                initial_proj = np.dot(initial_pos, direction)
-                target_proj = initial_proj + target.value
-                current_proj = np.dot(current_pos, direction)
-                residuals.append(current_proj - target_proj)
+            direction = resolve_target(target.direction)
+            initial_proj = float(np.dot(initial_pos, direction))
+            target_proj = initial_proj + target.value
+            current_proj = float(np.dot(current_pos, direction))
+            residuals.append(current_proj - target_proj)
 
         return np.array(residuals, dtype=float)
 
@@ -150,7 +135,7 @@ def solve(
     constraints: list[Constraint],
     targets: list[PointTarget],
     compute_derived_points_func: Callable[
-        [Dict[PointID, np.ndarray]], Dict[PointID, np.ndarray]
+        [dict[PointID, np.ndarray]], dict[PointID, np.ndarray]
     ],
     solver_config: SolverConfig = SolverConfig(),
 ) -> SuspensionState:

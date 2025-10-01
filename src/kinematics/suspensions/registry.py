@@ -7,7 +7,7 @@ corresponding geometry and provider classes.
 
 from __future__ import annotations
 
-from typing import Dict, Tuple, Type
+from typing import Tuple, Type
 
 from kinematics.suspensions.base.provider import SuspensionProvider
 from kinematics.suspensions.double_wishbone import (
@@ -19,7 +19,7 @@ from kinematics.suspensions.macpherson import MacPhersonGeometry, MacPhersonProv
 # Registry type definitions
 ModelCls = Type[object]
 ProviderCls = Type[SuspensionProvider]
-Registry = Dict[str, Tuple[ModelCls, ProviderCls]]
+Registry = dict[str, Tuple[ModelCls, ProviderCls]]
 
 
 def build_registry() -> Registry:

@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Dict, List
 
 import numpy as np
 
@@ -36,7 +35,7 @@ class SuspensionVisualizer:
         self.wheel_config = wheel_config
         self.links = self.define_links()
 
-    def define_links(self) -> List[LinkVisualization]:
+    def define_links(self) -> list[LinkVisualization]:
         return [
             LinkVisualization(
                 points=[
@@ -81,7 +80,7 @@ class SuspensionVisualizer:
     def draw_wheel(
         self,
         ax,
-        positions: Dict[PointID, np.ndarray],
+        positions: dict[PointID, np.ndarray],
     ) -> None:
         wheel_center = positions[PointID.WHEEL_CENTER]
         wheel_inboard = positions[PointID.WHEEL_INBOARD]

@@ -6,15 +6,13 @@ other points in the suspension system. They are shared across different suspensi
 types to avoid code duplication.
 """
 
-from typing import Dict
-
 import numpy as np
 
 from kinematics.core import PointID
-from kinematics.math import normalize_vector
+from kinematics.vector_utils.generic import normalize_vector
 
 
-def get_axle_midpoint(positions: Dict[PointID, np.ndarray]) -> np.ndarray:
+def get_axle_midpoint(positions: dict[PointID, np.ndarray]) -> np.ndarray:
     """Calculates the midpoint of the axle."""
     p1 = positions[PointID.AXLE_INBOARD]
     p2 = positions[PointID.AXLE_OUTBOARD]
@@ -22,7 +20,7 @@ def get_axle_midpoint(positions: Dict[PointID, np.ndarray]) -> np.ndarray:
 
 
 def get_wheel_center(
-    positions: Dict[PointID, np.ndarray], wheel_offset: float
+    positions: dict[PointID, np.ndarray], wheel_offset: float
 ) -> np.ndarray:
     """Calculates the wheel center point, offset from the axle outboard face."""
     p1 = positions[PointID.AXLE_OUTBOARD]
@@ -33,7 +31,7 @@ def get_wheel_center(
 
 
 def get_wheel_inboard(
-    positions: Dict[PointID, np.ndarray], wheel_width: float
+    positions: dict[PointID, np.ndarray], wheel_width: float
 ) -> np.ndarray:
     """Calculates the inboard lip of the wheel."""
     p1 = positions[PointID.AXLE_INBOARD]
@@ -44,7 +42,7 @@ def get_wheel_inboard(
 
 
 def get_wheel_outboard(
-    positions: Dict[PointID, np.ndarray], wheel_width: float
+    positions: dict[PointID, np.ndarray], wheel_width: float
 ) -> np.ndarray:
     """Calculates the outboard lip of the wheel."""
     p1 = positions[PointID.WHEEL_CENTER]

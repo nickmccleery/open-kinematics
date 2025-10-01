@@ -7,48 +7,34 @@ all in one place for the MacPherson strut suspension type.
 
 from dataclasses import dataclass
 from functools import partial
-from typing import Dict, Sequence
+from typing import Sequence
 
 import numpy as np
 
 from kinematics.constraints import Constraint, DistanceConstraint
 from kinematics.core import PointID, SuspensionState
-from kinematics.math import compute_point_point_distance
 from kinematics.points.derived.definitions import (
     get_axle_midpoint,
     get_wheel_center,
     get_wheel_inboard,
     get_wheel_outboard,
 )
-from kinematics.points.derived.manager import DerivedPointManager, DerivedSpec
+from kinematics.points.derived.manager import DerivedPointsManager, DerivedPointsSpec
 from kinematics.suspensions.base.geometry import SuspensionGeometry
 from kinematics.suspensions.base.provider import SuspensionProvider
-
-
-# Point collection classes
-@dataclass
-class LowerWishbonePoints:
-    """Points defining the lower wishbone geometry."""
-
-    inboard_front: Dict[str, float]
-    inboard_rear: Dict[str, float]
-    outboard: Dict[str, float]
+from kinematics.suspensions.common.collections import (
+    LowerWishbonePoints,
+    WheelAxlePoints,
+)
+from kinematics.vector_utils.geometric import compute_point_point_distance
 
 
 @dataclass
 class StrutPoints:
     """Points defining the strut geometry."""
 
-    inboard: Dict[str, float]
-    outboard: Dict[str, float]
-
-
-@dataclass
-class WheelAxlePoints:
-    """Points defining the wheel axle geometry."""
-
-    inner: Dict[str, float]
-    outer: Dict[str, float]
+    inboard: dict[str, float]
+    outboard: dict[str, float]
 
 
 @dataclass
@@ -115,8 +101,8 @@ class MacPhersonProvider(SuspensionProvider):
 
         # Calculate derived points to create a complete initial state
         derived_spec = self.derived_spec()
-        derived_point_manager = DerivedPointManager(derived_spec)
-        all_positions = derived_point_manager.update(positions)
+        derived_resolver = DerivedPointsManager(derived_spec)
+        all_positions = derived_resolver.update(positions)
 
         return SuspensionState(
             positions=all_positions, free_points=set(self.free_points())
@@ -131,7 +117,7 @@ class MacPhersonProvider(SuspensionProvider):
             PointID.AXLE_OUTBOARD,
         ]
 
-    def derived_spec(self) -> DerivedSpec:
+    def derived_spec(self) -> DerivedPointsSpec:
         """Returns derived point specifications."""
         wheel_cfg = self.geometry.configuration.wheel
 
@@ -155,7 +141,7 @@ class MacPhersonProvider(SuspensionProvider):
             PointID.WHEEL_OUTBOARD: {PointID.WHEEL_CENTER, PointID.AXLE_INBOARD},
         }
 
-        return DerivedSpec(functions=functions, dependencies=dependencies)
+        return DerivedPointsSpec(functions=functions, dependencies=dependencies)
 
     def constraints(self) -> list[Constraint]:
         """Builds the complete list of constraints."""

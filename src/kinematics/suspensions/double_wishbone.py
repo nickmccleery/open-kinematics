@@ -7,7 +7,7 @@ all in one place for the double wishbone suspension type.
 
 from dataclasses import dataclass
 from functools import partial
-from typing import Dict, Sequence
+from typing import Sequence
 
 import numpy as np
 
@@ -17,52 +17,27 @@ from kinematics.constraints import (
     DistanceConstraint,
     PointOnLineConstraint,
 )
-from kinematics.core import Direction, PointID, SuspensionState
-from kinematics.math import compute_point_point_distance, compute_vector_vector_angle
+from kinematics.core import PointID, SuspensionState
 from kinematics.points.derived.definitions import (
     get_axle_midpoint,
     get_wheel_center,
     get_wheel_inboard,
     get_wheel_outboard,
 )
-from kinematics.points.derived.manager import DerivedPointManager, DerivedSpec
+from kinematics.points.derived.manager import DerivedPointsManager, DerivedPointsSpec
 from kinematics.suspensions.base.geometry import SuspensionGeometry
 from kinematics.suspensions.base.provider import SuspensionProvider
-
-
-# Point collection classes
-@dataclass
-class LowerWishbonePoints:
-    """Points defining the lower wishbone geometry."""
-
-    inboard_front: Dict[str, float]
-    inboard_rear: Dict[str, float]
-    outboard: Dict[str, float]
-
-
-@dataclass
-class UpperWishbonePoints:
-    """Points defining the upper wishbone geometry."""
-
-    inboard_front: Dict[str, float]
-    inboard_rear: Dict[str, float]
-    outboard: Dict[str, float]
-
-
-@dataclass
-class WheelAxlePoints:
-    """Points defining the wheel axle geometry."""
-
-    inner: Dict[str, float]
-    outer: Dict[str, float]
-
-
-@dataclass
-class TrackRodPoints:
-    """Points defining the track rod/tie rod geometry."""
-
-    inner: Dict[str, float]
-    outer: Dict[str, float]
+from kinematics.suspensions.common.collections import (
+    LowerWishbonePoints,
+    TrackRodPoints,
+    UpperWishbonePoints,
+    WheelAxlePoints,
+)
+from kinematics.types import AxisFrame
+from kinematics.vector_utils.geometric import (
+    compute_point_point_distance,
+    compute_vector_vector_angle,
+)
 
 
 @dataclass
@@ -142,8 +117,8 @@ class DoubleWishboneProvider(SuspensionProvider):
 
         # Calculate derived points to create a complete initial state
         derived_spec = self.derived_spec()
-        derived_point_manager = DerivedPointManager(derived_spec)
-        all_positions = derived_point_manager.update(positions)
+        derived_resolver = DerivedPointsManager(derived_spec)
+        all_positions = derived_resolver.update(positions)
 
         return SuspensionState(
             positions=all_positions, free_points=set(self.free_points())
@@ -160,7 +135,7 @@ class DoubleWishboneProvider(SuspensionProvider):
             PointID.TRACKROD_INBOARD,
         ]
 
-    def derived_spec(self) -> DerivedSpec:
+    def derived_spec(self) -> DerivedPointsSpec:
         """Returns derived point specifications."""
         wheel_cfg = self.geometry.configuration.wheel
 
@@ -184,7 +159,7 @@ class DoubleWishboneProvider(SuspensionProvider):
             PointID.WHEEL_OUTBOARD: {PointID.WHEEL_CENTER, PointID.AXLE_INBOARD},
         }
 
-        return DerivedSpec(functions=functions, dependencies=dependencies)
+        return DerivedPointsSpec(functions=functions, dependencies=dependencies)
 
     def constraints(self) -> list[Constraint]:
         """Builds the complete list of constraints."""
@@ -241,7 +216,7 @@ class DoubleWishboneProvider(SuspensionProvider):
             PointOnLineConstraint(
                 point_id=PointID.TRACKROD_INBOARD,
                 line_point=initial_state.positions[PointID.TRACKROD_INBOARD],
-                line_direction=Direction.y,
+                line_direction=AxisFrame.create_standard_basis().ey,
             )
         )
 

@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from kinematics.core import PointID
-from kinematics.points.derived.manager import DerivedPointManager, DerivedSpec
+from kinematics.points.derived.manager import DerivedPointsManager, DerivedPointsSpec
 
 
 def test_simple_derived_point_calculation():
@@ -22,8 +22,8 @@ def test_simple_derived_point_calculation():
         PointID.AXLE_MIDPOINT: {PointID.AXLE_INBOARD, PointID.AXLE_OUTBOARD}
     }
 
-    spec = DerivedSpec(functions=functions, dependencies=dependencies)
-    manager = DerivedPointManager(spec)
+    spec = DerivedPointsSpec(functions=functions, dependencies=dependencies)
+    manager = DerivedPointsManager(spec)
 
     # Test positions
     positions = {
@@ -69,8 +69,8 @@ def test_chained_derived_point_calculation():
         PointID.WHEEL_INBOARD: {PointID.WHEEL_CENTER},
     }
 
-    spec = DerivedSpec(functions=functions, dependencies=dependencies)
-    manager = DerivedPointManager(spec)
+    spec = DerivedPointsSpec(functions=functions, dependencies=dependencies)
+    manager = DerivedPointsManager(spec)
 
     # Verify the calculation order is correct (dependencies first)
     expected_order = [
@@ -121,8 +121,8 @@ def test_circular_dependency_detection():
         PointID.WHEEL_INBOARD: {PointID.WHEEL_CENTER},  # B depends on A (circular!)
     }
 
-    spec = DerivedSpec(functions=functions, dependencies=dependencies)
+    spec = DerivedPointsSpec(functions=functions, dependencies=dependencies)
 
     # Creating the manager should detect the circular dependency and raise an error
     with pytest.raises(ValueError, match="Circular dependency detected"):
-        DerivedPointManager(spec)
+        DerivedPointsManager(spec)

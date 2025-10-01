@@ -1,11 +1,11 @@
 from typing import List
 
 from kinematics.core import SuspensionState
-from kinematics.points.derived.manager import DerivedPointManager
+from kinematics.points.derived.manager import DerivedPointsManager
 from kinematics.solver import PointTargetSet, solve_sweep
 
 
-def solve_kinematics(
+def solve_suspension_sweep(
     geometry,
     provider_class,
     point_targets: List[PointTargetSet],
@@ -24,7 +24,7 @@ def solve_kinematics(
 
     # 2. Instantiate the manager for derived points using spec from the provider
     derived_spec = provider.derived_spec()
-    derived_point_manager = DerivedPointManager(derived_spec)
+    derived_resolver = DerivedPointsManager(derived_spec)
 
     # 3. Get the complete initial state (including derived points) from the provider
     initial_state_with_derived = provider.initial_state()
@@ -37,7 +37,7 @@ def solve_kinematics(
         initial_state=initial_state_with_derived,
         constraints=constraints,
         targets=point_targets,
-        compute_derived_points_func=derived_point_manager.update,
+        compute_derived_points_func=derived_resolver.update,
     )
 
     return kinematic_states

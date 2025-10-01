@@ -10,7 +10,7 @@ from kinematics.points.derived.definitions import (
     get_wheel_inboard,
     get_wheel_outboard,
 )
-from kinematics.points.derived.manager import DerivedPointManager, DerivedSpec
+from kinematics.points.derived.manager import DerivedPointsManager, DerivedPointsSpec
 
 
 @pytest.fixture
@@ -52,15 +52,15 @@ def test_wheel_inboard_outboard(sample_positions):
 
 
 def test_dependency_manager_basic(sample_positions):
-    """Test that the DerivedPointManager can calculate axle midpoint"""
+    """Test that the DerivedPointsManager can calculate axle midpoint"""
     functions = {
         PointID.AXLE_MIDPOINT: get_axle_midpoint,
     }
     dependencies = {
         PointID.AXLE_MIDPOINT: {PointID.AXLE_INBOARD, PointID.AXLE_OUTBOARD},
     }
-    spec = DerivedSpec(functions=functions, dependencies=dependencies)
-    manager = DerivedPointManager(spec)
+    spec = DerivedPointsSpec(functions=functions, dependencies=dependencies)
+    manager = DerivedPointsManager(spec)
 
     result = manager.update(sample_positions)
 
@@ -73,7 +73,7 @@ def test_dependency_manager_basic(sample_positions):
 
 
 def test_dependency_manager_complex(sample_positions):
-    """Test that the DerivedPointManager can handle dependencies between derived points"""
+    """Test that the DerivedPointsManager can handle dependencies between derived points"""
     functions = {
         PointID.AXLE_MIDPOINT: get_axle_midpoint,
         PointID.WHEEL_CENTER: partial(get_wheel_center, wheel_offset=0.5),
@@ -86,8 +86,8 @@ def test_dependency_manager_complex(sample_positions):
         PointID.WHEEL_INBOARD: {PointID.WHEEL_CENTER, PointID.AXLE_INBOARD},
         PointID.WHEEL_OUTBOARD: {PointID.WHEEL_CENTER, PointID.AXLE_INBOARD},
     }
-    spec = DerivedSpec(functions=functions, dependencies=dependencies)
-    manager = DerivedPointManager(spec)
+    spec = DerivedPointsSpec(functions=functions, dependencies=dependencies)
+    manager = DerivedPointsManager(spec)
 
     result = manager.update(sample_positions)
 
@@ -128,7 +128,7 @@ def test_circular_dependency_detection():
         PointID.WHEEL_OUTBOARD: {PointID.WHEEL_CENTER},
     }
 
-    spec = DerivedSpec(functions=functions, dependencies=dependencies)
+    spec = DerivedPointsSpec(functions=functions, dependencies=dependencies)
 
     with pytest.raises(ValueError, match="Circular dependency detected"):
-        DerivedPointManager(spec)
+        DerivedPointsManager(spec)

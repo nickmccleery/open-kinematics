@@ -3,8 +3,12 @@ from typing import Set, Union
 
 import numpy as np
 
-from kinematics.core import CoordinateAxis, PointID
-from kinematics.math import compute_point_point_distance, compute_vector_vector_angle
+from kinematics.core import PointID
+from kinematics.types import Axis
+from kinematics.vector_utils.geometric import (
+    compute_point_point_distance,
+    compute_vector_vector_angle,
+)
 
 
 class Constraint(ABC):
@@ -84,7 +88,7 @@ class AngleConstraint(Constraint):
 class FixedAxisConstraint(Constraint):
     """Constrains a point's coordinate on a cardinal axis."""
 
-    def __init__(self, point_id: PointID, axis: CoordinateAxis, value: float):
+    def __init__(self, point_id: PointID, axis: Axis, value: float):
         self.point_id = point_id
         self.axis = axis
         self.value = value

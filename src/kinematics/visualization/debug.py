@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Dict
 
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
@@ -10,8 +9,8 @@ from kinematics.visualization.main import SuspensionVisualizer
 
 
 def create_animation(
-    position_states: list[Dict[PointID, np.ndarray]],
-    initial_positions: Dict[PointID, np.ndarray],
+    position_states: list[dict[PointID, np.ndarray]],
+    initial_positions: dict[PointID, np.ndarray],
     visualizer: SuspensionVisualizer,
     output_path: Path,
     fps: int = 20,
