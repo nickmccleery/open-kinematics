@@ -35,13 +35,13 @@ def solve_suspension_sweep(
     """
     provider = provider_class(geometry)
     derived_spec = provider.derived_spec()
-    derived_resolver = DerivedPointsManager(derived_spec)
+    derived_manager = DerivedPointsManager(derived_spec)
 
     kinematic_states = solve_sweep(
         initial_state=provider.initial_state(),
         constraints=provider.constraints(),
         sweep_config=sweep_config,
-        compute_derived_points_func=derived_resolver.update,
+        derived_manager=derived_manager,
     )
 
     return kinematic_states

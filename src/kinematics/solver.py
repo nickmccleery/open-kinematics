@@ -5,7 +5,7 @@ This module provides functions to solve suspension kinematics by satisfying geom
 constraints and position targets using Levenberg-Marquardt.
 """
 
-from typing import Callable, NamedTuple
+from typing import NamedTuple
 
 import numpy as np
 from scipy.optimize import least_squares
@@ -16,10 +16,10 @@ from kinematics.constants import (
     SOLVE_TOLERANCE_VALUE,
 )
 from kinematics.constraints import Constraint
-from kinematics.enums import PointID
+from kinematics.points.derived.manager import DerivedPointsManager
 from kinematics.state import SuspensionState
 from kinematics.targets import resolve_target
-from kinematics.types import PointTarget, SweepConfig, TargetPositionMode, Vec3
+from kinematics.types import PointTarget, SweepConfig, TargetPositionMode
 from kinematics.vector_utils.generic import project_coordinate
 
 # Levenberg-Marquardt; damped least squares that can deal with the system being
@@ -43,6 +43,68 @@ class SolverConfig(NamedTuple):
     xtol: float = SOLVE_TOLERANCE_STEP
     gtol: float = SOLVE_TOLERANCE_GRAD
     verbose: int = 0
+
+
+class ResidualComputer:
+    """
+    Computes residuals for kinematic constraints and targets.
+
+    This class explicitly holds a reference to a working state that it mutates
+    during residual computation, making the data flow clear to readers and debuggers.
+
+    Attributes:
+        constraints: Geometric constraints to evaluate.
+        derived_manager: Manager for computing derived points in-place.
+        working_state: State object that is mutated during computation.
+    """
+
+    def __init__(
+        self,
+        constraints: list[Constraint],
+        derived_manager: DerivedPointsManager,
+        working_state: SuspensionState,
+    ):
+        self.constraints = constraints
+        self.derived_manager = derived_manager
+        self.working_state = working_state
+        self.call_count = 0
+
+    def compute(
+        self,
+        free_array: np.ndarray,
+        step_targets: list[PointTarget],
+    ) -> np.ndarray:
+        """
+        Compute residuals for the given free point positions and targets.
+
+        This method mutates self.working_state in-place for performance.
+
+        Args:
+            free_array: Flattened array of free point coordinates.
+            step_targets: Target constraints for this solve step.
+
+        Returns:
+            Array of residual values (constraints followed by targets).
+        """
+        # Update working state in-place with current guess.
+        self.working_state.update_from_array(free_array)
+
+        # Compute derived points in-place (avoids dict copy).
+        self.derived_manager.update_in_place(self.working_state.positions)
+
+        # Evaluate constraint residuals.
+        residuals: list[float] = []
+        for constraint in self.constraints:
+            residuals.append(constraint.residual(self.working_state.positions))
+
+        # Evaluate target residuals.
+        for target in step_targets:
+            direction = resolve_target(target.direction)
+            current_pos = self.working_state.positions[target.point_id]
+            current_coordinate = project_coordinate(current_pos, direction)
+            residuals.append(current_coordinate - target.value)
+
+        return np.array(residuals, dtype=float)
 
 
 def resolve_targets_to_absolute(
@@ -95,7 +157,7 @@ def solve_sweep(
     initial_state: SuspensionState,
     constraints: list[Constraint],
     sweep_config: SweepConfig,
-    compute_derived_points_func: Callable[[dict[PointID, Vec3]], dict[PointID, Vec3]],
+    derived_manager: DerivedPointsManager,
     solver_config: SolverConfig = SolverConfig(),
 ) -> list[SuspensionState]:
     """
@@ -108,7 +170,7 @@ def solve_sweep(
         initial_state (SuspensionState): The initial suspension state to start the sweep from.
         constraints (list[Constraint]): List of geometric constraints to satisfy.
         sweep_config (SweepConfig): Configuration for the sweep, including number of steps and target sweeps.
-        compute_derived_points_func (Callable): Function to compute derived points from free points.
+        derived_manager (DerivedPointsManager): Manager to compute derived points in-place.
         solver_config (SolverConfig): Configuration parameters for the solver.
 
     Returns:
@@ -129,45 +191,13 @@ def solve_sweep(
     # our result dataset.
     solution_states: list[SuspensionState] = []
 
-    def compute_residuals(
-        free_array: np.ndarray, step_targets: list[PointTarget]
-    ) -> np.ndarray:
-        """
-        Computes the residuals for the least squares solve. This function calculates the
-        residuals by evaluating geometric constraints and target deviations, modifying
-        the scratch state in-place for efficiency.
-
-        Args:
-            free_array (np.ndarray): Array of free point coordinates to update the state with.
-            step_targets (list[PointTarget]): List of targets for this step.
-
-        Returns:
-            np.ndarray: Array of residual values.
-        """
-        # In-place update of the working state with the current guess.
-        working_state.update_from_array(free_array)
-
-        # Compute derived points using the updated working state.
-        all_positions = compute_derived_points_func(working_state.positions)
-
-        # Build all of our residuals; constraints first, targets second.
-        residuals = []
-
-        for constraint in constraints:
-            residual_value = constraint.residual(all_positions)
-            residuals.append(residual_value)
-
-        for target in step_targets:
-            direction = resolve_target(target.direction)
-            # Get current coordinate along the same direction by projection.
-            current_pos = all_positions[target.point_id]
-            current_coordinate = project_coordinate(current_pos, direction)
-
-            # Compare to absolute target value.
-            target_coordinate = target.value
-            residuals.append(current_coordinate - target_coordinate)
-
-        return np.array(residuals, dtype=float)
+    # Residual computation utility; has explicit state reference and in-place derived
+    # updates.
+    residual_computer = ResidualComputer(
+        constraints=constraints,
+        derived_manager=derived_manager,
+        working_state=working_state,
+    )
 
     # Initial guess built from the working state's free points.
     x_0 = working_state.get_free_array()
@@ -184,7 +214,7 @@ def solve_sweep(
             )
 
         result = least_squares(
-            fun=compute_residuals,
+            fun=residual_computer.compute,
             x0=x_0,
             args=(step_targets,),
             method=SOLVE_METHOD,
@@ -200,14 +230,15 @@ def solve_sweep(
                 f"\nMessage: {result.message}"
             )
 
-        # Update the working state's positions with the solution.
+        # We now have to synchronize working_state with the accepted solution.
+        # The solver may evaluate compute() at points near the solution for gradient
+        # estimation or termination checks, then return us its best value, leaving
+        # working_state at a different position to the actual solution.
+        # We must explicitly update our scratchpad to result.x to ensure correctness.
         working_state.update_from_array(result.x)
+        derived_manager.update_in_place(working_state.positions)
 
-        # Re-calculate final derived points on the now-correct working state.
-        final_positions = compute_derived_points_func(working_state.positions)
-        working_state.update_positions(final_positions)
-
-        # Preserve a deep copy as the result for this step.
+        # Store finalized state for this step.
         solution_states.append(working_state.copy())
 
         # The result becomes our local first guess for the next step.
@@ -220,7 +251,7 @@ def solve(
     initial_state: SuspensionState,
     constraints: list[Constraint],
     targets: list[PointTarget],
-    compute_derived_points_func: Callable[[dict[PointID, Vec3]], dict[PointID, Vec3]],
+    derived_manager: DerivedPointsManager,
     solver_config: SolverConfig = SolverConfig(),
 ) -> SuspensionState:
     """
@@ -232,7 +263,6 @@ def solve(
         initial_state (SuspensionState): The initial suspension state.
         constraints (list[Constraint]): List of geometric constraints to satisfy.
         targets (list[PointTarget]): List of point targets to achieve.
-        compute_derived_points_func (Callable): Function to compute derived points from free points.
         solver_config (SolverConfig): Configuration parameters for the solver.
 
     Returns:
@@ -243,7 +273,7 @@ def solve(
         initial_state=initial_state,
         constraints=constraints,
         sweep_config=sweep_config,
-        compute_derived_points_func=compute_derived_points_func,
+        derived_manager=derived_manager,
         solver_config=solver_config,
     )
     return states[0]

@@ -4,6 +4,7 @@ import pytest
 from kinematics.constants import TEST_TOLERANCE
 from kinematics.constraints import DistanceConstraint
 from kinematics.enums import Axis, PointID, TargetPositionMode
+from kinematics.points.derived.manager import DerivedPointsManager, DerivedPointsSpec
 from kinematics.solver import PointTarget, SolverConfig, solve_sweep
 from kinematics.state import SuspensionState
 from kinematics.types import PointTargetAxis, SweepConfig
@@ -68,8 +69,10 @@ def simple_sweep_config():
     return SweepConfig([point_targets])
 
 
-def null_derived_points(positions):
-    return positions.copy()
+def make_noop_derived_manager():
+    # No derived points -> empty spec
+    spec = DerivedPointsSpec(functions={}, dependencies={})
+    return DerivedPointsManager(spec)
 
 
 def test_solve_sweep(
@@ -93,7 +96,7 @@ def test_solve_sweep(
         initial_state=initial_state,
         constraints=simple_constraints,
         sweep_config=simple_sweep_config,
-        compute_derived_points_func=null_derived_points,
+        derived_manager=make_noop_derived_manager(),
         solver_config=SolverConfig(ftol=1e-6, xtol=1e-6, verbose=0),
     )
 

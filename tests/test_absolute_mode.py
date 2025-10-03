@@ -1,6 +1,7 @@
 import numpy as np
 
 from kinematics.enums import Axis, PointID, TargetPositionMode
+from kinematics.points.derived.manager import DerivedPointsManager, DerivedPointsSpec
 from kinematics.solver import resolve_targets_to_absolute, solve_sweep
 from kinematics.state import SuspensionState
 from kinematics.types import PointTarget, PointTargetAxis, SweepConfig
@@ -45,9 +46,8 @@ def test_default_relative_mode():
 
 
 def test_absolute_mode_solve():
-    # simple identity derived function
-    def identity(positions):
-        return positions
+    # No derived points
+    derived_manager = DerivedPointsManager(DerivedPointsSpec({}, {}))
 
     positions = {PointID.LOWER_WISHBONE_OUTBOARD: np.array([0.0, 0.0, 0.0])}
     free = {PointID.LOWER_WISHBONE_OUTBOARD}
@@ -83,7 +83,7 @@ def test_absolute_mode_solve():
         initial_state=initial_state,
         constraints=[],
         sweep_config=SweepConfig([x_sweep, y_sweep, z_sweep]),
-        compute_derived_points_func=identity,
+        derived_manager=derived_manager,
     )
 
     assert len(states) == 1
