@@ -1,8 +1,8 @@
 """
 Type definitions and data structures for suspension kinematics.
 
-This module provides enumerations, named tuples, and dataclasses that define
-the core types used throughout the kinematics system.
+This module provides enumerations, named tuples, and dataclasses that define the core
+types used throughout the kinematics system.
 """
 
 from __future__ import annotations
@@ -21,7 +21,18 @@ Vec3 = Annotated[NDArray[np.float64], Literal[3]]
 
 def make_vec3(data) -> NDArray[np.float64]:
     """
-    Create a 3-element float64 numpy array.
+    Creates a 3-element float64 numpy array from input data. Ensures the output is
+    always a properly shaped and typed 3D vector. If the input is already a correct
+    Vec3, returns it unchanged.
+
+    Args:
+        data: Input data convertible to a 3-element array (list, tuple, array, etc.).
+
+    Returns:
+        A 3-element numpy array with dtype float64.
+
+    Raises:
+        ValueError: If the input data cannot be shaped into a 3-element array.
     """
     # Check if already correct type and shape.
     if isinstance(data, np.ndarray) and data.dtype == np.float64 and data.shape == (3,):
@@ -101,7 +112,9 @@ class SweepConfig:
 
     @property
     def n_steps(self) -> int:
-        """Number of steps in the sweep."""
+        """
+        Number of steps in the sweep.
+        """
         if not self.target_sweeps:
             return 0
         return len(self.target_sweeps[0])

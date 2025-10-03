@@ -1,3 +1,12 @@
+"""
+Generic vector utility functions.
+
+This module provides fundamental vector operations used throughout the kinematics
+system, including normalization, projection, and coordinate transformations. These
+operations do not use any types specific to this project, so can be used in utility
+contexts without introducing circular dependencies.
+"""
+
 import numpy as np
 from numpy.typing import NDArray
 

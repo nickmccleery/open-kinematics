@@ -45,7 +45,7 @@ def create_animation(
                 ax.view_init(elev=90, azim=0)
                 ax.set_title("Top View [X-Y]")
                 ax.set_proj_type("ortho")
-                ax.set_zticklabels([])
+                ax.set_zticklabels([])  # type: ignore
             elif view_name == "front":
                 ax.view_init(elev=0, azim=0)
                 ax.set_title("Front View [Y-Z]")
@@ -118,7 +118,11 @@ def create_animation(
         hspace=0.01,
     )
     anim = animation.FuncAnimation(
-        fig, update, frames=len(position_states), interval=interval, blit=False
+        fig,
+        update,  # type: ignore
+        frames=len(position_states),
+        interval=interval,
+        blit=False,
     )
 
     anim.save(output_path, writer="pillow", fps=fps)
