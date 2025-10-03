@@ -5,7 +5,7 @@ from kinematics.constants import TEST_TOLERANCE
 from kinematics.constraints import DistanceConstraint
 from kinematics.core import PointID, SuspensionState
 from kinematics.solver import PointTarget, SolverConfig, solve_sweep
-from kinematics.types import Axis, PointTargetAxis, SweepConfig
+from kinematics.types import Axis, PointTargetAxis, SweepConfig, TargetPositionMode
 
 
 @pytest.fixture
@@ -60,6 +60,7 @@ def simple_sweep_config():
             point_id=PointID.LOWER_WISHBONE_OUTBOARD,
             direction=PointTargetAxis(Axis.Z),
             value=d,
+            mode=TargetPositionMode.RELATIVE,
         )
         for d in displacements
     ]

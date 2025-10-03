@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import IntEnum
+from enum import Enum, IntEnum
 from typing import Annotated, Final, Literal, NamedTuple, Union
 
 import numpy as np
@@ -30,6 +30,20 @@ class Axis(IntEnum):
     X = 0
     Y = 1
     Z = 2
+
+
+class TargetPositionMode(Enum):
+    """
+    Specifies how a target value should be interpreted.
+
+    RELATIVE: Value represents displacement from the initial/design position
+    ABSOLUTE: Value represents an absolute coordinate in the world frame
+
+    Note: All modes are converted to ABSOLUTE before solving begins.
+    """
+
+    RELATIVE = "relative"
+    ABSOLUTE = "absolute"
 
 
 class WorldAxisSystem:
@@ -83,9 +97,23 @@ class SweepConfig:
 
 
 class PointTarget(NamedTuple):
+    """
+    Defines a target constraint for a specific point during kinematic solving.
+
+    The mode determines how the value is interpreted initially, but all targets
+    are converted to absolute coordinates before solving begins.
+
+    Attributes:
+        point_id: The point to constrain
+        direction: Direction along which to apply the target
+        value: Target value (interpretation depends on mode)
+        mode: Whether value is relative displacement or absolute coordinate
+    """
+
     point_id: PointID
     direction: "PointTargetDirection"
     value: float
+    mode: TargetPositionMode = TargetPositionMode.RELATIVE
 
 
 @dataclass(slots=True, frozen=True)
