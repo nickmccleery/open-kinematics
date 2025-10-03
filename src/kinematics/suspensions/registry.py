@@ -13,7 +13,7 @@ from kinematics.suspensions.double_wishbone import (
 )
 from kinematics.suspensions.macpherson import MacPhersonGeometry, MacPhersonProvider
 
-# Registry type definitions
+# Registry type definitions.
 ModelCls = Type[object]
 ProviderCls = Type[SuspensionProvider]
 Registry = dict[str, Tuple[ModelCls, ProviderCls]]
