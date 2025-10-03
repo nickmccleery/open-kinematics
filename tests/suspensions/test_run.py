@@ -87,7 +87,8 @@ def test_run_solver(
     derived_resolver = DerivedPointsManager(provider.derived_spec())
 
     initial_state = provider.initial_state()
-    initial_positions = derived_resolver.update(initial_state.positions)
+    derived_resolver.update_in_place(initial_state.positions)
+    initial_positions = initial_state.positions.copy()
 
     # Get only the length constraints for verification
     all_constraints = provider.constraints()

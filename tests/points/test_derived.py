@@ -64,13 +64,13 @@ def test_dependency_manager_basic(sample_positions):
     spec = DerivedPointsSpec(functions=functions, dependencies=dependencies)
     manager = DerivedPointsManager(spec)
 
-    result = manager.update(sample_positions)
+    manager.update_in_place(sample_positions)
 
     # Should have original positions plus the derived point
-    assert len(result) == 3
-    assert PointID.AXLE_MIDPOINT in result
+    assert len(sample_positions) == 3
+    assert PointID.AXLE_MIDPOINT in sample_positions
     np.testing.assert_array_equal(
-        result[PointID.AXLE_MIDPOINT], np.array([1.0, 0.0, 0.0])
+        sample_positions[PointID.AXLE_MIDPOINT], np.array([1.0, 0.0, 0.0])
     )
 
 
@@ -93,27 +93,27 @@ def test_dependency_manager_complex(sample_positions):
     spec = DerivedPointsSpec(functions=functions, dependencies=dependencies)
     manager = DerivedPointsManager(spec)
 
-    result = manager.update(sample_positions)
+    manager.update_in_place(sample_positions)
 
     # Should have original positions plus all derived points
-    assert len(result) == 6
-    assert PointID.AXLE_MIDPOINT in result
-    assert PointID.WHEEL_CENTER in result
-    assert PointID.WHEEL_INBOARD in result
-    assert PointID.WHEEL_OUTBOARD in result
+    assert len(sample_positions) == 6
+    assert PointID.AXLE_MIDPOINT in sample_positions
+    assert PointID.WHEEL_CENTER in sample_positions
+    assert PointID.WHEEL_INBOARD in sample_positions
+    assert PointID.WHEEL_OUTBOARD in sample_positions
 
     # Check values
     np.testing.assert_array_equal(
-        result[PointID.AXLE_MIDPOINT], np.array([1.0, 0.0, 0.0])
+        sample_positions[PointID.AXLE_MIDPOINT], np.array([1.0, 0.0, 0.0])
     )
     np.testing.assert_array_equal(
-        result[PointID.WHEEL_CENTER], np.array([2.5, 0.0, 0.0])
+        sample_positions[PointID.WHEEL_CENTER], np.array([2.5, 0.0, 0.0])
     )
     np.testing.assert_array_equal(
-        result[PointID.WHEEL_INBOARD], np.array([2.0, 0.0, 0.0])
+        sample_positions[PointID.WHEEL_INBOARD], np.array([2.0, 0.0, 0.0])
     )
     np.testing.assert_array_equal(
-        result[PointID.WHEEL_OUTBOARD], np.array([3.0, 0.0, 0.0])
+        sample_positions[PointID.WHEEL_OUTBOARD], np.array([3.0, 0.0, 0.0])
     )
 
 

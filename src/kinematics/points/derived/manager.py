@@ -131,21 +131,13 @@ class DerivedPointsManager:
 
         return order
 
-    def update(self, positions: dict[PointID, Vec3]) -> dict[PointID, Vec3]:
+    def update_in_place(self, positions: dict[PointID, Vec3]) -> None:
         """
-        Calculates all derived points based on the provided positions.
-
-        Note: Keep this as positions dict to maintain clean separation of concerns.
+        Compute derived points and add them to positions dict in-place.
 
         Args:
-            positions: A dictionary containing at least all hard point positions.
-
-        Returns:
-            A new dictionary containing both original and all calculated derived points.
+            positions: Dictionary to mutate in-place by adding derived points.
         """
-        updated_positions = positions.copy()
         for point_id in self.update_order:
             update_func = self.spec.functions[point_id]
-            new_position = update_func(updated_positions)
-            updated_positions[point_id] = new_position
-        return updated_positions
+            positions[point_id] = update_func(positions)

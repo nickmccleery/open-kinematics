@@ -140,11 +140,9 @@ class MacPhersonProvider(SuspensionProvider):
         # Calculate derived points to create a complete initial state.
         derived_spec = self.derived_spec()
         derived_resolver = DerivedPointsManager(derived_spec)
-        all_positions = derived_resolver.update(positions)
+        derived_resolver.update_in_place(positions)
 
-        return SuspensionState(
-            positions=all_positions, free_points=set(self.free_points())
-        )
+        return SuspensionState(positions=positions, free_points=set(self.free_points()))
 
     def free_points(self) -> Sequence[PointID]:
         """
