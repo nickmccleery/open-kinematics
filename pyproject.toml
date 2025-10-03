@@ -21,8 +21,21 @@ dependencies = [
 viz = ["matplotlib>=3.8"]
 cli = ["typer>=0.12"]
 
-[tool.uv.workspace]
-members = ["src/kinematics"]
+[dependency-groups]
+dev = ["docformatter>=1.7.7"]
 
-[tool.hatchling.build.targets.wheel]
-packages = ["src/kinematics"]
+[tool.docformatter]
+recursive = true
+wrap-summaries = 88
+wrap-descriptions = 88
+pre-summary-newline = true
+close-quotes-on-newline = true
+blank = false
+make-summary-multi-line = true
+
+
+# [tool.uv.workspace]
+# members = ["src/kinematics"]
+
+# [tool.hatchling.build.targets.wheel]
+# packages = ["src/kinematics"]
