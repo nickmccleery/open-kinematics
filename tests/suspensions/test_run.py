@@ -10,7 +10,9 @@ from kinematics.loader import load_geometry
 from kinematics.main import solve_suspension_sweep
 from kinematics.points.derived.manager import DerivedPointsManager
 from kinematics.solver import PointTarget
-from kinematics.suspensions.double_wishbone import DoubleWishboneGeometry
+from kinematics.suspensions.implementations.double_wishbone import (
+    DoubleWishboneGeometry,
+)
 from kinematics.types import PointTargetAxis, SweepConfig
 from kinematics.visualization.debug import create_animation
 from kinematics.visualization.main import SuspensionVisualizer, WheelVisualization

@@ -11,7 +11,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
-from kinematics.suspensions.common.configs import SuspensionConfig, Units
+from kinematics.suspensions.core.settings import SuspensionConfig, Units
 
 
 @dataclass

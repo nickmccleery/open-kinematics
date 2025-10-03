@@ -18,12 +18,9 @@ from kinematics.points.derived.definitions import (
 )
 from kinematics.points.derived.manager import DerivedPointsManager, DerivedPointsSpec
 from kinematics.state import SuspensionState
-from kinematics.suspensions.base.geometry import SuspensionGeometry
-from kinematics.suspensions.base.provider import SuspensionProvider
-from kinematics.suspensions.common.collections import (
-    LowerWishbonePoints,
-    WheelAxlePoints,
-)
+from kinematics.suspensions.core.collections import LowerWishbonePoints, WheelAxlePoints
+from kinematics.suspensions.core.geometry import SuspensionGeometry
+from kinematics.suspensions.core.provider import SuspensionProvider
 from kinematics.vector_utils.geometric import compute_point_point_distance
 
 

@@ -3,7 +3,9 @@ from dataclasses import dataclass
 import numpy as np
 
 from kinematics.enums import PointID
-from kinematics.suspensions.double_wishbone import DoubleWishboneGeometry
+from kinematics.suspensions.implementations.double_wishbone import (
+    DoubleWishboneGeometry,
+)
 from kinematics.types import Vec3
 
 
