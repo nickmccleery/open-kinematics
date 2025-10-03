@@ -1,3 +1,10 @@
+"""
+Type definitions and data structures for suspension kinematics.
+
+This module provides enumerations, named tuples, and dataclasses that define
+the core types used throughout the kinematics system.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -27,6 +34,10 @@ def make_vec3(data) -> NDArray[np.float64]:
 
 
 class Axis(IntEnum):
+    """
+    Enumeration of the three principal axes in 3D space.
+    """
+
     X = 0
     Y = 1
     Z = 2
@@ -120,6 +131,9 @@ class PointTarget(NamedTuple):
 class PointTargetAxis:
     """
     A target direction defined by one of the principal axes.
+
+    Attributes:
+        axis (Axis): The axis to use as the target direction.
     """
 
     axis: Axis
@@ -129,6 +143,9 @@ class PointTargetAxis:
 class PointTargetVector:
     """
     A target direction defined by an arbitrary vector.
+
+    Attributes:
+        vector (Vec3): The vector defining the target direction.
     """
 
     vector: Vec3
