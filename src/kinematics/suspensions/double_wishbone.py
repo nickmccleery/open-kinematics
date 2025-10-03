@@ -1,8 +1,5 @@
 """
-Complete double wishbone suspension implementation.
-
-Contains geometry models, provider logic, and derived point calculations
-all in one place for the double wishbone suspension type.
+Double wishbone suspension implementation.
 """
 
 from dataclasses import dataclass
@@ -41,7 +38,15 @@ from kinematics.vector_utils.geometric import (
 
 @dataclass
 class DoubleWishboneHardPoints:
-    """Hard point collection for double wishbone suspension."""
+    """
+    Hard point collection for double wishbone suspension.
+
+    Attributes:
+        lower_wishbone: Points defining the lower wishbone geometry.
+        upper_wishbone: Points defining the upper wishbone geometry.
+        track_rod: Points defining the track rod geometry.
+        wheel_axle: Points defining the wheel axle geometry.
+    """
 
     lower_wishbone: LowerWishbonePoints
     upper_wishbone: UpperWishbonePoints
@@ -52,27 +57,57 @@ class DoubleWishboneHardPoints:
 # Geometry model
 @dataclass
 class DoubleWishboneGeometry(SuspensionGeometry):
-    """Double wishbone suspension geometry definition."""
+    """
+    Double wishbone suspension geometry definition.
+
+    Extends the base SuspensionGeometry with double wishbone specific hard points.
+
+    Attributes:
+        hard_points: Collection of all hard point coordinates for the suspension.
+    """
 
     hard_points: DoubleWishboneHardPoints
 
     def validate(self) -> bool:
+        """
+        Validate the double wishbone geometry configuration.
+
+        Returns:
+            True if geometry is valid.
+        """
+        # ! TODO: Actually validate this geometry.
         return True
 
 
 # Provider implementation
 class DoubleWishboneProvider(SuspensionProvider):
-    """The concrete implementation for Double Wishbone geometry."""
+    """
+    Concrete implementation of SuspensionProvider for double wishbone geometry.
+    """
 
     def __init__(self, geometry: DoubleWishboneGeometry):
+        """
+        Initialize the double wishbone provider.
+
+        Args:
+            geometry: Double wishbone geometry configuration.
+        """
         self.geometry = geometry
 
     def initial_state(self) -> SuspensionState:
-        """Create initial suspension state from geometry."""
+        """
+        Create initial suspension state from geometry hard points.
+
+        Converts the hard point coordinates from the geometry into a SuspensionState
+        with both explicitly defined and derived points.
+
+        Returns:
+            Initial suspension state with all point positions.
+        """
         positions = {}
         hard_points = self.geometry.hard_points
 
-        # Lower wishbone
+        # Lower wishbone.
         lwb = hard_points.lower_wishbone
         positions[PointID.LOWER_WISHBONE_INBOARD_FRONT] = np.array(
             [lwb.inboard_front["x"], lwb.inboard_front["y"], lwb.inboard_front["z"]]
@@ -84,7 +119,7 @@ class DoubleWishboneProvider(SuspensionProvider):
             [lwb.outboard["x"], lwb.outboard["y"], lwb.outboard["z"]]
         )
 
-        # Upper wishbone
+        # Upper wishbone.
         uwb = hard_points.upper_wishbone
         positions[PointID.UPPER_WISHBONE_INBOARD_FRONT] = np.array(
             [uwb.inboard_front["x"], uwb.inboard_front["y"], uwb.inboard_front["z"]]
@@ -96,7 +131,7 @@ class DoubleWishboneProvider(SuspensionProvider):
             [uwb.outboard["x"], uwb.outboard["y"], uwb.outboard["z"]]
         )
 
-        # Track rod
+        # Track rod.
         tr = hard_points.track_rod
         positions[PointID.TRACKROD_INBOARD] = np.array(
             [tr.inner["x"], tr.inner["y"], tr.inner["z"]]
@@ -114,7 +149,7 @@ class DoubleWishboneProvider(SuspensionProvider):
             [wa.outer["x"], wa.outer["y"], wa.outer["z"]]
         )
 
-        # Calculate derived points to create a complete initial state
+        # Calculate derived points to create a complete initial state.
         derived_spec = self.derived_spec()
         derived_resolver = DerivedPointsManager(derived_spec)
         all_positions = derived_resolver.update(positions)
@@ -124,7 +159,12 @@ class DoubleWishboneProvider(SuspensionProvider):
         )
 
     def free_points(self) -> Sequence[PointID]:
-        """Defines which points the solver is allowed to move."""
+        """
+        Define which points the solver can move during optimization.
+
+        Returns:
+            Sequence of point IDs that are free to move (outboard and axle points).
+        """
         return [
             PointID.UPPER_WISHBONE_OUTBOARD,
             PointID.LOWER_WISHBONE_OUTBOARD,
@@ -135,7 +175,12 @@ class DoubleWishboneProvider(SuspensionProvider):
         ]
 
     def derived_spec(self) -> DerivedPointsSpec:
-        """Returns derived point specifications."""
+        """
+        Define specifications for computing derived points from free points.
+
+        Returns:
+            Specification containing functions and dependencies for derived points.
+        """
         wheel_cfg = self.geometry.configuration.wheel
 
         functions = {
@@ -161,11 +206,16 @@ class DoubleWishboneProvider(SuspensionProvider):
         return DerivedPointsSpec(functions=functions, dependencies=dependencies)
 
     def constraints(self) -> list[Constraint]:
-        """Builds the complete list of constraints."""
+        """
+        Build the complete set of geometric constraints for double wishbone suspension.
+
+        Returns:
+            List of constraints that must be satisfied during kinematic solving.
+        """
         constraints: list[Constraint] = []
         initial_state = self.initial_state()
 
-        # Distance constraints
+        # Distance constraints.
         length_pairs = [
             (PointID.UPPER_WISHBONE_INBOARD_FRONT, PointID.UPPER_WISHBONE_OUTBOARD),
             (PointID.UPPER_WISHBONE_INBOARD_REAR, PointID.UPPER_WISHBONE_OUTBOARD),
@@ -189,7 +239,7 @@ class DoubleWishboneProvider(SuspensionProvider):
             )
             constraints.append(DistanceConstraint(p1, p2, target_distance))
 
-        # Angle constraints
+        # Angle constraints.
         v1 = (
             initial_state.positions[PointID.LOWER_WISHBONE_OUTBOARD]
             - initial_state.positions[PointID.UPPER_WISHBONE_OUTBOARD]
@@ -210,7 +260,7 @@ class DoubleWishboneProvider(SuspensionProvider):
             )
         )
 
-        # Point-on-line constraints
+        # Point-on-line constraints.
         constraints.append(
             PointOnLineConstraint(
                 point_id=PointID.TRACKROD_INBOARD,
