@@ -11,6 +11,7 @@ def test_public_api_exports():
         "solve_sweep",
         "PointID",
         "PointTarget",
+        "SweepConfig",
         "Constraint",
         "SolverConfig",
     }

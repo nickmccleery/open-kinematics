@@ -47,14 +47,45 @@ class WorldAxisSystem:
     Z: Final[Vec3] = np.array([0.0, 0.0, 1.0], dtype=np.float64)
 
 
+@dataclass
+class SweepConfig:
+    """
+    Configuration for a parametric sweep over multiple target dimensions.
+
+    Each inner list represents one sweep dimension (e.g., bump travel, steering angle).
+    All dimensions must have the same length - the sweep will iterate through
+    corresponding indices across all dimensions simultaneously.
+
+    Example:
+        bump_targets = [PointTarget(..., value=-30), ..., PointTarget(..., value=30)]
+        steer_targets = [PointTarget(..., value=-10), ..., PointTarget(..., value=10)]
+        config = SweepConfig([bump_targets, steer_targets])
+    """
+
+    target_sweeps: list[list["PointTarget"]]
+
+    def __post_init__(self):
+        if not self.target_sweeps:
+            return
+
+        lengths = [len(sweep) for sweep in self.target_sweeps]
+        if len(set(lengths)) > 1:
+            raise ValueError(
+                f"All sweep dimensions must have the same length. Found: {lengths}"
+            )
+
+    @property
+    def n_steps(self) -> int:
+        """Number of steps in the sweep."""
+        if not self.target_sweeps:
+            return 0
+        return len(self.target_sweeps[0])
+
+
 class PointTarget(NamedTuple):
     point_id: PointID
-    direction: PointTargetDirection
+    direction: "PointTargetDirection"
     value: float
-
-
-class PointTargetSet(NamedTuple):
-    values: list[PointTarget]
 
 
 @dataclass(slots=True, frozen=True)

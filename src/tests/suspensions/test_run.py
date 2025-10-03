@@ -8,12 +8,12 @@ from kinematics.core import PointID
 from kinematics.loader import load_geometry
 from kinematics.main import solve_suspension_sweep
 from kinematics.points.derived.manager import DerivedPointsManager
-from kinematics.solver import PointTarget, PointTargetSet
+from kinematics.solver import PointTarget
 from kinematics.suspensions.double_wishbone import (
     DoubleWishboneGeometry,
     DoubleWishboneProvider,
 )
-from kinematics.types import Axis, PointTargetAxis
+from kinematics.types import Axis, PointTargetAxis, SweepConfig
 from kinematics.visualization.debug import create_animation
 from kinematics.visualization.main import SuspensionVisualizer, WheelVisualization
 
@@ -35,7 +35,7 @@ def displacements():
 
 
 @pytest.fixture
-def target_set(displacements):
+def sweep_config_fixture(displacements):
     hub_displacements, steer_displacements = displacements
 
     # Create hub displacement sweep.
@@ -58,17 +58,14 @@ def target_set(displacements):
         for x in steer_displacements
     ]
 
-    # Create target set.
-    targets = [
-        PointTargetSet(values=hub_targets),
-        PointTargetSet(values=steer_targets),
-    ]
+    # Create sweep config.
+    sweep_config = SweepConfig([hub_targets, steer_targets])
 
-    return targets
+    return sweep_config
 
 
 def test_run_solver(
-    double_wishbone_geometry_file: Path, target_set, displacements
+    double_wishbone_geometry_file: Path, sweep_config_fixture, displacements
 ) -> None:
     hub_displacements, _ = displacements
 
@@ -77,7 +74,9 @@ def test_run_solver(
         raise ValueError("Invalid geometry type")
 
     # Solve for all positions.
-    position_states = solve_suspension_sweep(geometry, provider_class, target_set)
+    position_states = solve_suspension_sweep(
+        geometry, provider_class, sweep_config_fixture
+    )
 
     print("Solve complete, verifying constraints...")
 

@@ -3,8 +3,8 @@ import pytest
 
 from kinematics.constraints import DistanceConstraint
 from kinematics.core import PointID, SuspensionState
-from kinematics.solver import PointTarget, PointTargetSet, SolverConfig, solve_sweep
-from kinematics.types import Axis, PointTargetAxis
+from kinematics.solver import PointTarget, SolverConfig, solve_sweep
+from kinematics.types import Axis, PointTargetAxis, SweepConfig
 
 # Tolerance on position checks.
 TOL_CHECK = 1e-4
@@ -55,7 +55,7 @@ def simple_constraints(simple_positions, length_forward_leg, length_rearward_leg
 
 
 @pytest.fixture
-def simple_target_set():
+def simple_sweep_config():
     displacements = [0.0, 0.5, 1.0]
     point_targets = [
         PointTarget(
@@ -65,7 +65,7 @@ def simple_target_set():
         )
         for d in displacements
     ]
-    return PointTargetSet(values=point_targets)
+    return SweepConfig([point_targets])
 
 
 def null_derived_points(positions):
@@ -75,7 +75,7 @@ def null_derived_points(positions):
 def test_solve_sweep(
     simple_positions,
     simple_constraints,
-    simple_target_set,
+    simple_sweep_config,
     length_forward_leg,
     length_rearward_leg,
 ):
@@ -85,12 +85,14 @@ def test_solve_sweep(
     initial_state = SuspensionState(positions=simple_positions, free_points=free_points)
 
     # Extract displacement values for assertions
-    displacement_values = [target.value for target in simple_target_set.values]
+    displacement_values = [
+        target.value for target in simple_sweep_config.target_sweeps[0]
+    ]
 
     states = solve_sweep(
         initial_state=initial_state,
         constraints=simple_constraints,
-        targets=[simple_target_set],  # Wrapped in a list for the new API
+        sweep_config=simple_sweep_config,
         compute_derived_points_func=null_derived_points,
         solver_config=SolverConfig(ftol=1e-6, xtol=1e-6, verbose=0),
     )

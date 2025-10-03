@@ -4,6 +4,7 @@ from .constraints import Constraint
 from .core import PointID
 from .loader import load_geometry
 from .solver import PointTarget, SolverConfig, solve, solve_sweep
+from .types import SweepConfig
 
 __all__ = [
     "load_geometry",
@@ -11,6 +12,7 @@ __all__ = [
     "solve_sweep",
     "PointID",
     "PointTarget",
+    "SweepConfig",
     "Constraint",
     "SolverConfig",
 ]
