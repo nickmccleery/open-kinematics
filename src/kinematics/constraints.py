@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Set, Union
+from typing import Set
 
 import numpy as np
 
@@ -21,17 +21,12 @@ class Constraint(ABC):
         pass
 
     @abstractmethod
-    def residual(
-        self, positions: dict[PointID, np.ndarray]
-    ) -> Union[float, np.ndarray]:
+    def residual(self, positions: dict[PointID, np.ndarray]) -> float:
         """
-        Calculate constraint residual(s).
+        Calculate constraint residual.
 
-        Returns either:
-        - float: For single-value constraints
-        - np.ndarray: For multi-value constraints (rare cases)
-
-        The solver's goal is to drive these values to zero.
+        The solver's goal is to drive this value to zero.
+        Returns a scalar float representing the constraint violation.
         """
         pass
 

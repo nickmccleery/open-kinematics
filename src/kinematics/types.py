@@ -2,13 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import IntEnum
-from typing import Annotated, Literal, NamedTuple, Union
+from typing import Annotated, Final, Literal, NamedTuple, Union
 
 import numpy as np
 from numpy.typing import NDArray
 
 from kinematics.core import PointID
-from kinematics.vector_utils.generic import normalize_vector
 
 Vec3 = Annotated[NDArray[np.float64], Literal[3]]
 
@@ -33,39 +32,60 @@ class Axis(IntEnum):
     Z = 2
 
 
-@dataclass(slots=True)
-class AxisFrame:
+class WorldAxisSystem:
     """
-    Right-handed, orthonormal basis expressed in world coordinates.
-    See: https://en.wikipedia.org/wiki/Standard_basis
+    World coordinate system unit axis vectors.
+
+    Usage:
+        WorldAxisSystem.X  # -> np.array([1.0, 0.0, 0.0])
+        WorldAxisSystem.Y  # -> np.array([0.0, 1.0, 0.0])
+        WorldAxisSystem.Z  # -> np.array([0.0, 0.0, 1.0])
     """
 
-    ex: Vec3
-    ey: Vec3
-    ez: Vec3
+    X: Final[Vec3] = np.array([1.0, 0.0, 0.0], dtype=np.float64)
+    Y: Final[Vec3] = np.array([0.0, 1.0, 0.0], dtype=np.float64)
+    Z: Final[Vec3] = np.array([0.0, 0.0, 1.0], dtype=np.float64)
+
+
+@dataclass
+class SweepConfig:
+    """
+    Configuration for a parametric sweep over multiple target dimensions.
+
+    Each inner list represents one sweep dimension (e.g., bump travel, steering angle).
+    All dimensions must have the same length - the sweep will iterate through
+    corresponding indices across all dimensions simultaneously.
+
+    Example:
+        bump_targets = [PointTarget(..., value=-30), ..., PointTarget(..., value=30)]
+        steer_targets = [PointTarget(..., value=-10), ..., PointTarget(..., value=10)]
+        config = SweepConfig([bump_targets, steer_targets])
+    """
+
+    target_sweeps: list[list["PointTarget"]]
 
     def __post_init__(self):
-        self.ex = normalize_vector(self.ex)
-        self.ey = normalize_vector(self.ey)
-        self.ez = normalize_vector(self.ez)
+        if not self.target_sweeps:
+            return
 
-    @classmethod
-    def create_standard_basis(cls) -> AxisFrame:
-        return cls(
-            np.array([1.0, 0.0, 0.0], dtype=np.float64),
-            np.array([0.0, 1.0, 0.0], dtype=np.float64),
-            np.array([0.0, 0.0, 1.0], dtype=np.float64),
-        )
+        lengths = [len(sweep) for sweep in self.target_sweeps]
+        if len(set(lengths)) > 1:
+            raise ValueError(
+                f"All sweep dimensions must have the same length. Found: {lengths}"
+            )
+
+    @property
+    def n_steps(self) -> int:
+        """Number of steps in the sweep."""
+        if not self.target_sweeps:
+            return 0
+        return len(self.target_sweeps[0])
 
 
 class PointTarget(NamedTuple):
     point_id: PointID
-    direction: PointTargetDirection
+    direction: "PointTargetDirection"
     value: float
-
-
-class PointTargetSet(NamedTuple):
-    values: list[PointTarget]
 
 
 @dataclass(slots=True, frozen=True)

@@ -3,23 +3,28 @@ from typing import Callable, NamedTuple
 import numpy as np
 from scipy.optimize import least_squares
 
+from kinematics.constants import (
+    SOLVE_TOLERANCE_GRAD,
+    SOLVE_TOLERANCE_STEP,
+    SOLVE_TOLERANCE_VALUE,
+)
 from kinematics.constraints import Constraint
 from kinematics.core import PointID, SuspensionState
 from kinematics.targets import resolve_target
-from kinematics.types import PointTarget, PointTargetSet
+from kinematics.types import PointTarget, SweepConfig
 
 
 class SolverConfig(NamedTuple):
-    ftol: float = 1e-8
-    xtol: float = 1e-8
-    gtol: float = 1e-8
+    ftol: float = SOLVE_TOLERANCE_VALUE
+    xtol: float = SOLVE_TOLERANCE_STEP
+    gtol: float = SOLVE_TOLERANCE_GRAD
     verbose: int = 0
 
 
 def solve_sweep(
     initial_state: SuspensionState,
     constraints: list[Constraint],
-    targets: list[PointTargetSet],
+    sweep_config: SweepConfig,
     compute_derived_points_func: Callable[
         [dict[PointID, np.ndarray]], dict[PointID, np.ndarray]
     ],
@@ -28,16 +33,9 @@ def solve_sweep(
     """
     Solves a series of kinematic states using damped non-linear least squares.
     """
-    # Validate that all target sweeps have the same number of steps
-    target_lengths = [len(target_set.values) for target_set in targets]
-    if len(set(target_lengths)) > 1:
-        raise ValueError(
-            f"All target sets must have the same length. Found: {target_lengths}"
-        )
-
-    n_steps = target_lengths[0] if target_lengths else 0
+    n_steps = sweep_config.n_steps
     sweep_targets = [
-        [target_set.values[i] for target_set in targets] for i in range(n_steps)
+        [sweep[i] for sweep in sweep_config.target_sweeps] for i in range(n_steps)
     ]
 
     # Initialize state for the entire sweep - this object will only be updated after each successful step
@@ -66,13 +64,7 @@ def solve_sweep(
         # 3. Geometry constraint residuals
         for constraint in constraints:
             residual_value = constraint.residual(all_positions)
-
-            # Handle both scalar and array residuals
-            if np.isscalar(residual_value):
-                residuals.append(residual_value)
-            else:
-                # For array residuals, extend the list
-                residuals.extend(np.asarray(residual_value).flatten())
+            residuals.append(residual_value)
 
         # 4. Target residuals
         for target in step_targets:
@@ -142,11 +134,11 @@ def solve(
     """
     Solves a single kinematic state.
     """
-    target_set = PointTargetSet(values=targets)
+    sweep_config = SweepConfig([targets])
     states = solve_sweep(
         initial_state=initial_state,
         constraints=constraints,
-        targets=[target_set],
+        sweep_config=sweep_config,
         compute_derived_points_func=compute_derived_points_func,
         solver_config=solver_config,
     )

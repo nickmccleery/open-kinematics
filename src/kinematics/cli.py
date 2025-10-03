@@ -7,8 +7,8 @@ import typer
 from kinematics.core import PointID
 from kinematics.loader import load_geometry
 from kinematics.main import solve_suspension_sweep
-from kinematics.solver import PointTarget, PointTargetSet
-from kinematics.types import Axis, PointTargetAxis
+from kinematics.solver import PointTarget
+from kinematics.types import Axis, PointTargetAxis, SweepConfig
 
 app = typer.Typer(add_completion=False)
 
@@ -20,7 +20,7 @@ def solve(
     tol: float = typer.Option(1e-8, help="Convergence tolerance"),
     max_iters: int = typer.Option(50, help="Max solver iterations"),
 ):
-    geom, provider = load_geometry(geometry)
+    loaded = load_geometry(geometry)
 
     # Create a dummy target for now, this will be expanded later
     targets = [
@@ -31,9 +31,11 @@ def solve(
         )
         for i in range(steps)
     ]
-    target_set = PointTargetSet(values=targets)
+    sweep_config = SweepConfig([targets])
 
-    solution = solve_suspension_sweep(geom, provider, [target_set])
+    solution = solve_suspension_sweep(
+        loaded.geometry, loaded.provider_cls, sweep_config
+    )
     typer.echo(f"converged=True steps={len(solution)}")
 
 

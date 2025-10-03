@@ -33,7 +33,6 @@ from kinematics.suspensions.common.collections import (
     UpperWishbonePoints,
     WheelAxlePoints,
 )
-from kinematics.types import AxisFrame
 from kinematics.vector_utils.geometric import (
     compute_point_point_distance,
     compute_vector_vector_angle,
@@ -216,7 +215,7 @@ class DoubleWishboneProvider(SuspensionProvider):
             PointOnLineConstraint(
                 point_id=PointID.TRACKROD_INBOARD,
                 line_point=initial_state.positions[PointID.TRACKROD_INBOARD],
-                line_direction=AxisFrame.create_standard_basis().ey,
+                line_direction=np.array([0.0, 1.0, 0.0], dtype=np.float64),
             )
         )
 

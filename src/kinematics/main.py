@@ -2,13 +2,14 @@ from typing import List
 
 from kinematics.core import SuspensionState
 from kinematics.points.derived.manager import DerivedPointsManager
-from kinematics.solver import PointTargetSet, solve_sweep
+from kinematics.solver import solve_sweep
+from kinematics.types import SweepConfig
 
 
 def solve_suspension_sweep(
     geometry,
     provider_class,
-    point_targets: List[PointTargetSet],
+    sweep_config: SweepConfig,
 ) -> List[SuspensionState]:
     """
     Generic, high-level function to orchestrate the solving of any suspension geometry.
@@ -36,7 +37,7 @@ def solve_suspension_sweep(
     kinematic_states = solve_sweep(
         initial_state=initial_state_with_derived,
         constraints=constraints,
-        targets=point_targets,
+        sweep_config=sweep_config,
         compute_derived_points_func=derived_resolver.update,
     )
 

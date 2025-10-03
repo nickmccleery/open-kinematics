@@ -1,13 +1,11 @@
 import numpy as np
 import pytest
 
+from kinematics.constants import TEST_TOLERANCE
 from kinematics.constraints import DistanceConstraint
 from kinematics.core import PointID, SuspensionState
-from kinematics.solver import PointTarget, PointTargetSet, SolverConfig, solve_sweep
-from kinematics.types import Axis, PointTargetAxis
-
-# Tolerance on position checks.
-TOL_CHECK = 1e-4
+from kinematics.solver import PointTarget, SolverConfig, solve_sweep
+from kinematics.types import Axis, PointTargetAxis, SweepConfig
 
 
 @pytest.fixture
@@ -55,7 +53,7 @@ def simple_constraints(simple_positions, length_forward_leg, length_rearward_leg
 
 
 @pytest.fixture
-def simple_target_set():
+def simple_sweep_config():
     displacements = [0.0, 0.5, 1.0]
     point_targets = [
         PointTarget(
@@ -65,7 +63,7 @@ def simple_target_set():
         )
         for d in displacements
     ]
-    return PointTargetSet(values=point_targets)
+    return SweepConfig([point_targets])
 
 
 def null_derived_points(positions):
@@ -75,7 +73,7 @@ def null_derived_points(positions):
 def test_solve_sweep(
     simple_positions,
     simple_constraints,
-    simple_target_set,
+    simple_sweep_config,
     length_forward_leg,
     length_rearward_leg,
 ):
@@ -85,12 +83,14 @@ def test_solve_sweep(
     initial_state = SuspensionState(positions=simple_positions, free_points=free_points)
 
     # Extract displacement values for assertions
-    displacement_values = [target.value for target in simple_target_set.values]
+    displacement_values = [
+        target.value for target in simple_sweep_config.target_sweeps[0]
+    ]
 
     states = solve_sweep(
         initial_state=initial_state,
         constraints=simple_constraints,
-        targets=[simple_target_set],  # Wrapped in a list for the new API
+        sweep_config=simple_sweep_config,
         compute_derived_points_func=null_derived_points,
         solver_config=SolverConfig(ftol=1e-6, xtol=1e-6, verbose=0),
     )
@@ -105,11 +105,13 @@ def test_solve_sweep(
 
         # Distance constraints
         assert np.linalg.norm(p_outboard - p_front) == pytest.approx(
-            length_forward_leg, rel=TOL_CHECK
+            length_forward_leg, rel=TEST_TOLERANCE
         )
         assert np.linalg.norm(p_outboard - p_rear) == pytest.approx(
-            length_rearward_leg, rel=TOL_CHECK
+            length_rearward_leg, rel=TEST_TOLERANCE
         )
 
         # Target displacement
-        assert p_outboard[2] == pytest.approx(displacement_values[i], rel=TOL_CHECK)
+        assert p_outboard[2] == pytest.approx(
+            displacement_values[i], rel=TEST_TOLERANCE
+        )

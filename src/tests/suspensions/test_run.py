@@ -3,22 +3,19 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from kinematics.constants import TEST_TOLERANCE
 from kinematics.constraints import DistanceConstraint
 from kinematics.core import PointID
 from kinematics.loader import load_geometry
 from kinematics.main import solve_suspension_sweep
 from kinematics.points.derived.manager import DerivedPointsManager
-from kinematics.solver import PointTarget, PointTargetSet
-from kinematics.suspensions.double_wishbone import (
-    DoubleWishboneGeometry,
-    DoubleWishboneProvider,
-)
-from kinematics.types import Axis, PointTargetAxis
+from kinematics.solver import PointTarget
+from kinematics.suspensions.double_wishbone import DoubleWishboneGeometry
+from kinematics.types import Axis, PointTargetAxis, SweepConfig
 from kinematics.visualization.debug import create_animation
 from kinematics.visualization.main import SuspensionVisualizer, WheelVisualization
 
 # Our actual solve tolerance is a OOM tighter than this, so should be good.
-EPSILON_CHECK = 1e-3
 
 
 @pytest.fixture
@@ -35,7 +32,7 @@ def displacements():
 
 
 @pytest.fixture
-def target_set(displacements):
+def sweep_config_fixture(displacements):
     hub_displacements, steer_displacements = displacements
 
     # Create hub displacement sweep.
@@ -58,32 +55,31 @@ def target_set(displacements):
         for x in steer_displacements
     ]
 
-    # Create target set.
-    targets = [
-        PointTargetSet(values=hub_targets),
-        PointTargetSet(values=steer_targets),
-    ]
+    # Create sweep config.
+    sweep_config = SweepConfig([hub_targets, steer_targets])
 
-    return targets
+    return sweep_config
 
 
 def test_run_solver(
-    double_wishbone_geometry_file: Path, target_set, displacements
+    double_wishbone_geometry_file: Path, sweep_config_fixture, displacements
 ) -> None:
     hub_displacements, _ = displacements
 
-    geometry, provider_class = load_geometry(double_wishbone_geometry_file)
-    if not isinstance(geometry, DoubleWishboneGeometry):
+    loaded = load_geometry(double_wishbone_geometry_file)
+    if not isinstance(loaded.geometry, DoubleWishboneGeometry):
         raise ValueError("Invalid geometry type")
 
     # Solve for all positions.
-    position_states = solve_suspension_sweep(geometry, provider_class, target_set)
+    position_states = solve_suspension_sweep(
+        loaded.geometry, loaded.provider_cls, sweep_config_fixture
+    )
 
     print("Solve complete, verifying constraints...")
 
     # Get initial positions for comparison using the provider.
 
-    provider = DoubleWishboneProvider(geometry)
+    provider = loaded.provider_cls(loaded.geometry)  # type: ignore[call-arg]
     derived_resolver = DerivedPointsManager(provider.derived_spec())
 
     initial_state = provider.initial_state()
@@ -106,7 +102,7 @@ def test_run_solver(
             current_length = np.linalg.norm(p1 - p2)
 
             assert (
-                np.abs(current_length - constraint.target_distance) < EPSILON_CHECK
+                np.abs(current_length - constraint.target_distance) < TEST_TOLERANCE
             ), (
                 f"Constraint violation at displacement {displacement}: "
                 f"{constraint.p1.name} to {constraint.p2.name}"
@@ -118,7 +114,7 @@ def test_run_solver(
         target_z = initial_target_point_position[2] + displacement
 
         assert (
-            np.abs(target_point_position[2] - target_z) < EPSILON_CHECK
+            np.abs(target_point_position[2] - target_z) < TEST_TOLERANCE
         ), f"Failed to maintain {target_point_id} at displacement {displacement}"
 
     print("Creating animation...")
@@ -139,7 +135,7 @@ def test_run_solver(
         width=225,
     )
 
-    visualizer = SuspensionVisualizer(geometry, wheel_config)
+    visualizer = SuspensionVisualizer(loaded.geometry, wheel_config)
     create_animation(
         position_states_animate, initial_positions, visualizer, output_path
     )
