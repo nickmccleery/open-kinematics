@@ -2,10 +2,12 @@
 setup:
     uv venv
     uv sync --all-extras --dev
+    uv pip install -e .
 
 # Install dependencies only.
 install:
     uv sync --all-extras --dev
+    uv pip install -e .
 
 # Clean.
 clean:

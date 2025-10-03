@@ -5,14 +5,10 @@ description = "Kinematics solver for suspension systems."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "jax>=0.4.38",
     "marshmallow-dataclass>=8.7.1",
     "numpy>=2.2.0",
-    "pyright>=1.1.391",
-    "pytest-dotenv>=0.5.2",
     "python-dotenv>=1.0.1",
     "pyyaml>=6.0.2",
-    "ruff>=0.8.3",
     "scipy>=1.14.1",
     "typer>=0.19.2",
 ]
@@ -24,6 +20,8 @@ cli = ["typer>=0.12"]
 [dependency-groups]
 dev = [
     "docformatter>=1.7.7",
+    "pytest>=8.3.4",
+    "ruff>=0.13.3",
     "ty>=0.0.1a21",
 ]
 
