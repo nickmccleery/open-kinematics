@@ -1,7 +1,7 @@
 [project]
-name = "suspension-kinematics"
+name = "kinematics"
 version = "0.1.0"
-description = "Add your description here"
+description = "Kinematics solver for suspension systems."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -22,4 +22,7 @@ viz = ["matplotlib>=3.8"]
 cli = ["typer>=0.12"]
 
 [tool.uv.workspace]
-members = ["kinematics"]
+members = ["src/kinematics"]
+
+[tool.hatchling.build.targets.wheel]
+packages = ["src/kinematics"]
