@@ -52,7 +52,9 @@ def test_wheel_inboard_outboard(sample_positions):
 
 
 def test_dependency_manager_basic(sample_positions):
-    """Test that the DerivedPointsManager can calculate axle midpoint"""
+    """
+    Test that the DerivedPointsManager can calculate axle midpoint.
+    """
     functions = {
         PointID.AXLE_MIDPOINT: get_axle_midpoint,
     }
@@ -73,7 +75,9 @@ def test_dependency_manager_basic(sample_positions):
 
 
 def test_dependency_manager_complex(sample_positions):
-    """Test that the DerivedPointsManager can handle dependencies between derived points"""
+    """
+    Test that the DerivedPointsManager can handle dependencies between derived points.
+    """
     functions = {
         PointID.AXLE_MIDPOINT: get_axle_midpoint,
         PointID.WHEEL_CENTER: partial(get_wheel_center, wheel_offset=0.5),
@@ -114,7 +118,9 @@ def test_dependency_manager_complex(sample_positions):
 
 
 def test_circular_dependency_detection():
-    """Test that circular dependencies are detected"""
+    """
+    Test that circular dependencies are detected.
+    """
 
     def dummy_func(positions):
         return positions[PointID.AXLE_INBOARD]

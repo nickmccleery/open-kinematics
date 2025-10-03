@@ -1,4 +1,6 @@
-"""Test the DFS-based derived point calculation system."""
+"""
+Test the DFS-based derived point calculation system.
+"""
 
 import numpy as np
 import pytest
@@ -8,7 +10,9 @@ from kinematics.points.derived.manager import DerivedPointsManager, DerivedPoint
 
 
 def test_simple_derived_point_calculation():
-    """Test basic derived point calculation without dependencies."""
+    """
+    Test basic derived point calculation without dependencies.
+    """
 
     # Create a simple spec that calculates the midpoint of two points
     def midpoint_func(positions):
@@ -41,7 +45,9 @@ def test_simple_derived_point_calculation():
 
 
 def test_chained_derived_point_calculation():
-    """Test derived points that depend on other derived points."""
+    """
+    Test derived points that depend on other derived points.
+    """
     # Create a chain: AXLE_MIDPOINT -> WHEEL_CENTER -> WHEEL_INBOARD
 
     def midpoint_func(positions):
@@ -105,7 +111,9 @@ def test_chained_derived_point_calculation():
 
 
 def test_circular_dependency_detection():
-    """Test that circular dependencies are detected and raise an error."""
+    """
+    Test that circular dependencies are detected and raise an error.
+    """
 
     def func_a(positions):
         return positions[PointID.WHEEL_CENTER] + np.array([1.0, 0.0, 0.0])

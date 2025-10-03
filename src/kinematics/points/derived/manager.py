@@ -18,15 +18,17 @@ class DerivedPointsSpec:
     """
     Specification for derived point calculations.
 
-    Contains the functions to compute derived points and their dependencies
-    in a self-describing format that can be validated and sorted.
+    Contains the functions to compute derived points and their dependencies in a self-
+    describing format that can be validated and sorted.
     """
 
     functions: dict[PointID, PositionFn]
     dependencies: dict[PointID, Set[PointID]]
 
     def all_points(self) -> Set[PointID]:
-        """Get all derived point IDs defined in this spec."""
+        """
+        Get all derived point IDs defined in this spec.
+        """
         return set(self.functions.keys())
 
     def validate(self) -> None:
@@ -53,14 +55,16 @@ class DerivedPointsSpec:
             raise ValueError("; ".join(msg_parts))
 
     def __post_init__(self):
-        """Validate the spec after initialization."""
+        """
+        Validate the spec after initialization.
+        """
         self.validate()
 
 
 class DerivedPointsManager:
     """
-    Manages the calculation of derived points by building and resolving a
-    dependency graph to ensure the correct update order.
+    Manages the calculation of derived points by building and resolving a dependency
+    graph to ensure the correct update order.
     """
 
     def __init__(self, spec: DerivedPointsSpec):
@@ -88,8 +92,8 @@ class DerivedPointsManager:
 
     def get_topological_sort(self) -> list[PointID]:
         """
-        Performs a topological sort of the derived points to determine
-        the correct calculation order.
+        Performs a topological sort of the derived points to determine the correct
+        calculation order.
 
         Raises:
             ValueError: If a circular dependency is detected in the graph.

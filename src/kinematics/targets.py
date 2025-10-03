@@ -1,8 +1,8 @@
 """
 Target resolution utilities for suspension kinematics.
 
-This module provides functions to resolve target directions into world
-coordinate vectors.
+This module provides functions to resolve target directions into world coordinate
+vectors.
 """
 
 from kinematics.types import (

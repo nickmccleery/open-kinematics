@@ -1,8 +1,8 @@
 """
 Main orchestration functions for suspension kinematics.
 
-This module provides high-level functions to coordinate the solving of
-suspension geometries.
+This module provides high-level functions to coordinate the solving of suspension
+geometries.
 """
 
 from typing import List

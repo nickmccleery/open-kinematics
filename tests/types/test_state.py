@@ -27,7 +27,9 @@ def test_suspension_state_construction():
 
 
 def test_suspension_state_array_conversion():
-    """Test the array conversion methods in SuspensionState."""
+    """
+    Test the array conversion methods in SuspensionState.
+    """
     positions_data = {
         PointID.LOWER_WISHBONE_OUTBOARD: np.array([1.0, 2.0, 3.0]),
         PointID.UPPER_WISHBONE_OUTBOARD: np.array([4.0, 5.0, 6.0]),

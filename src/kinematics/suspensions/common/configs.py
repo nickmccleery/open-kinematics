@@ -14,7 +14,6 @@ from enum import Enum
 class Units(Enum):
     """
     Units of measurement for geometric parameters.
-
     """
 
     MILLIMETERS = "millimeters"

@@ -1,8 +1,8 @@
 """
 YAML geometry loader with validation.
 
-This module handles file I/O, schema parsing, and geometry validation for all
-suspension types.
+This module handles file I/O, schema parsing, and geometry validation for all suspension
+types.
 """
 
 from __future__ import annotations
