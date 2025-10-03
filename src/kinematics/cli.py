@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from pathlib import Path
 
 import typer
@@ -17,12 +15,11 @@ app = typer.Typer(add_completion=False)
 def solve(
     geometry: Path,
     steps: int = typer.Option(1, help="Number of sweep steps"),
-    tol: float = typer.Option(1e-8, help="Convergence tolerance"),
-    max_iters: int = typer.Option(50, help="Max solver iterations"),
 ):
     loaded = load_geometry(geometry)
 
-    # Create a dummy target for now, this will be expanded later
+    # We should actually define a sweep file format for this to be any use,
+    # but for now just do a simple Z bump sweep on the wheel center.
     targets = [
         PointTarget(
             point_id=PointID.WHEEL_CENTER,

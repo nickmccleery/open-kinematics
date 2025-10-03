@@ -1,10 +1,8 @@
-# kinematics/__init__.py
-# kinematics/__init__.py
-from .constraints import Constraint
-from .core import PointID
-from .loader import load_geometry
-from .solver import PointTarget, SolverConfig, solve, solve_sweep
-from .types import SweepConfig, TargetPositionMode
+from kinematics.constraints import Constraint
+from kinematics.core import PointID
+from kinematics.loader import load_geometry
+from kinematics.solver import PointTarget, SolverConfig, solve, solve_sweep
+from kinematics.types import SweepConfig, TargetPositionMode
 
 __all__ = [
     "load_geometry",

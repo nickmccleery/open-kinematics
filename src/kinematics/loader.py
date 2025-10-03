@@ -1,7 +1,8 @@
 """
 YAML geometry loader with validation.
 
-Handles file I/O, schema parsing, and geometry validation for all suspension types.
+This module handles file I/O, schema parsing, and geometry validation for all
+suspension types.
 """
 
 from __future__ import annotations
@@ -68,19 +69,18 @@ def load_geometry(file_path: Path) -> LoadedSuspension:
         if geometry_type_key not in registry:
             raise ValueError(f"Unsupported geometry type: {geometry_type_key}")
 
-        # Get model and provider classes from registry
+        # Get model and provider classes from registry.
         model_class, provider_class = registry[geometry_type_key]
 
-        # Create schema for the model and load the data
+        # Create schema for the model and load the data.
         GeometrySchema = class_schema(model_class)
         geometry = cast("SuspensionGeometry", GeometrySchema().load(yaml_data))
 
-        # Basic validation
         try:
-            if not geometry.validate():  # type: ignore
+            if not geometry.validate():
                 raise ValueError("Geometry validation failed.")
         except AttributeError:
-            # Geometry object doesn't have validate method, assume it's valid
+            # Geometry object doesn't have validate method, assume it's valid.
             pass
 
         return LoadedSuspension(geometry=geometry, provider_cls=provider_class)

@@ -1,3 +1,10 @@
+"""
+Main orchestration functions for suspension kinematics.
+
+This module provides high-level functions to coordinate the solving of
+suspension geometries.
+"""
+
 from typing import List
 
 from kinematics.core import SuspensionState
@@ -12,31 +19,27 @@ def solve_suspension_sweep(
     sweep_config: SweepConfig,
 ) -> List[SuspensionState]:
     """
-    Generic, high-level function to orchestrate the solving of any suspension geometry.
+    Orchestrates the solving of suspension kinematics for a parametric sweep.
 
-    This function performs the following steps:
-    1. Looks up the correct SuspensionProvider for the given geometry type.
-    2. Uses the provider to get the suspension's rules (initial state, constraints, etc.).
-    3. Sets up the derived point calculation engine.
-    4. Calls the core solver to run the simulation sweep.
+    This function coordinates the complete process of solving suspension kinematics
+    by instantiating the appropriate provider, setting up derived point calculations,
+    and running the solver across target configurations.
+
+    Args:
+        geometry: The suspension geometry specification.
+        provider_class: The SuspensionProvider class for this geometry type.
+        sweep_config: Configuration for the parametric sweep.
+
+    Returns:
+        List of solved suspension states for each step in the sweep.
     """
-    # 1. Instantiate the provider for this specific geometry instance
-    provider = provider_class(geometry)  # type: ignore[call-arg]
-
-    # 2. Instantiate the manager for derived points using spec from the provider
+    provider = provider_class(geometry)
     derived_spec = provider.derived_spec()
     derived_resolver = DerivedPointsManager(derived_spec)
 
-    # 3. Get the complete initial state (including derived points) from the provider
-    initial_state_with_derived = provider.initial_state()
-
-    # 4. Create the constraints based on the complete initial state
-    constraints = provider.constraints()
-
-    # 5. Call the generic solver with all the necessary data
     kinematic_states = solve_sweep(
-        initial_state=initial_state_with_derived,
-        constraints=constraints,
+        initial_state=provider.initial_state(),
+        constraints=provider.constraints(),
         sweep_config=sweep_config,
         compute_derived_points_func=derived_resolver.update,
     )

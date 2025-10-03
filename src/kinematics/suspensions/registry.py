@@ -1,8 +1,5 @@
 """
 Suspension type registry.
-
-Contains the registry functionality for mapping suspension types to their
-corresponding geometry and provider classes.
 """
 
 from __future__ import annotations
@@ -24,7 +21,10 @@ Registry = dict[str, Tuple[ModelCls, ProviderCls]]
 
 def build_registry() -> Registry:
     """
-    Return the plugin registry mapping: type_string -> (ModelClass, ProviderClass)
+    Return the plugin registry mapping suspension types to their classes.
+
+    Returns:
+        Dictionary mapping type strings to (ModelClass, ProviderClass) tuples.
     """
     return {
         "DOUBLE_WISHBONE": (DoubleWishboneGeometry, DoubleWishboneProvider),
