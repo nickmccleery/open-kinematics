@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from kinematics.loader import load_geometry
+from kinematics.loader import LoadedSuspension, load_geometry
 from kinematics.suspensions.base.geometry import SuspensionGeometry
 
 
@@ -34,9 +34,10 @@ def invalid_geometry_file(tmp_path: Path):
 
 
 def test_load_geometry_valid(double_wishbone_geometry_file):
-    geometry, provider_class = load_geometry(double_wishbone_geometry_file)
-    assert isinstance(geometry, SuspensionGeometry)
-    assert provider_class is not None
+    loaded = load_geometry(double_wishbone_geometry_file)
+    assert isinstance(loaded, LoadedSuspension)
+    assert isinstance(loaded.geometry, SuspensionGeometry)
+    assert loaded.provider_cls is not None
 
 
 def test_load_geometry_empty(empty_geometry_file):

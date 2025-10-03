@@ -9,10 +9,7 @@ from kinematics.loader import load_geometry
 from kinematics.main import solve_suspension_sweep
 from kinematics.points.derived.manager import DerivedPointsManager
 from kinematics.solver import PointTarget
-from kinematics.suspensions.double_wishbone import (
-    DoubleWishboneGeometry,
-    DoubleWishboneProvider,
-)
+from kinematics.suspensions.double_wishbone import DoubleWishboneGeometry
 from kinematics.types import Axis, PointTargetAxis, SweepConfig
 from kinematics.visualization.debug import create_animation
 from kinematics.visualization.main import SuspensionVisualizer, WheelVisualization
@@ -69,20 +66,20 @@ def test_run_solver(
 ) -> None:
     hub_displacements, _ = displacements
 
-    geometry, provider_class = load_geometry(double_wishbone_geometry_file)
-    if not isinstance(geometry, DoubleWishboneGeometry):
+    loaded = load_geometry(double_wishbone_geometry_file)
+    if not isinstance(loaded.geometry, DoubleWishboneGeometry):
         raise ValueError("Invalid geometry type")
 
     # Solve for all positions.
     position_states = solve_suspension_sweep(
-        geometry, provider_class, sweep_config_fixture
+        loaded.geometry, loaded.provider_cls, sweep_config_fixture
     )
 
     print("Solve complete, verifying constraints...")
 
     # Get initial positions for comparison using the provider.
 
-    provider = DoubleWishboneProvider(geometry)
+    provider = loaded.provider_cls(loaded.geometry)  # type: ignore[call-arg]
     derived_resolver = DerivedPointsManager(provider.derived_spec())
 
     initial_state = provider.initial_state()
@@ -138,7 +135,7 @@ def test_run_solver(
         width=225,
     )
 
-    visualizer = SuspensionVisualizer(geometry, wheel_config)
+    visualizer = SuspensionVisualizer(loaded.geometry, wheel_config)
     create_animation(
         position_states_animate, initial_positions, visualizer, output_path
     )

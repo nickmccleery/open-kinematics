@@ -20,7 +20,7 @@ def solve(
     tol: float = typer.Option(1e-8, help="Convergence tolerance"),
     max_iters: int = typer.Option(50, help="Max solver iterations"),
 ):
-    geom, provider = load_geometry(geometry)
+    loaded = load_geometry(geometry)
 
     # Create a dummy target for now, this will be expanded later
     targets = [
@@ -33,7 +33,9 @@ def solve(
     ]
     sweep_config = SweepConfig([targets])
 
-    solution = solve_suspension_sweep(geom, provider, sweep_config)
+    solution = solve_suspension_sweep(
+        loaded.geometry, loaded.provider_cls, sweep_config
+    )
     typer.echo(f"converged=True steps={len(solution)}")
 
 

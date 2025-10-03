@@ -4,8 +4,11 @@ YAML geometry loader with validation.
 Handles file I/O, schema parsing, and geometry validation for all suspension types.
 """
 
+from __future__ import annotations
+
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Tuple, Type
+from typing import TYPE_CHECKING, Type, cast
 
 import yaml
 from marshmallow.exceptions import ValidationError
@@ -14,10 +17,25 @@ from marshmallow_dataclass import class_schema
 from kinematics.suspensions.base.provider import SuspensionProvider
 from kinematics.suspensions.registry import build_registry
 
-LoadResult = Tuple[Any, Type[SuspensionProvider]]
+if TYPE_CHECKING:
+    from kinematics.suspensions.base.geometry import SuspensionGeometry
 
 
-def load_geometry(file_path: Path) -> LoadResult:
+@dataclass
+class LoadedSuspension:
+    """
+    Result of loading a suspension geometry from a file.
+
+    Attributes:
+        geometry: The loaded and validated suspension geometry instance
+        provider_cls: The provider class that can instantiate solvers for this geometry
+    """
+
+    geometry: SuspensionGeometry
+    provider_cls: Type[SuspensionProvider]
+
+
+def load_geometry(file_path: Path) -> LoadedSuspension:
     """
     Load suspension geometry from a YAML file.
 
@@ -25,7 +43,7 @@ def load_geometry(file_path: Path) -> LoadResult:
         file_path: Path to the YAML geometry file.
 
     Returns:
-        Tuple of (loaded geometry, provider class)
+        LoadedSuspension dataclass containing the geometry and provider class.
 
     Raises:
         FileNotFoundError: If the file doesn't exist.
@@ -55,7 +73,7 @@ def load_geometry(file_path: Path) -> LoadResult:
 
         # Create schema for the model and load the data
         GeometrySchema = class_schema(model_class)
-        geometry = GeometrySchema().load(yaml_data)
+        geometry = cast("SuspensionGeometry", GeometrySchema().load(yaml_data))
 
         # Basic validation
         try:
@@ -65,7 +83,7 @@ def load_geometry(file_path: Path) -> LoadResult:
             # Geometry object doesn't have validate method, assume it's valid
             pass
 
-        return geometry, provider_class
+        return LoadedSuspension(geometry=geometry, provider_cls=provider_class)
 
     except yaml.YAMLError as e:
         raise ValueError(f"Error parsing geometry file: {e}") from e
