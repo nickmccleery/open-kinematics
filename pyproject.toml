@@ -22,7 +22,10 @@ viz = ["matplotlib>=3.8"]
 cli = ["typer>=0.12"]
 
 [dependency-groups]
-dev = ["docformatter>=1.7.7"]
+dev = [
+    "docformatter>=1.7.7",
+    "ty>=0.0.1a21",
+]
 
 [tool.docformatter]
 recursive = true
