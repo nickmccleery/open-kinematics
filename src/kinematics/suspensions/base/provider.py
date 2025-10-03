@@ -11,8 +11,9 @@ from abc import ABC, abstractmethod
 from typing import Sequence
 
 from kinematics.constraints import Constraint
-from kinematics.core import PointID, SuspensionState
+from kinematics.enums import PointID
 from kinematics.points.derived.manager import DerivedPointsSpec
+from kinematics.state import SuspensionState
 
 
 class SuspensionProvider(ABC):

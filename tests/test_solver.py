@@ -3,9 +3,10 @@ import pytest
 
 from kinematics.constants import TEST_TOLERANCE
 from kinematics.constraints import DistanceConstraint
-from kinematics.core import PointID, SuspensionState
+from kinematics.enums import Axis, PointID, TargetPositionMode
 from kinematics.solver import PointTarget, SolverConfig, solve_sweep
-from kinematics.types import Axis, PointTargetAxis, SweepConfig, TargetPositionMode
+from kinematics.state import SuspensionState
+from kinematics.types import PointTargetAxis, SweepConfig
 
 
 @pytest.fixture

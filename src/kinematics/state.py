@@ -1,53 +1,16 @@
 """
-Core primitives and data structures for suspension kinematics.
-
-This module provides fundamental type definitions, enumerations, and state management
-classes that form the foundation of the kinematics system.
+Core state management for suspension kinematics.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import IntEnum
 from typing import List, Set
 
 import numpy as np
 
-
-class PointID(IntEnum):
-    """
-    Enumeration of all point identifiers used in the suspension system.
-
-    These identifiers represent key points in the suspension geometry including wishbone
-    attachment points, pushrods, trackrods, axles, struts, and wheel centers.
-    """
-
-    NOT_ASSIGNED = 0
-
-    LOWER_WISHBONE_INBOARD_FRONT = 1
-    LOWER_WISHBONE_INBOARD_REAR = 2
-    LOWER_WISHBONE_OUTBOARD = 3
-
-    UPPER_WISHBONE_INBOARD_FRONT = 4
-    UPPER_WISHBONE_INBOARD_REAR = 5
-    UPPER_WISHBONE_OUTBOARD = 6
-
-    PUSHROD_INBOARD = 7
-    PUSHROD_OUTBOARD = 8
-
-    TRACKROD_INBOARD = 9
-    TRACKROD_OUTBOARD = 10
-
-    AXLE_INBOARD = 11
-    AXLE_OUTBOARD = 12
-    AXLE_MIDPOINT = 13
-
-    STRUT_INBOARD = 14
-    STRUT_OUTBOARD = 15
-
-    WHEEL_CENTER = 16
-    WHEEL_INBOARD = 17
-    WHEEL_OUTBOARD = 18
+from kinematics.enums import PointID
+from kinematics.types import Vec3
 
 
 @dataclass
@@ -59,12 +22,12 @@ class SuspensionState:
     for state manipulation, solver integration, and coordinate transformations.
 
     Attributes:
-        positions (dict[PointID, np.ndarray]): Dictionary mapping point IDs to 3D positions.
+        positions (dict[PointID, Vec3]): Dictionary mapping point IDs to 3D positions.
         free_points (Set[PointID]): Set of point IDs that are free to move during solving.
         free_points_order (List[PointID]): Sorted list of free point IDs for consistent ordering.
     """
 
-    positions: dict[PointID, np.ndarray]
+    positions: dict[PointID, Vec3]
     free_points: Set[PointID]
     free_points_order: List[PointID] = field(init=False)
 
@@ -111,25 +74,25 @@ class SuspensionState:
             free_points=self.free_points.copy(),
         )
 
-    def get(self, point_id: PointID) -> np.ndarray:
+    def get(self, point_id: PointID) -> Vec3:
         """
         Get position of a specific point.
         """
         return self.positions[point_id]
 
-    def set(self, point_id: PointID, position: np.ndarray) -> None:
+    def set(self, point_id: PointID, position: Vec3) -> None:
         """
         Set position of a specific point.
         """
         self.positions[point_id] = position.copy()
 
-    def __getitem__(self, point_id: PointID) -> np.ndarray:
+    def __getitem__(self, point_id: PointID) -> Vec3:
         """
         Allow dict-like access.
         """
         return self.positions[point_id]
 
-    def __setitem__(self, point_id: PointID, position: np.ndarray) -> None:
+    def __setitem__(self, point_id: PointID, position: Vec3) -> None:
         """
         Allow dict-like assignment.
         """

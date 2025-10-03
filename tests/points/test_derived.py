@@ -3,7 +3,7 @@ from functools import partial
 import numpy as np
 import pytest
 
-from kinematics.core import PointID
+from kinematics.enums import PointID
 from kinematics.points.derived.definitions import (
     get_axle_midpoint,
     get_wheel_center,

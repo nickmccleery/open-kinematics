@@ -1,40 +1,33 @@
 """
-Type definitions and data structures for suspension kinematics.
-
-This module provides enumerations, named tuples, and dataclasses that define the core
-types used throughout the kinematics system.
+Composite type definitions for suspension kinematics.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum, IntEnum
 from typing import Annotated, Final, Literal, NamedTuple, Union
 
 import numpy as np
 from numpy.typing import NDArray
 
-from kinematics.core import PointID
+from kinematics.enums import Axis, PointID, TargetPositionMode
 
 Vec3 = Annotated[NDArray[np.float64], Literal[3]]
 
 
 def make_vec3(data) -> NDArray[np.float64]:
     """
-    Creates a 3-element float64 numpy array from input data. Ensures the output is
-    always a properly shaped and typed 3D vector. If the input is already a correct
-    Vec3, returns it unchanged.
+    Creates a 3-element float64 numpy array from input data.
 
     Args:
-        data: Input data convertible to a 3-element array (list, tuple, array, etc.).
+        data: Input data convertible to a 3-element array.
 
     Returns:
         A 3-element numpy array with dtype float64.
 
     Raises:
-        ValueError: If the input data cannot be shaped into a 3-element array.
+        ValueError: If the input cannot be shaped into a 3-element array.
     """
-    # Check if already correct type and shape.
     if isinstance(data, np.ndarray) and data.dtype == np.float64 and data.shape == (3,):
         return data
 
@@ -42,30 +35,6 @@ def make_vec3(data) -> NDArray[np.float64]:
     if arr.shape != (3,):
         raise ValueError(f"Vec3 must have shape (3,), got {arr.shape}")
     return arr
-
-
-class Axis(IntEnum):
-    """
-    Enumeration of the three principal axes in 3D space.
-    """
-
-    X = 0
-    Y = 1
-    Z = 2
-
-
-class TargetPositionMode(Enum):
-    """
-    Specifies how a target value should be interpreted.
-
-    RELATIVE: Value represents displacement from the initial/design position
-    ABSOLUTE: Value represents an absolute coordinate in the world frame
-
-    Note: All modes are converted to ABSOLUTE before solving begins.
-    """
-
-    RELATIVE = "relative"
-    ABSOLUTE = "absolute"
 
 
 class WorldAxisSystem:
@@ -107,7 +76,7 @@ class SweepConfig:
         lengths = [len(sweep) for sweep in self.target_sweeps]
         if len(set(lengths)) > 1:
             raise ValueError(
-                f"All sweep dimensions must have the same length. Found: {lengths}"
+                f"All sweep dimensions must have the same length. Got: {lengths}"
             )
 
     @property

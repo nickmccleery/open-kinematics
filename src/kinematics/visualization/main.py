@@ -2,8 +2,9 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from kinematics.core import PointID
+from kinematics.enums import PointID
 from kinematics.suspensions.double_wishbone import DoubleWishboneGeometry
+from kinematics.types import Vec3
 
 
 @dataclass
@@ -80,7 +81,7 @@ class SuspensionVisualizer:
     def draw_wheel(
         self,
         ax,
-        positions: dict[PointID, np.ndarray],
+        positions: dict[PointID, Vec3],
     ) -> None:
         wheel_center = positions[PointID.WHEEL_CENTER]
         wheel_inboard = positions[PointID.WHEEL_INBOARD]

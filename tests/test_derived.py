@@ -5,7 +5,7 @@ Test the DFS-based derived point calculation system.
 import numpy as np
 import pytest
 
-from kinematics.core import PointID
+from kinematics.enums import PointID
 from kinematics.points.derived.manager import DerivedPointsManager, DerivedPointsSpec
 
 

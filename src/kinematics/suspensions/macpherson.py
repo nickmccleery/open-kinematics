@@ -9,7 +9,7 @@ from typing import Sequence
 import numpy as np
 
 from kinematics.constraints import Constraint, DistanceConstraint
-from kinematics.core import PointID, SuspensionState
+from kinematics.enums import PointID
 from kinematics.points.derived.definitions import (
     get_axle_midpoint,
     get_wheel_center,
@@ -17,6 +17,7 @@ from kinematics.points.derived.definitions import (
     get_wheel_outboard,
 )
 from kinematics.points.derived.manager import DerivedPointsManager, DerivedPointsSpec
+from kinematics.state import SuspensionState
 from kinematics.suspensions.base.geometry import SuspensionGeometry
 from kinematics.suspensions.base.provider import SuspensionProvider
 from kinematics.suspensions.common.collections import (

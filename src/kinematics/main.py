@@ -7,9 +7,9 @@ geometries.
 
 from typing import List
 
-from kinematics.core import SuspensionState
 from kinematics.points.derived.manager import DerivedPointsManager
 from kinematics.solver import solve_sweep
+from kinematics.state import SuspensionState
 from kinematics.types import SweepConfig
 
 

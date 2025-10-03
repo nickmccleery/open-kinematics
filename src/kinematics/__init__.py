@@ -1,8 +1,8 @@
 from kinematics.constraints import Constraint
-from kinematics.core import PointID
+from kinematics.enums import PointID, TargetPositionMode
 from kinematics.loader import load_geometry
 from kinematics.solver import PointTarget, SolverConfig, solve, solve_sweep
-from kinematics.types import SweepConfig, TargetPositionMode
+from kinematics.types import SweepConfig
 
 __all__ = [
     "load_geometry",

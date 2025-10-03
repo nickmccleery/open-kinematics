@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from kinematics.constraints import AngleConstraint, DistanceConstraint
-from kinematics.core import PointID
+from kinematics.enums import PointID
 
 
 @pytest.fixture
