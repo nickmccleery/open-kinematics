@@ -1,8 +1,8 @@
 """
-Core primitive types and data structures for the kinematics module.
+Core primitives and data structures for suspension kinematics.
 
-This module contains fundamental type definitions, coordinate systems, and basic
-data structures that form the foundation of the kinematics system.
+This module provides fundamental type definitions, enumerations, and state management
+classes that form the foundation of the kinematics system.
 """
 
 from __future__ import annotations
@@ -16,7 +16,10 @@ import numpy as np
 
 class PointID(IntEnum):
     """
-    Enumeration of all suspension system point identifiers.
+    Enumeration of all point identifiers used in the suspension system.
+
+    These identifiers represent key points in the suspension geometry including wishbone
+    attachment points, pushrods, trackrods, axles, struts, and wheel centers.
     """
 
     NOT_ASSIGNED = 0
@@ -50,8 +53,15 @@ class PointID(IntEnum):
 @dataclass
 class SuspensionState:
     """
-    Unified state representation for suspension geometry.
-    Combines positions and solver metadata in one structure.
+    Represents the complete state of a suspension system.
+
+    This class manages point positions and solver metadata, providing methods
+    for state manipulation, solver integration, and coordinate transformations.
+
+    Attributes:
+        positions (dict[PointID, np.ndarray]): Dictionary mapping point IDs to 3D positions.
+        free_points (Set[PointID]): Set of point IDs that are free to move during solving.
+        free_points_order (List[PointID]): Sorted list of free point IDs for consistent ordering.
     """
 
     positions: dict[PointID, np.ndarray]
@@ -59,21 +69,29 @@ class SuspensionState:
     free_points_order: List[PointID] = field(init=False)
 
     def __post_init__(self) -> None:
-        """Initialize consistent ordering for free points."""
+        """
+        Initialize consistent ordering for free points.
+        """
         self.free_points_order = sorted(list(self.free_points))
 
     @property
     def fixed_points(self) -> Set[PointID]:
-        """Points that are fixed (not free to move)."""
+        """
+        Points that are fixed (not free to move).
+        """
         return set(self.positions.keys()) - self.free_points
 
     def get_free_array(self) -> np.ndarray:
-        """Convert free points to flat array for solver."""
+        """
+        Convert free points to flat array for solver.
+        """
         positions = [self.positions[pid] for pid in self.free_points_order]
         return np.concatenate(positions)
 
     def update_from_array(self, array: np.ndarray) -> None:
-        """Update free points from solver array in-place."""
+        """
+        Update free points from solver array in-place.
+        """
         n_points = len(self.free_points_order)
         if array.shape != (n_points * 3,):
             raise ValueError(
@@ -85,40 +103,58 @@ class SuspensionState:
             self.positions[point_id] = positions_2d[i].copy()
 
     def copy(self) -> "SuspensionState":
-        """Create a deep copy."""
+        """
+        Create a deep copy.
+        """
         return SuspensionState(
             positions={pid: pos.copy() for pid, pos in self.positions.items()},
             free_points=self.free_points.copy(),
         )
 
     def get(self, point_id: PointID) -> np.ndarray:
-        """Get position of a specific point."""
+        """
+        Get position of a specific point.
+        """
         return self.positions[point_id]
 
     def set(self, point_id: PointID, position: np.ndarray) -> None:
-        """Set position of a specific point."""
+        """
+        Set position of a specific point.
+        """
         self.positions[point_id] = position.copy()
 
     def __getitem__(self, point_id: PointID) -> np.ndarray:
-        """Allow dict-like access."""
+        """
+        Allow dict-like access.
+        """
         return self.positions[point_id]
 
     def __setitem__(self, point_id: PointID, position: np.ndarray) -> None:
-        """Allow dict-like assignment."""
+        """
+        Allow dict-like assignment.
+        """
         self.positions[point_id] = position.copy()
 
     def __contains__(self, point_id: PointID) -> bool:
-        """Check if point exists."""
+        """
+        Check if point exists.
+        """
         return point_id in self.positions
 
     def items(self):
-        """Iterate over (point_id, position) pairs."""
+        """
+        Iterate over (point_id, position) pairs.
+        """
         return self.positions.items()
 
     def keys(self):
-        """Iterate over point IDs."""
+        """
+        Iterate over point IDs.
+        """
         return self.positions.keys()
 
     def values(self):
-        """Iterate over positions."""
+        """
+        Iterate over positions.
+        """
         return self.positions.values()

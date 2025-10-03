@@ -181,7 +181,8 @@ def solve_sweep(
         if n_vars > m_res:
             raise ValueError(
                 f"System is underdetermined (n_vars={n_vars} > m_res={m_res}). "
-                "The solve method (Levenberg-Marquardt) requires at least as many residuals as variables."
+                "The solve method (Levenberg-Marquardt) requires at least as "
+                "many residuals as variables."
             )
 
         result = least_squares(
