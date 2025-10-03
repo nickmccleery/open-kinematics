@@ -11,7 +11,9 @@ from kinematics.constants import (
 from kinematics.constraints import Constraint
 from kinematics.core import PointID, SuspensionState
 from kinematics.targets import resolve_target
-from kinematics.types import PointTarget, SweepConfig
+from kinematics.types import PointTarget, SweepConfig, TargetPositionMode
+
+SOLVE_METHOD = "lm"
 
 
 class SolverConfig(NamedTuple):
@@ -19,6 +21,52 @@ class SolverConfig(NamedTuple):
     xtol: float = SOLVE_TOLERANCE_STEP
     gtol: float = SOLVE_TOLERANCE_GRAD
     verbose: int = 0
+
+
+def resolve_targets_to_absolute(
+    targets: list[PointTarget],
+    initial_state: SuspensionState,
+) -> list[PointTarget]:
+    """
+    Convert all targets to absolute coordinates.
+
+    This function implements the "convert early" pattern: all mode-specific
+    logic is handled here, once, before solving begins. The solver then works
+    exclusively with absolute coordinates.
+
+    Args:
+        targets: List of targets in mixed modes (RELATIVE or ABSOLUTE)
+        initial_state: Reference state for resolving RELATIVE targets
+
+    Returns:
+        List of targets with all modes converted to ABSOLUTE
+    """
+    resolved: list[PointTarget] = []
+
+    for target in targets:
+        if target.mode == TargetPositionMode.ABSOLUTE:
+            resolved.append(target)
+            continue
+
+        # Convert a relative displacement to an absolute scalar coordinate
+        # along the target direction: project the initial position onto the
+        # (unit) direction to get the initial coordinate, then add the displacement.
+        direction = resolve_target(target.direction)
+        initial_pos = initial_state.positions[target.point_id]
+        initial_coord = float(np.dot(initial_pos, direction))
+        absolute_value = initial_coord + target.value
+
+        # Create new target with absolute value and mode.
+        resolved.append(
+            PointTarget(
+                point_id=target.point_id,
+                direction=target.direction,
+                value=absolute_value,
+                mode=TargetPositionMode.ABSOLUTE,
+            )
+        )
+
+    return resolved
 
 
 def solve_sweep(
@@ -34,8 +82,12 @@ def solve_sweep(
     Solves a series of kinematic states using damped non-linear least squares.
     """
     n_steps = sweep_config.n_steps
+    # Convert all targets to absolute coordinates once before solving
     sweep_targets = [
-        [sweep[i] for sweep in sweep_config.target_sweeps] for i in range(n_steps)
+        resolve_targets_to_absolute(
+            [sweep[i] for sweep in sweep_config.target_sweeps], initial_state
+        )
+        for i in range(n_steps)
     ]
 
     # Initialize state for the entire sweep - this object will only be updated after each successful step
@@ -66,25 +118,15 @@ def solve_sweep(
             residual_value = constraint.residual(all_positions)
             residuals.append(residual_value)
 
-        # 4. Target residuals
+        # 4. Target residuals.
         for target in step_targets:
             direction = resolve_target(target.direction)
-
-            # Project 3D positions onto the target direction to get 1D coordinates.
-            # This allows us to constrain motion along a specific direction (e.g., "move 30mm upward")
-            # while leaving the point free to move perpendicular to that direction as determined
-            # by the geometric constraints.
-            initial_pos = initial_state.positions[target.point_id]
-            initial_coordinate = float(np.dot(initial_pos, direction))
-
-            # Calculate target coordinate (initial position + displacement along direction)
-            target_coordinate = initial_coordinate + target.value
-
-            # Get current coordinate along the same direction
+            # Get current coordinate along the same direction (projection)
             current_pos = all_positions[target.point_id]
             current_coordinate = float(np.dot(current_pos, direction))
 
-            # Residual is the error between current and target coordinates
+            # Compare to absolute target value (already resolved)
+            target_coordinate = target.value
             residuals.append(current_coordinate - target_coordinate)
 
         return np.array(residuals, dtype=float)
@@ -93,13 +135,24 @@ def solve_sweep(
     initial_guess = current_state.get_free_array()
 
     for step_targets in sweep_targets:
+        # Choose solver method based on system size: 'lm' requires m >= n
+        n_vars = len(current_state.free_points_order) * 3
+        m_res = len(constraints) + len(step_targets)
+
+        if n_vars > m_res:
+            raise ValueError(
+                f"System is underdetermined (n_vars={n_vars} > m_res={m_res}). "
+                "The solve method (Levenberg-Marquardt) requires at least as many residuals as variables."
+            )
+
         result = least_squares(
             fun=compute_residuals,
             x0=initial_guess,
             args=(step_targets,),
-            method="lm",  # Levenberg-Marquardt
+            method=SOLVE_METHOD,
             ftol=solver_config.ftol,
             xtol=solver_config.xtol,
+            gtol=solver_config.gtol,
             verbose=solver_config.verbose,
         )
 
@@ -109,7 +162,6 @@ def solve_sweep(
                 f"\nMessage: {result.message}"
             )
 
-        # ---- On Success ----
         # 1. Update the main state's positions with the solution
         current_state.update_from_array(result.x)
 

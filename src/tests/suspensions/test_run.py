@@ -11,7 +11,7 @@ from kinematics.main import solve_suspension_sweep
 from kinematics.points.derived.manager import DerivedPointsManager
 from kinematics.solver import PointTarget
 from kinematics.suspensions.double_wishbone import DoubleWishboneGeometry
-from kinematics.types import Axis, PointTargetAxis, SweepConfig
+from kinematics.types import Axis, PointTargetAxis, SweepConfig, TargetPositionMode
 from kinematics.visualization.debug import create_animation
 from kinematics.visualization.main import SuspensionVisualizer, WheelVisualization
 
@@ -41,6 +41,7 @@ def sweep_config_fixture(displacements):
             point_id=PointID.WHEEL_CENTER,
             direction=PointTargetAxis(Axis.Z),
             value=x,
+            mode=TargetPositionMode.RELATIVE,
         )
         for x in hub_displacements
     ]
@@ -51,6 +52,7 @@ def sweep_config_fixture(displacements):
             point_id=PointID.TRACKROD_INBOARD,
             direction=PointTargetAxis(Axis.Y),
             value=x,
+            mode=TargetPositionMode.RELATIVE,
         )
         for x in steer_displacements
     ]
