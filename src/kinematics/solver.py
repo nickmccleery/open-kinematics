@@ -1,8 +1,8 @@
 """
 Kinematics solver using damped least squares.
 
-This module provides functions to solve suspension kinematics by satisfying
-geometric constraints and position targets using Levenberg-Marquardt.
+This module provides functions to solve suspension kinematics by satisfying geometric
+constraints and position targets using Levenberg-Marquardt.
 """
 
 from typing import Callable, NamedTuple

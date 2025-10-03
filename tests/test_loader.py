@@ -56,7 +56,9 @@ def test_load_geometry_invalid(invalid_geometry_file):
 
 
 def test_load_geometry_unsupported_type(tmp_path: Path):
-    """Test handling of unsupported geometry types."""
+    """
+    Test handling of unsupported geometry types.
+    """
     data = {"type": "UNSUPPORTED_TYPE", "name": "test"}
     file_path = tmp_path / "unsupported.yaml"
     with open(file_path, "w") as f:
@@ -67,7 +69,9 @@ def test_load_geometry_unsupported_type(tmp_path: Path):
 
 
 def test_load_geometry_missing_type(tmp_path: Path):
-    """Test handling of missing geometry type."""
+    """
+    Test handling of missing geometry type.
+    """
     data = {"name": "test"}  # Missing 'type' field
     file_path = tmp_path / "missing_type.yaml"
     with open(file_path, "w") as f:
@@ -78,7 +82,9 @@ def test_load_geometry_missing_type(tmp_path: Path):
 
 
 def test_load_geometry_yaml_error(tmp_path: Path):
-    """Test handling of malformed YAML."""
+    """
+    Test handling of malformed YAML.
+    """
     file_path = tmp_path / "malformed.yaml"
     file_path.write_text("invalid: yaml: content: [")
 

@@ -1,9 +1,9 @@
 """
 Common derived point calculation functions.
 
-These functions calculate positions of derived points based on the positions of
-other points in the suspension system. They are shared across different suspension
-types to avoid code duplication.
+These functions calculate positions of derived points based on the positions of other
+points in the suspension system. They are shared across different suspension types to
+avoid code duplication.
 """
 
 import numpy as np
@@ -13,7 +13,9 @@ from kinematics.vector_utils.generic import normalize_vector
 
 
 def get_axle_midpoint(positions: dict[PointID, np.ndarray]) -> np.ndarray:
-    """Calculates the midpoint of the axle."""
+    """
+    Calculates the midpoint of the axle.
+    """
     p1 = positions[PointID.AXLE_INBOARD]
     p2 = positions[PointID.AXLE_OUTBOARD]
     return (p1 + p2) / 2
@@ -22,7 +24,9 @@ def get_axle_midpoint(positions: dict[PointID, np.ndarray]) -> np.ndarray:
 def get_wheel_center(
     positions: dict[PointID, np.ndarray], wheel_offset: float
 ) -> np.ndarray:
-    """Calculates the wheel center point, offset from the axle outboard face."""
+    """
+    Calculates the wheel center point, offset from the axle outboard face.
+    """
     p1 = positions[PointID.AXLE_OUTBOARD]
     p2 = positions[PointID.AXLE_INBOARD]
     v = p1 - p2  # Vector pointing outboard
@@ -33,7 +37,9 @@ def get_wheel_center(
 def get_wheel_inboard(
     positions: dict[PointID, np.ndarray], wheel_width: float
 ) -> np.ndarray:
-    """Calculates the inboard lip of the wheel."""
+    """
+    Calculates the inboard lip of the wheel.
+    """
     p1 = positions[PointID.AXLE_INBOARD]
     p2 = positions[PointID.WHEEL_CENTER]
     v = p2 - p1  # Vector from axle inboard to wheel center
@@ -44,7 +50,9 @@ def get_wheel_inboard(
 def get_wheel_outboard(
     positions: dict[PointID, np.ndarray], wheel_width: float
 ) -> np.ndarray:
-    """Calculates the outboard lip of the wheel."""
+    """
+    Calculates the outboard lip of the wheel.
+    """
     p1 = positions[PointID.WHEEL_CENTER]
     p2 = positions[PointID.AXLE_INBOARD]
     v = p1 - p2  # Vector from axle inboard to wheel center

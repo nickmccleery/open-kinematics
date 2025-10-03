@@ -1,9 +1,9 @@
 """
 Geometric computation utilities.
 
-This module provides functions for computing geometric relationships between
-points and vectors, including distances, midpoints, and angles. These utilities
-are fundamental to kinematic analysis and constraint evaluation.
+This module provides functions for computing geometric relationships between points and
+vectors, including distances, midpoints, and angles. These utilities are fundamental to
+kinematic analysis and constraint evaluation.
 """
 
 import numpy as np

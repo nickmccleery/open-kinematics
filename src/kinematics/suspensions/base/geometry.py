@@ -19,7 +19,6 @@ class SuspensionGeometry(ABC):
     """
     Base class for all suspension geometry types.
 
-
     Attributes:
         name: Human-readable name of the suspension geometry.
         version: Version string of the geometry implementation.
