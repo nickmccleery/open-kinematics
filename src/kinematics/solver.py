@@ -3,6 +3,11 @@ from typing import Callable, NamedTuple
 import numpy as np
 from scipy.optimize import least_squares
 
+from kinematics.constants import (
+    SOLVE_TOLERANCE_GRAD,
+    SOLVE_TOLERANCE_STEP,
+    SOLVE_TOLERANCE_VALUE,
+)
 from kinematics.constraints import Constraint
 from kinematics.core import PointID, SuspensionState
 from kinematics.targets import resolve_target
@@ -10,9 +15,9 @@ from kinematics.types import PointTarget, SweepConfig
 
 
 class SolverConfig(NamedTuple):
-    ftol: float = 1e-8
-    xtol: float = 1e-8
-    gtol: float = 1e-8
+    ftol: float = SOLVE_TOLERANCE_VALUE
+    xtol: float = SOLVE_TOLERANCE_STEP
+    gtol: float = SOLVE_TOLERANCE_GRAD
     verbose: int = 0
 
 

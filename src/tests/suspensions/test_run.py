@@ -3,6 +3,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from kinematics.constants import TEST_TOLERANCE
 from kinematics.constraints import DistanceConstraint
 from kinematics.core import PointID
 from kinematics.loader import load_geometry
@@ -15,7 +16,6 @@ from kinematics.visualization.debug import create_animation
 from kinematics.visualization.main import SuspensionVisualizer, WheelVisualization
 
 # Our actual solve tolerance is a OOM tighter than this, so should be good.
-EPSILON_CHECK = 1e-3
 
 
 @pytest.fixture
@@ -102,7 +102,7 @@ def test_run_solver(
             current_length = np.linalg.norm(p1 - p2)
 
             assert (
-                np.abs(current_length - constraint.target_distance) < EPSILON_CHECK
+                np.abs(current_length - constraint.target_distance) < TEST_TOLERANCE
             ), (
                 f"Constraint violation at displacement {displacement}: "
                 f"{constraint.p1.name} to {constraint.p2.name}"
@@ -114,7 +114,7 @@ def test_run_solver(
         target_z = initial_target_point_position[2] + displacement
 
         assert (
-            np.abs(target_point_position[2] - target_z) < EPSILON_CHECK
+            np.abs(target_point_position[2] - target_z) < TEST_TOLERANCE
         ), f"Failed to maintain {target_point_id} at displacement {displacement}"
 
     print("Creating animation...")

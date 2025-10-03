@@ -1,13 +1,11 @@
 import numpy as np
 import pytest
 
+from kinematics.constants import TEST_TOLERANCE
 from kinematics.constraints import DistanceConstraint
 from kinematics.core import PointID, SuspensionState
 from kinematics.solver import PointTarget, SolverConfig, solve_sweep
 from kinematics.types import Axis, PointTargetAxis, SweepConfig
-
-# Tolerance on position checks.
-TOL_CHECK = 1e-4
 
 
 @pytest.fixture
@@ -107,11 +105,13 @@ def test_solve_sweep(
 
         # Distance constraints
         assert np.linalg.norm(p_outboard - p_front) == pytest.approx(
-            length_forward_leg, rel=TOL_CHECK
+            length_forward_leg, rel=TEST_TOLERANCE
         )
         assert np.linalg.norm(p_outboard - p_rear) == pytest.approx(
-            length_rearward_leg, rel=TOL_CHECK
+            length_rearward_leg, rel=TEST_TOLERANCE
         )
 
         # Target displacement
-        assert p_outboard[2] == pytest.approx(displacement_values[i], rel=TOL_CHECK)
+        assert p_outboard[2] == pytest.approx(
+            displacement_values[i], rel=TEST_TOLERANCE
+        )
