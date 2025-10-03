@@ -54,6 +54,8 @@ class SuspensionState:
     def update_from_array(self, array: np.ndarray) -> None:
         """
         Update free points from solver array in-place.
+
+        This modifies the state directly for performance.
         """
         n_points = len(self.free_points_order)
         if array.shape != (n_points * 3,):
@@ -63,7 +65,16 @@ class SuspensionState:
 
         positions_2d = array.reshape(n_points, 3)
         for i, point_id in enumerate(self.free_points_order):
-            self.positions[point_id] = positions_2d[i].copy()
+            # Direct assignment without copy - caller owns the data
+            self.positions[point_id] = positions_2d[i]
+
+    def update_positions(self, new_positions: dict[PointID, Vec3]) -> None:
+        """
+        Replace positions dictionary in-place.
+
+        This modifies the state directly for performance.
+        """
+        self.positions = new_positions
 
     def copy(self) -> "SuspensionState":
         """

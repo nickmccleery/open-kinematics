@@ -122,13 +122,12 @@ def solve_sweep(
         for i in range(sweep_config.n_steps)
     ]
 
-    # Initialize state for the entire sweep. This object will be updated after each
-    # successful step.
-    current_state = initial_state.copy()
-    states: list[SuspensionState] = []
+    # Working state reused across the sweep; mutated in-place for performance.
+    working_state = initial_state.copy()
 
-    # Create a reusable scratchpad state for calculations to avoid repeated allocations.
-    scratch_state = current_state.copy()
+    # For each step in our sweep, we will keep a copy of the solved state; this is
+    # our result dataset.
+    solution_states: list[SuspensionState] = []
 
     def compute_residuals(
         free_array: np.ndarray, step_targets: list[PointTarget]
@@ -145,11 +144,11 @@ def solve_sweep(
         Returns:
             np.ndarray: Array of residual values.
         """
-        # In-place update of the scratch state with the current guess.
-        scratch_state.update_from_array(free_array)
+        # In-place update of the working state with the current guess.
+        working_state.update_from_array(free_array)
 
-        # Compute derived points using the updated scratchpad.
-        all_positions = compute_derived_points_func(scratch_state.positions)
+        # Compute derived points using the updated working state.
+        all_positions = compute_derived_points_func(working_state.positions)
 
         # Build all of our residuals; constraints first, targets second.
         residuals = []
@@ -170,11 +169,11 @@ def solve_sweep(
 
         return np.array(residuals, dtype=float)
 
-    # Initial state will be our global first guess.
-    x_0 = current_state.get_free_array()
+    # Initial guess built from the working state's free points.
+    x_0 = working_state.get_free_array()
 
     for step_targets in sweep_targets:
-        n_vars = len(current_state.free_points_order) * 3
+        n_vars = len(working_state.free_points_order) * 3
         m_res = len(constraints) + len(step_targets)
 
         if n_vars > m_res:
@@ -201,22 +200,20 @@ def solve_sweep(
                 f"\nMessage: {result.message}"
             )
 
-        # Update the main state's positions with the solution
-        current_state.update_from_array(result.x)
+        # Update the working state's positions with the solution.
+        working_state.update_from_array(result.x)
 
-        # Re-calculate final derived points on the now-correct main state.
-        updated_positions = compute_derived_points_func(current_state.positions)
-        current_state = SuspensionState(
-            positions=updated_positions, free_points=current_state.free_points
-        )
+        # Re-calculate final derived points on the now-correct working state.
+        final_positions = compute_derived_points_func(working_state.positions)
+        working_state.update_positions(final_positions)
 
-        states.append(current_state.copy())
-        scratch_state = current_state.copy()
+        # Preserve a deep copy as the result for this step.
+        solution_states.append(working_state.copy())
 
         # The result becomes our local first guess for the next step.
         x_0 = result.x
 
-    return states
+    return solution_states
 
 
 def solve(
