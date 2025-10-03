@@ -68,14 +68,24 @@ def solve_sweep(
 
         # 4. Target residuals
         for target in step_targets:
-            current_pos = all_positions[target.point_id]
-            initial_pos = initial_state.positions[target.point_id]
-
             direction = resolve_target(target.direction)
-            initial_proj = float(np.dot(initial_pos, direction))
-            target_proj = initial_proj + target.value
-            current_proj = float(np.dot(current_pos, direction))
-            residuals.append(current_proj - target_proj)
+
+            # Project 3D positions onto the target direction to get 1D coordinates.
+            # This allows us to constrain motion along a specific direction (e.g., "move 30mm upward")
+            # while leaving the point free to move perpendicular to that direction as determined
+            # by the geometric constraints.
+            initial_pos = initial_state.positions[target.point_id]
+            initial_coordinate = float(np.dot(initial_pos, direction))
+
+            # Calculate target coordinate (initial position + displacement along direction)
+            target_coordinate = initial_coordinate + target.value
+
+            # Get current coordinate along the same direction
+            current_pos = all_positions[target.point_id]
+            current_coordinate = float(np.dot(current_pos, direction))
+
+            # Residual is the error between current and target coordinates
+            residuals.append(current_coordinate - target_coordinate)
 
         return np.array(residuals, dtype=float)
 
