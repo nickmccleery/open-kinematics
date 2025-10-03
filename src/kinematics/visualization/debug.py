@@ -4,13 +4,14 @@ import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import numpy as np
 
-from kinematics.core import PointID
+from kinematics.enums import PointID
+from kinematics.types import Vec3
 from kinematics.visualization.main import SuspensionVisualizer
 
 
 def create_animation(
-    position_states: list[dict[PointID, np.ndarray]],
-    initial_positions: dict[PointID, np.ndarray],
+    position_states: list[dict[PointID, Vec3]],
+    initial_positions: dict[PointID, Vec3],
     visualizer: SuspensionVisualizer,
     output_path: Path,
     fps: int = 20,

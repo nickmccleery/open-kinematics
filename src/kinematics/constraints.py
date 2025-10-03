@@ -11,8 +11,8 @@ from typing import Set
 
 import numpy as np
 
-from kinematics.core import PointID
-from kinematics.types import Axis
+from kinematics.enums import Axis, PointID
+from kinematics.types import Vec3, make_vec3
 from kinematics.vector_utils.geometric import (
     compute_point_point_distance,
     compute_vector_vector_angle,
@@ -38,7 +38,7 @@ class Constraint(ABC):
         pass
 
     @abstractmethod
-    def residual(self, positions: dict[PointID, np.ndarray]) -> float:
+    def residual(self, positions: dict[PointID, Vec3]) -> float:
         """
         Calculate constraint residual.
 
@@ -74,7 +74,7 @@ class DistanceConstraint(Constraint):
     def involved_points(self) -> Set[PointID]:
         return {self.p1, self.p2}
 
-    def residual(self, positions: dict[PointID, np.ndarray]) -> float:
+    def residual(self, positions: dict[PointID, Vec3]) -> float:
         """
         Compute the distance residual.
 
@@ -124,7 +124,7 @@ class AngleConstraint(Constraint):
     def involved_points(self) -> Set[PointID]:
         return {self.v1_start, self.v1_end, self.v2_start, self.v2_end}
 
-    def residual(self, positions: dict[PointID, np.ndarray]) -> float:
+    def residual(self, positions: dict[PointID, Vec3]) -> float:
         """
         Compute the angle residual.
 
@@ -134,7 +134,7 @@ class AngleConstraint(Constraint):
         v1 = positions[self.v1_end] - positions[self.v1_start]
         v2 = positions[self.v2_end] - positions[self.v2_start]
 
-        current_angle = compute_vector_vector_angle(v1, v2)
+        current_angle = compute_vector_vector_angle(make_vec3(v1), make_vec3(v2))
 
         return float(current_angle - self.target_angle)
 
@@ -165,7 +165,7 @@ class FixedAxisConstraint(Constraint):
     def involved_points(self) -> Set[PointID]:
         return {self.point_id}
 
-    def residual(self, positions: dict[PointID, np.ndarray]) -> float:
+    def residual(self, positions: dict[PointID, Vec3]) -> float:
         """
         Compute the axis coordinate residual.
 
@@ -204,7 +204,7 @@ class PointOnLineConstraint(Constraint):
     def involved_points(self) -> Set[PointID]:
         return {self.point_id}
 
-    def residual(self, positions: dict[PointID, np.ndarray]) -> float:
+    def residual(self, positions: dict[PointID, Vec3]) -> float:
         """
         Compute the point-to-line distance residual.
 

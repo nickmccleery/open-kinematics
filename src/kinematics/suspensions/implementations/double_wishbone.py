@@ -14,7 +14,7 @@ from kinematics.constraints import (
     DistanceConstraint,
     PointOnLineConstraint,
 )
-from kinematics.core import PointID, SuspensionState
+from kinematics.enums import PointID
 from kinematics.points.derived.definitions import (
     get_axle_midpoint,
     get_wheel_center,
@@ -22,14 +22,15 @@ from kinematics.points.derived.definitions import (
     get_wheel_outboard,
 )
 from kinematics.points.derived.manager import DerivedPointsManager, DerivedPointsSpec
-from kinematics.suspensions.base.geometry import SuspensionGeometry
-from kinematics.suspensions.base.provider import SuspensionProvider
-from kinematics.suspensions.common.collections import (
+from kinematics.state import SuspensionState
+from kinematics.suspensions.core.collections import (
     LowerWishbonePoints,
     TrackRodPoints,
     UpperWishbonePoints,
     WheelAxlePoints,
 )
+from kinematics.suspensions.core.geometry import SuspensionGeometry
+from kinematics.suspensions.core.provider import SuspensionProvider
 from kinematics.vector_utils.geometric import (
     compute_point_point_distance,
     compute_vector_vector_angle,

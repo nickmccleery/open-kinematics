@@ -6,12 +6,15 @@ from __future__ import annotations
 
 from typing import Tuple, Type
 
-from kinematics.suspensions.base.provider import SuspensionProvider
-from kinematics.suspensions.double_wishbone import (
+from kinematics.suspensions.core.provider import SuspensionProvider
+from kinematics.suspensions.implementations.double_wishbone import (
     DoubleWishboneGeometry,
     DoubleWishboneProvider,
 )
-from kinematics.suspensions.macpherson import MacPhersonGeometry, MacPhersonProvider
+from kinematics.suspensions.implementations.macpherson import (
+    MacPhersonGeometry,
+    MacPhersonProvider,
+)
 
 # Registry type definitions.
 ModelCls = Type[object]
@@ -21,7 +24,7 @@ Registry = dict[str, Tuple[ModelCls, ProviderCls]]
 
 def build_registry() -> Registry:
     """
-    Return the plugin registry mapping suspension types to their classes.
+    Return the registry mapping suspension types to their classes.
 
     Returns:
         Dictionary mapping type strings to (ModelClass, ProviderClass) tuples.

@@ -7,10 +7,11 @@ from typing import Callable, Set
 
 import numpy as np
 
-from kinematics.core import PointID
+from kinematics.enums import PointID
+from kinematics.types import Vec3
 
 # Function signature for computing a derived point position
-PositionFn = Callable[[dict[PointID, np.ndarray]], np.ndarray]
+PositionFn = Callable[[dict[PointID, Vec3]], np.ndarray]
 
 
 @dataclass(frozen=True)
@@ -130,7 +131,7 @@ class DerivedPointsManager:
 
         return order
 
-    def update(self, positions: dict[PointID, np.ndarray]) -> dict[PointID, np.ndarray]:
+    def update(self, positions: dict[PointID, Vec3]) -> dict[PointID, Vec3]:
         """
         Calculates all derived points based on the provided positions.
 

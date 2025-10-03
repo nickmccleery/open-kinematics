@@ -5,8 +5,8 @@ This module provides functions to resolve target directions into world coordinat
 vectors.
 """
 
+from kinematics.enums import Axis
 from kinematics.types import (
-    Axis,
     PointTargetAxis,
     PointTargetDirection,
     PointTargetVector,

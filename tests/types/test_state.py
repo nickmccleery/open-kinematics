@@ -1,6 +1,7 @@
 import numpy as np
 
-from kinematics.core import PointID, SuspensionState
+from kinematics.enums import PointID
+from kinematics.state import SuspensionState
 
 
 def test_suspension_state_construction():

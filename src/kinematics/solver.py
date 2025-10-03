@@ -16,9 +16,10 @@ from kinematics.constants import (
     SOLVE_TOLERANCE_VALUE,
 )
 from kinematics.constraints import Constraint
-from kinematics.core import PointID, SuspensionState
+from kinematics.enums import PointID
+from kinematics.state import SuspensionState
 from kinematics.targets import resolve_target
-from kinematics.types import PointTarget, SweepConfig, TargetPositionMode
+from kinematics.types import PointTarget, SweepConfig, TargetPositionMode, Vec3
 from kinematics.vector_utils.generic import project_coordinate
 
 # Levenberg-Marquardt; damped least squares that can deal with the system being
@@ -94,9 +95,7 @@ def solve_sweep(
     initial_state: SuspensionState,
     constraints: list[Constraint],
     sweep_config: SweepConfig,
-    compute_derived_points_func: Callable[
-        [dict[PointID, np.ndarray]], dict[PointID, np.ndarray]
-    ],
+    compute_derived_points_func: Callable[[dict[PointID, Vec3]], dict[PointID, Vec3]],
     solver_config: SolverConfig = SolverConfig(),
 ) -> list[SuspensionState]:
     """
@@ -224,9 +223,7 @@ def solve(
     initial_state: SuspensionState,
     constraints: list[Constraint],
     targets: list[PointTarget],
-    compute_derived_points_func: Callable[
-        [dict[PointID, np.ndarray]], dict[PointID, np.ndarray]
-    ],
+    compute_derived_points_func: Callable[[dict[PointID, Vec3]], dict[PointID, Vec3]],
     solver_config: SolverConfig = SolverConfig(),
 ) -> SuspensionState:
     """

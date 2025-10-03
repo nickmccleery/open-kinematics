@@ -15,11 +15,11 @@ import yaml
 from marshmallow.exceptions import ValidationError
 from marshmallow_dataclass import class_schema
 
-from kinematics.suspensions.base.provider import SuspensionProvider
+from kinematics.suspensions.core.provider import SuspensionProvider
 from kinematics.suspensions.registry import build_registry
 
 if TYPE_CHECKING:
-    from kinematics.suspensions.base.geometry import SuspensionGeometry
+    from kinematics.suspensions.core.geometry import SuspensionGeometry
 
 
 @dataclass

@@ -2,11 +2,11 @@ from pathlib import Path
 
 import typer
 
-from kinematics.core import PointID
+from kinematics.enums import Axis, PointID
 from kinematics.loader import load_geometry
 from kinematics.main import solve_suspension_sweep
 from kinematics.solver import PointTarget
-from kinematics.types import Axis, PointTargetAxis, SweepConfig
+from kinematics.types import PointTargetAxis, SweepConfig
 
 app = typer.Typer(add_completion=False)
 

@@ -8,11 +8,12 @@ avoid code duplication.
 
 import numpy as np
 
-from kinematics.core import PointID
+from kinematics.enums import PointID
+from kinematics.types import Vec3
 from kinematics.vector_utils.generic import normalize_vector
 
 
-def get_axle_midpoint(positions: dict[PointID, np.ndarray]) -> np.ndarray:
+def get_axle_midpoint(positions: dict[PointID, Vec3]) -> np.ndarray:
     """
     Calculates the midpoint of the axle.
     """
@@ -21,9 +22,7 @@ def get_axle_midpoint(positions: dict[PointID, np.ndarray]) -> np.ndarray:
     return (p1 + p2) / 2
 
 
-def get_wheel_center(
-    positions: dict[PointID, np.ndarray], wheel_offset: float
-) -> np.ndarray:
+def get_wheel_center(positions: dict[PointID, Vec3], wheel_offset: float) -> np.ndarray:
     """
     Calculates the wheel center point, offset from the axle outboard face.
     """
@@ -34,9 +33,7 @@ def get_wheel_center(
     return p1 + v * wheel_offset
 
 
-def get_wheel_inboard(
-    positions: dict[PointID, np.ndarray], wheel_width: float
-) -> np.ndarray:
+def get_wheel_inboard(positions: dict[PointID, Vec3], wheel_width: float) -> np.ndarray:
     """
     Calculates the inboard lip of the wheel.
     """
@@ -48,7 +45,7 @@ def get_wheel_inboard(
 
 
 def get_wheel_outboard(
-    positions: dict[PointID, np.ndarray], wheel_width: float
+    positions: dict[PointID, Vec3], wheel_width: float
 ) -> np.ndarray:
     """
     Calculates the outboard lip of the wheel.
