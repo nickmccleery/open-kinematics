@@ -127,7 +127,7 @@ def test_run_solver(
     position_states_animate = (
         position_states_positions + position_states_positions[::-1]
     )
-    output_path = Path("suspension_motion.gif")
+    output_path = Path("suspension_motion.mp4")
 
     r_aspect = 0.55
     x_section = 270
