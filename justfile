@@ -21,7 +21,7 @@ clean:
 
 # Testing.
 test:
-    uv run pytest tests/
+    uv run pytest tests/ --cov=. --cov-report=term --durations=0
 
 # Linting.
 lint:

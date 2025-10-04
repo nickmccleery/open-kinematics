@@ -21,10 +21,13 @@ cli = ["typer>=0.12"]
 dev = [
     "docformatter>=1.7.7",
     "pytest>=8.3.4",
+    "pytest-cov>=7.0.0",
     "ruff>=0.13.3",
     "ty>=0.0.1a21",
 ]
 
+# Documentation formatter settings.
+# --------------------------------------------------------------------------------------
 [tool.docformatter]
 recursive = true
 wrap-summaries = 88
@@ -33,6 +36,29 @@ pre-summary-newline = true
 close-quotes-on-newline = true
 blank = false
 make-summary-multi-line = true
+
+# Test coverage settings.
+# --------------------------------------------------------------------------------------
+[tool.coverage.run]
+source = ["."]
+omit = [
+    "*/tests/*",
+    "*/test_*",
+    "*/__pycache__/*",
+    "*/venv/*",
+    "*/.venv/*",
+    "*/setup.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
 
 
 # [tool.uv.workspace]
