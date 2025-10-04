@@ -12,12 +12,11 @@ from kinematics.points.derived.manager import DerivedPointsManager
 from kinematics.solver import PointTarget
 from kinematics.suspensions.implementations.double_wishbone import (
     DoubleWishboneGeometry,
+    DoubleWishboneProvider,
 )
 from kinematics.types import PointTargetAxis, SweepConfig
 from kinematics.visualization.debug import create_animation
 from kinematics.visualization.main import SuspensionVisualizer, WheelVisualization
-
-# Our actual solve tolerance is a OOM tighter than this, so should be good.
 
 
 @pytest.fixture
@@ -82,12 +81,11 @@ def test_run_solver(
     print("Solve complete, verifying constraints...")
 
     # Get initial positions for comparison using the provider.
-
-    provider = loaded.provider_cls(loaded.geometry)  # type: ignore[call-arg]
-    derived_resolver = DerivedPointsManager(provider.derived_spec())
+    provider = DoubleWishboneProvider(loaded.geometry)
+    derived_manager = DerivedPointsManager(provider.derived_spec())
 
     initial_state = provider.initial_state()
-    derived_resolver.update_in_place(initial_state.positions)
+    derived_manager.update_in_place(initial_state.positions)
     initial_positions = initial_state.positions.copy()
 
     # Get only the length constraints for verification
@@ -142,5 +140,8 @@ def test_run_solver(
 
     visualizer = SuspensionVisualizer(loaded.geometry, wheel_config)
     create_animation(
-        position_states_animate, initial_positions, visualizer, output_path
+        position_states_animate,
+        initial_positions,
+        visualizer,
+        output_path,
     )
