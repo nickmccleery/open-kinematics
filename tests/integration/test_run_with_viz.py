@@ -6,7 +6,7 @@ import pytest
 from kinematics.constants import TEST_TOLERANCE
 from kinematics.constraints import DistanceConstraint
 from kinematics.enums import Axis, PointID, TargetPositionMode
-from kinematics.loader import load_geometry
+from kinematics.io.geometry_loader import load_geometry
 from kinematics.main import solve_suspension_sweep
 from kinematics.points.derived.manager import DerivedPointsManager
 from kinematics.solver import PointTarget
@@ -74,9 +74,7 @@ def test_run_solver(
         raise ValueError("Invalid geometry type")
 
     # Solve for all positions.
-    position_states = solve_suspension_sweep(
-        loaded.geometry, loaded.provider_cls, sweep_config_fixture
-    )
+    position_states = solve_suspension_sweep(loaded.provider, sweep_config_fixture)
 
     print("Solve complete, verifying constraints...")
 

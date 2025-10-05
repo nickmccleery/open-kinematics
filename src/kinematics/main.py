@@ -10,12 +10,12 @@ from typing import List
 from kinematics.points.derived.manager import DerivedPointsManager
 from kinematics.solver import solve_sweep
 from kinematics.state import SuspensionState
+from kinematics.suspensions.core.provider import SuspensionProvider
 from kinematics.types import SweepConfig
 
 
 def solve_suspension_sweep(
-    geometry,
-    provider_class,
+    provider: SuspensionProvider,
     sweep_config: SweepConfig,
 ) -> List[SuspensionState]:
     """
@@ -26,14 +26,12 @@ def solve_suspension_sweep(
     and running the solver across target configurations.
 
     Args:
-        geometry: The suspension geometry specification.
-        provider_class: The SuspensionProvider class for this geometry type.
+        provider: The SuspensionProvider instance for this geometry type.
         sweep_config: Configuration for the parametric sweep.
 
     Returns:
         List of solved suspension states for each step in the sweep.
     """
-    provider = provider_class(geometry)
     derived_spec = provider.derived_spec()
     derived_manager = DerivedPointsManager(derived_spec)
 

@@ -141,7 +141,7 @@ class AngleConstraint(Constraint):
 
 class FixedAxisConstraint(Constraint):
     """
-    Constrains a point's coordinate on a cardinal axis.
+    Constrains a point's coordinate on a principal axis.
 
     This constraint fixes a specific coordinate (X, Y, or Z) of a point to a constant
     value, useful for ground-fixed points or symmetry constraints in the suspension
