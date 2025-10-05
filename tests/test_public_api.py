@@ -7,7 +7,6 @@ def test_public_api_exports():
     km = importlib.import_module("kinematics")
     expected = {
         "load_geometry",
-        "solve",
         "solve_sweep",
         "PointID",
         "PointTarget",

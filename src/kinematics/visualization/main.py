@@ -3,9 +3,6 @@ from dataclasses import dataclass
 import numpy as np
 
 from kinematics.enums import PointID
-from kinematics.suspensions.implementations.double_wishbone import (
-    DoubleWishboneGeometry,
-)
 from kinematics.types import Vec3
 
 
@@ -32,53 +29,10 @@ class WheelVisualization:
 
 class SuspensionVisualizer:
     def __init__(
-        self, geometry: DoubleWishboneGeometry, wheel_config: WheelVisualization
+        self, links: list[LinkVisualization], wheel_config: WheelVisualization
     ):
-        self.geometry = geometry
+        self.links = links
         self.wheel_config = wheel_config
-        self.links = self.define_links()
-
-    def define_links(self) -> list[LinkVisualization]:
-        return [
-            LinkVisualization(
-                points=[
-                    PointID.UPPER_WISHBONE_INBOARD_FRONT,
-                    PointID.UPPER_WISHBONE_OUTBOARD,
-                    PointID.UPPER_WISHBONE_INBOARD_REAR,
-                ],
-                color="dodgerblue",
-                label="Upper Wishbone",
-            ),
-            LinkVisualization(
-                points=[
-                    PointID.LOWER_WISHBONE_INBOARD_FRONT,
-                    PointID.LOWER_WISHBONE_OUTBOARD,
-                    PointID.LOWER_WISHBONE_INBOARD_REAR,
-                ],
-                color="dodgerblue",
-                label="Lower Wishbone",
-            ),
-            LinkVisualization(
-                points=[
-                    PointID.TRACKROD_OUTBOARD,
-                    PointID.UPPER_WISHBONE_OUTBOARD,
-                    PointID.LOWER_WISHBONE_OUTBOARD,
-                    PointID.TRACKROD_OUTBOARD,
-                ],
-                color="slategrey",
-                label="Upright",
-            ),
-            LinkVisualization(
-                points=[PointID.TRACKROD_INBOARD, PointID.TRACKROD_OUTBOARD],
-                color="darkorange",
-                label="Track Rod",
-            ),
-            LinkVisualization(
-                points=[PointID.AXLE_INBOARD, PointID.AXLE_OUTBOARD],
-                color="forestgreen",
-                label="Axle",
-            ),
-        ]
 
     def draw_wheel(
         self,

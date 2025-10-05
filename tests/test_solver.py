@@ -5,7 +5,7 @@ from kinematics.constants import TEST_TOLERANCE
 from kinematics.constraints import DistanceConstraint
 from kinematics.enums import Axis, PointID, TargetPositionMode
 from kinematics.points.derived.manager import DerivedPointsManager, DerivedPointsSpec
-from kinematics.solver import PointTarget, SolverConfig, solve_sweep
+from kinematics.solver import PointTarget, SolverConfig, solve_suspension_sweep
 from kinematics.state import SuspensionState
 from kinematics.types import PointTargetAxis, SweepConfig
 
@@ -92,7 +92,7 @@ def test_solve_sweep(
         target.value for target in simple_sweep_config.target_sweeps[0]
     ]
 
-    states = solve_sweep(
+    states = solve_suspension_sweep(
         initial_state=initial_state,
         constraints=simple_constraints,
         sweep_config=simple_sweep_config,

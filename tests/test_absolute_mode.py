@@ -2,7 +2,7 @@ import numpy as np
 
 from kinematics.enums import Axis, PointID, TargetPositionMode
 from kinematics.points.derived.manager import DerivedPointsManager, DerivedPointsSpec
-from kinematics.solver import resolve_targets_to_absolute, solve_sweep
+from kinematics.solver import resolve_targets_to_absolute, solve_suspension_sweep
 from kinematics.state import SuspensionState
 from kinematics.types import PointTarget, PointTargetAxis, SweepConfig
 
@@ -79,7 +79,7 @@ def test_absolute_mode_solve():
         )
     ]
 
-    states = solve_sweep(
+    states = solve_suspension_sweep(
         initial_state=initial_state,
         constraints=[],
         sweep_config=SweepConfig([x_sweep, y_sweep, z_sweep]),

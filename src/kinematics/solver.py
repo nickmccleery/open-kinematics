@@ -153,7 +153,7 @@ def resolve_targets_to_absolute(
     return resolved
 
 
-def solve_sweep(
+def solve_suspension_sweep(
     initial_state: SuspensionState,
     constraints: list[Constraint],
     sweep_config: SweepConfig,

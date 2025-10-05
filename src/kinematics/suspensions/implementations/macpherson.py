@@ -22,6 +22,7 @@ from kinematics.suspensions.core.collections import LowerWishbonePoints, WheelAx
 from kinematics.suspensions.core.geometry import SuspensionGeometry
 from kinematics.suspensions.core.provider import SuspensionProvider
 from kinematics.vector_utils.geometric import compute_point_point_distance
+from kinematics.visualization.main import LinkVisualization
 
 
 @dataclass
@@ -217,3 +218,38 @@ class MacPhersonProvider(SuspensionProvider):
             constraints.append(DistanceConstraint(p1, p2, target_distance))
 
         return constraints
+
+    def get_visualization_links(self) -> list[LinkVisualization]:
+        """
+        Get the visualization links for rendering the MacPherson strut suspension.
+
+        Returns:
+            List of link definitions specifying how to visualize the suspension
+            structure, including lower control arm, strut, and upright connections.
+        """
+        return [
+            LinkVisualization(
+                points=[
+                    PointID.LOWER_WISHBONE_INBOARD_FRONT,
+                    PointID.LOWER_WISHBONE_OUTBOARD,
+                    PointID.LOWER_WISHBONE_INBOARD_REAR,
+                ],
+                color="dodgerblue",
+                label="Lower Control Arm",
+            ),
+            LinkVisualization(
+                points=[PointID.STRUT_INBOARD, PointID.STRUT_OUTBOARD],
+                color="darkorange",
+                label="Strut",
+            ),
+            LinkVisualization(
+                points=[PointID.LOWER_WISHBONE_OUTBOARD, PointID.STRUT_OUTBOARD],
+                color="slategrey",
+                label="Upright",
+            ),
+            LinkVisualization(
+                points=[PointID.AXLE_INBOARD, PointID.AXLE_OUTBOARD],
+                color="forestgreen",
+                label="Axle",
+            ),
+        ]

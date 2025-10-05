@@ -8,13 +8,13 @@ geometries.
 from typing import List
 
 from kinematics.points.derived.manager import DerivedPointsManager
-from kinematics.solver import solve_sweep
+from kinematics.solver import solve_suspension_sweep
 from kinematics.state import SuspensionState
 from kinematics.suspensions.core.provider import SuspensionProvider
 from kinematics.types import SweepConfig
 
 
-def solve_suspension_sweep(
+def solve_sweep(
     provider: SuspensionProvider,
     sweep_config: SweepConfig,
 ) -> List[SuspensionState]:
@@ -35,7 +35,7 @@ def solve_suspension_sweep(
     derived_spec = provider.derived_spec()
     derived_manager = DerivedPointsManager(derived_spec)
 
-    kinematic_states = solve_sweep(
+    kinematic_states = solve_suspension_sweep(
         initial_state=provider.initial_state(),
         constraints=provider.constraints(),
         sweep_config=sweep_config,
