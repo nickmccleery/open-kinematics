@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Type, cast
+from typing import TYPE_CHECKING, cast
 
 import yaml
 from marshmallow.exceptions import ValidationError
@@ -29,11 +29,11 @@ class LoadedSuspension:
 
     Attributes:
         geometry: The loaded and validated suspension geometry instance
-        provider_cls: The provider class that can instantiate solvers for this geometry
+        provider: Instantiated provider bound to this geometry
     """
 
     geometry: SuspensionGeometry
-    provider_cls: Type[SuspensionProvider]
+    provider: SuspensionProvider
 
 
 def load_geometry(file_path: Path) -> LoadedSuspension:
@@ -83,7 +83,8 @@ def load_geometry(file_path: Path) -> LoadedSuspension:
             # Geometry object doesn't have validate method, assume it's valid.
             pass
 
-        return LoadedSuspension(geometry=geometry, provider_cls=provider_class)
+        provider = provider_class(geometry)
+        return LoadedSuspension(geometry=geometry, provider=provider)
 
     except yaml.YAMLError as e:
         raise ValueError(f"Error parsing geometry file: {e}") from e

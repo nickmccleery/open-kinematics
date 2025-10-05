@@ -74,9 +74,7 @@ def test_run_solver(
         raise ValueError("Invalid geometry type")
 
     # Solve for all positions.
-    position_states = solve_suspension_sweep(
-        loaded.geometry, loaded.provider_cls, sweep_config_fixture
-    )
+    position_states = solve_suspension_sweep(loaded.provider, sweep_config_fixture)
 
     print("Solve complete, verifying constraints...")
 
