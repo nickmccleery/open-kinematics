@@ -1,6 +1,6 @@
 from kinematics.constraints import Constraint
 from kinematics.enums import PointID, TargetPositionMode
-from kinematics.loader import load_geometry
+from kinematics.io.geometry_loader import load_geometry
 from kinematics.solver import PointTarget, SolverConfig, solve, solve_sweep
 from kinematics.types import SweepConfig
 
