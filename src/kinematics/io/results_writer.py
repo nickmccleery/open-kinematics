@@ -1,8 +1,5 @@
 """
 Write kinematic solution results to Parquet format with comprehensive metadata.
-
-This module provides a clean interface for writing solver results to disk in a
-structured, queryable format with full provenance tracking.
 """
 
 from __future__ import annotations
@@ -20,7 +17,9 @@ import pyarrow.parquet as pq
 
 
 class MetadataKey(Enum):
-    """Standard metadata keys for result files."""
+    """
+    Standard metadata keys for result files.
+    """
 
     FORMAT_VERSION = "format_version"
     PACKAGE = "package"
@@ -31,7 +30,9 @@ class MetadataKey(Enum):
 
 
 class StandardColumn(Enum):
-    """Standard column names in result files."""
+    """
+    Standard column names in result files.
+    """
 
     FRAME_INDEX = "frame_index"
     TIMESTAMP = "timestamp"
@@ -46,7 +47,7 @@ PACKAGE_NAME = "kinematics"
 METADATA_KEY = b"kinematics_meta"
 
 
-def _compute_file_hash(path: str | Path) -> str:
+def compute_file_hash(path: str | Path) -> str:
     """
     Compute SHA-256 hash of a file for provenance tracking.
 
@@ -69,9 +70,9 @@ class SolutionFrame:
     A single frame of solution data.
 
     Attributes:
-        positions: Dictionary mapping point IDs to (x, y, z) coordinates.
-        derived: Optional dictionary of derived scalar quantities.
-        solver_info: Optional dictionary of solver diagnostic information.
+        positions (dict[str, tuple[float, float, float]]): Dictionary mapping point IDs to (x, y, z) coordinates.
+        derived (dict[str, float]): Optional dictionary of derived scalar quantities.
+        solver_info (dict[str, Any]): Optional dictionary of solver diagnostic information.
     """
 
     positions: dict[str, tuple[float, float, float]]
@@ -130,14 +131,14 @@ class ResultsWriter:
         if geometry_path is not None:
             geo_path = str(geometry_path)
             self._metadata[MetadataKey.GEOMETRY_PATH.value] = geo_path
-            self._metadata[MetadataKey.GEOMETRY_HASH.value] = _compute_file_hash(
+            self._metadata[MetadataKey.GEOMETRY_HASH.value] = compute_file_hash(
                 geo_path
             )
 
         if sweep_path is not None:
             swp_path = str(sweep_path)
             self._metadata[MetadataKey.SWEEP_PATH.value] = swp_path
-            self._metadata[MetadataKey.SWEEP_HASH.value] = _compute_file_hash(swp_path)
+            self._metadata[MetadataKey.SWEEP_HASH.value] = compute_file_hash(swp_path)
 
     def add_frame(self, frame_index: int, frame: SolutionFrame) -> None:
         """

@@ -1,8 +1,5 @@
 """
 Parse sweep configuration files into executable sweep specifications.
-
-This module handles loading and validating sweep YAML files, converting them
-into the internal SweepConfig representation used by the solver.
 """
 
 from __future__ import annotations
@@ -31,8 +28,8 @@ class DirectionSpec:
     Specification for a target direction.
 
     Attributes:
-        axis: Cardinal axis (X, Y, or Z) for the direction.
-        vector: Custom 3D vector for the direction.
+        axis (Axis | None): Principal axis (X, Y, or Z) for the direction.
+        vector (Sequence[float] | None): Custom 3D vector for the direction.
     """
 
     axis: Axis | None = None
@@ -78,13 +75,13 @@ class TargetSpec:
     Specification for a single sweep target dimension.
 
     Attributes:
-        name: Optional human-readable name for this target.
-        point: Point to be constrained.
-        mode: Whether values are relative or absolute.
-        direction: Direction specification for the constraint.
-        start: Starting value for linear interpolation.
-        stop: Ending value for linear interpolation.
-        values: Explicit list of values (alternative to start/stop).
+        point (PointID): Point to be constrained.
+        direction (DirectionSpec): Direction specification for the constraint.
+        name (str | None): Optional human-readable name for this target.
+        mode (TargetPositionMode): Whether values are relative or absolute.
+        start (float | None): Starting value for linear interpolation.
+        stop (float | None): Ending value for linear interpolation.
+        values (Sequence[float] | None): Explicit list of values (alternative to start/stop).
     """
 
     point: PointID
@@ -102,10 +99,10 @@ class SweepFileSchema:
     Schema for sweep configuration files.
 
     Attributes:
-        version: Schema version (currently only 1 is supported).
-        steps: Number of steps for linear interpolation (used if targets
+        version (int): Schema version (currently only 1 is supported).
+        steps (int | None): Number of steps for linear interpolation (used if targets
             don't specify explicit values).
-        targets: List of target specifications for each sweep dimension.
+        targets (list[TargetSpec]): List of target specifications for each sweep dimension.
     """
 
     version: int
@@ -158,7 +155,7 @@ def direction_to_target_type(
         unit_vec: Normalized direction vector.
 
     Returns:
-        Either PointTargetAxis (if aligned with cardinal axis) or
+        Either PointTargetAxis (if aligned with principal/standard basis axis) or
         PointTargetVector (for arbitrary directions).
     """
     if np.allclose(unit_vec, [1.0, 0.0, 0.0]):

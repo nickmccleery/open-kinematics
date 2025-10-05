@@ -245,35 +245,3 @@ def solve_sweep(
         x_0 = result.x
 
     return solution_states
-
-
-def solve(
-    initial_state: SuspensionState,
-    constraints: list[Constraint],
-    targets: list[PointTarget],
-    derived_manager: DerivedPointsManager,
-    solver_config: SolverConfig = SolverConfig(),
-) -> SuspensionState:
-    """
-    Solves for a single kinematic state using damped non-linear least squares. This
-    function finds the suspension state that satisfies the given constraints and
-    targets.
-
-    Args:
-        initial_state (SuspensionState): The initial suspension state.
-        constraints (list[Constraint]): List of geometric constraints to satisfy.
-        targets (list[PointTarget]): List of point targets to achieve.
-        solver_config (SolverConfig): Configuration parameters for the solver.
-
-    Returns:
-        SuspensionState: The solved suspension state.
-    """
-    sweep_config = SweepConfig([targets])
-    states = solve_sweep(
-        initial_state=initial_state,
-        constraints=constraints,
-        sweep_config=sweep_config,
-        derived_manager=derived_manager,
-        solver_config=solver_config,
-    )
-    return states[0]

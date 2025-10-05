@@ -28,8 +28,8 @@ class LoadedSuspension:
     Result of loading a suspension geometry from a file.
 
     Attributes:
-        geometry: The loaded and validated suspension geometry instance
-        provider: Instantiated provider bound to this geometry
+        geometry (SuspensionGeometry): The loaded and validated suspension geometry instance
+        provider (SuspensionProvider): Instantiated provider bound to this geometry
     """
 
     geometry: SuspensionGeometry

@@ -33,8 +33,8 @@ class SuspensionProvider(ABC):
         """
         Base initializer establishes the expected constructor signature for providers.
 
-        Subclasses may override and are not required to call super().__init__.
-        This exists primarily to satisfy static type checkers for calls like
+        Subclasses may override and are not required to call super().__init__. This
+        exists primarily to satisfy static type checkers for calls like
         `provider_cls(geometry)`.
         """
         # Intentionally no-op; subclasses typically store geometry themselves.

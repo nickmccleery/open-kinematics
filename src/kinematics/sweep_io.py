@@ -19,7 +19,6 @@ targets:
         direction: {axis: Z}
         start: -20
         stop: 60
-
 """
 
 from __future__ import annotations
