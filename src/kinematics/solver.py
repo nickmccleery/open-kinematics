@@ -84,7 +84,6 @@ class ResidualComputer:
         self.constraints = constraints
         self.derived_manager = derived_manager
         self.working_state = working_state
-        self.call_count = 0
 
     def compute(
         self,
