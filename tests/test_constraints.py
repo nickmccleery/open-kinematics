@@ -3,7 +3,7 @@ import math
 import numpy as np
 import pytest
 
-from kinematics.constants import EPSILON
+from kinematics.constants import TEST_TOLERANCE
 from kinematics.constraints import (
     AngleConstraint,
     CoplanarPointsConstraint,
@@ -50,7 +50,7 @@ def test_distance_constraint_satisfied():
     )
 
     residual = constraint.residual(positions)
-    assert math.isclose(residual, 0.0, abs_tol=EPSILON)
+    assert math.isclose(residual, 0.0, abs_tol=TEST_TOLERANCE)
 
 
 def test_distance_constraint_too_far():
@@ -68,7 +68,7 @@ def test_distance_constraint_too_far():
 
     residual = constraint.residual(positions)
     # Residual should be 1.0 - 0.5 = 0.5 (positive means too far)
-    assert math.isclose(residual, 0.5, abs_tol=EPSILON)
+    assert math.isclose(residual, 0.5, abs_tol=TEST_TOLERANCE)
 
 
 def test_distance_constraint_too_close():
@@ -86,7 +86,7 @@ def test_distance_constraint_too_close():
 
     residual = constraint.residual(positions)
     # Residual should be 1.0 - 2.0 = -1.0 (negative means too close)
-    assert math.isclose(residual, -1.0, abs_tol=EPSILON)
+    assert math.isclose(residual, -1.0, abs_tol=TEST_TOLERANCE)
 
 
 def test_distance_constraint_diagonal():
@@ -103,7 +103,7 @@ def test_distance_constraint_diagonal():
     )
 
     residual = constraint.residual(positions)
-    assert math.isclose(residual, 0.0, abs_tol=EPSILON)
+    assert math.isclose(residual, 0.0, abs_tol=TEST_TOLERANCE)
 
 
 def test_distance_constraint_negative_target():
@@ -133,7 +133,7 @@ def test_spherical_joint_constraint_coincident():
     )
 
     residual = constraint.residual(positions)
-    assert math.isclose(residual, 0.0, abs_tol=EPSILON)
+    assert math.isclose(residual, 0.0, abs_tol=TEST_TOLERANCE)
 
 
 def test_spherical_joint_constraint_separated():
@@ -148,7 +148,7 @@ def test_spherical_joint_constraint_separated():
     )
 
     residual = constraint.residual(positions)
-    assert math.isclose(residual, 1.0, abs_tol=EPSILON)
+    assert math.isclose(residual, 1.0, abs_tol=TEST_TOLERANCE)
 
 
 def test_angle_constraint_perpendicular():
@@ -167,7 +167,7 @@ def test_angle_constraint_perpendicular():
     )
 
     residual = constraint.residual(positions)
-    assert math.isclose(residual, 0.0, abs_tol=EPSILON)
+    assert math.isclose(residual, 0.0, abs_tol=TEST_TOLERANCE)
 
 
 def test_angle_constraint_parallel():
@@ -186,7 +186,7 @@ def test_angle_constraint_parallel():
     )
 
     residual = constraint.residual(positions)
-    assert math.isclose(residual, 0.0, abs_tol=EPSILON)
+    assert math.isclose(residual, 0.0, abs_tol=TEST_TOLERANCE)
 
 
 def test_angle_constraint_45_degrees():
@@ -205,7 +205,7 @@ def test_angle_constraint_45_degrees():
     )
 
     residual = constraint.residual(positions)
-    assert math.isclose(residual, 0.0, abs_tol=EPSILON)
+    assert math.isclose(residual, 0.0, abs_tol=TEST_TOLERANCE)
 
 
 def test_angle_constraint_invalid_target():
@@ -247,7 +247,7 @@ def test_three_point_angle_constraint_45_degrees():
     )
 
     residual = constraint.residual(positions)
-    assert math.isclose(residual, 0.0, abs_tol=EPSILON)
+    assert math.isclose(residual, 0.0, abs_tol=TEST_TOLERANCE)
 
 
 def test_three_point_angle_constraint_90_degrees():
@@ -265,7 +265,7 @@ def test_three_point_angle_constraint_90_degrees():
     )
 
     residual = constraint.residual(positions)
-    assert math.isclose(residual, 0.0, abs_tol=EPSILON)
+    assert math.isclose(residual, 0.0, abs_tol=TEST_TOLERANCE)
 
 
 def test_vectors_parallel_constraint_satisfied():
@@ -283,7 +283,7 @@ def test_vectors_parallel_constraint_satisfied():
     )
 
     residual = constraint.residual(positions)
-    assert math.isclose(residual, 0.0, abs_tol=EPSILON)
+    assert math.isclose(residual, 0.0, abs_tol=TEST_TOLERANCE)
 
 
 def test_vectors_parallel_constraint_violated():
@@ -302,7 +302,7 @@ def test_vectors_parallel_constraint_violated():
 
     residual = constraint.residual(positions)
     # For perpendicular vectors, cross product magnitude is 1
-    assert math.isclose(residual, 1.0, abs_tol=EPSILON)
+    assert math.isclose(residual, 1.0, abs_tol=TEST_TOLERANCE)
 
 
 def test_vectors_perpendicular_constraint_satisfied():
@@ -320,7 +320,7 @@ def test_vectors_perpendicular_constraint_satisfied():
     )
 
     residual = constraint.residual(positions)
-    assert math.isclose(residual, 0.0, abs_tol=EPSILON)
+    assert math.isclose(residual, 0.0, abs_tol=TEST_TOLERANCE)
 
 
 def test_vectors_perpendicular_constraint_violated():
@@ -339,7 +339,7 @@ def test_vectors_perpendicular_constraint_violated():
 
     residual = constraint.residual(positions)
     # For parallel vectors, dot product is 1
-    assert math.isclose(residual, 1.0, abs_tol=EPSILON)
+    assert math.isclose(residual, 1.0, abs_tol=TEST_TOLERANCE)
 
 
 def test_equal_distance_constraint_satisfied():
@@ -357,7 +357,7 @@ def test_equal_distance_constraint_satisfied():
     )
 
     residual = constraint.residual(positions)
-    assert math.isclose(residual, 0.0, abs_tol=EPSILON)
+    assert math.isclose(residual, 0.0, abs_tol=TEST_TOLERANCE)
 
 
 def test_equal_distance_constraint_violated():
@@ -376,7 +376,7 @@ def test_equal_distance_constraint_violated():
 
     residual = constraint.residual(positions)
     # Residual should be 1 - 2 = -1
-    assert math.isclose(residual, -1.0, abs_tol=EPSILON)
+    assert math.isclose(residual, -1.0, abs_tol=TEST_TOLERANCE)
 
 
 def test_fixed_axis_constraint_satisfied_x():
@@ -393,7 +393,7 @@ def test_fixed_axis_constraint_satisfied_x():
     )
 
     residual = constraint.residual(positions)
-    assert math.isclose(residual, 0.0, abs_tol=EPSILON)
+    assert math.isclose(residual, 0.0, abs_tol=TEST_TOLERANCE)
 
 
 def test_fixed_axis_constraint_violated_y():
@@ -411,7 +411,7 @@ def test_fixed_axis_constraint_violated_y():
 
     residual = constraint.residual(positions)
     # Residual should be 0.0 - 0.5 = -0.5
-    assert math.isclose(residual, -0.5, abs_tol=EPSILON)
+    assert math.isclose(residual, -0.5, abs_tol=TEST_TOLERANCE)
 
 
 def test_fixed_axis_constraint_satisfied_z():
@@ -428,7 +428,7 @@ def test_fixed_axis_constraint_satisfied_z():
     )
 
     residual = constraint.residual(positions)
-    assert math.isclose(residual, 0.0, abs_tol=EPSILON)
+    assert math.isclose(residual, 0.0, abs_tol=TEST_TOLERANCE)
 
 
 def test_point_on_line_constraint_on_line():
@@ -448,7 +448,7 @@ def test_point_on_line_constraint_on_line():
     )
 
     residual = constraint.residual(positions)
-    assert math.isclose(residual, 0.0, abs_tol=EPSILON)
+    assert math.isclose(residual, 0.0, abs_tol=TEST_TOLERANCE)
 
 
 def test_point_on_line_constraint_off_line():
@@ -468,7 +468,7 @@ def test_point_on_line_constraint_off_line():
     )
 
     residual = constraint.residual(positions)
-    assert math.isclose(residual, 1.0, abs_tol=EPSILON)
+    assert math.isclose(residual, 1.0, abs_tol=TEST_TOLERANCE)
 
 
 def test_point_on_line_constraint_zero_direction():
@@ -500,7 +500,7 @@ def test_point_on_plane_constraint_on_plane():
     )
 
     residual = constraint.residual(positions)
-    assert math.isclose(residual, 0.0, abs_tol=EPSILON)
+    assert math.isclose(residual, 0.0, abs_tol=TEST_TOLERANCE)
 
 
 def test_point_on_plane_constraint_above_plane():
@@ -520,7 +520,7 @@ def test_point_on_plane_constraint_above_plane():
     )
 
     residual = constraint.residual(positions)
-    assert math.isclose(residual, 1.0, abs_tol=EPSILON)
+    assert math.isclose(residual, 1.0, abs_tol=TEST_TOLERANCE)
 
 
 def test_point_on_plane_constraint_below_plane():
@@ -539,7 +539,7 @@ def test_point_on_plane_constraint_below_plane():
     )
 
     residual = constraint.residual(positions)
-    assert math.isclose(residual, -2.0, abs_tol=EPSILON)
+    assert math.isclose(residual, -2.0, abs_tol=TEST_TOLERANCE)
 
 
 def test_point_on_plane_constraint_zero_normal():
@@ -569,7 +569,7 @@ def test_coplanar_points_constraint_coplanar():
     )
 
     residual = constraint.residual(positions)
-    assert math.isclose(residual, 0.0, abs_tol=EPSILON)
+    assert math.isclose(residual, 0.0, abs_tol=TEST_TOLERANCE)
 
 
 def test_coplanar_points_constraint_non_coplanar():
@@ -588,7 +588,7 @@ def test_coplanar_points_constraint_non_coplanar():
 
     residual = constraint.residual(positions)
     # Scalar triple product of x, y, z unit vectors is 1 (non-coplanar)
-    assert math.isclose(residual, 1.0, abs_tol=EPSILON)
+    assert math.isclose(residual, 1.0, abs_tol=TEST_TOLERANCE)
 
 
 def test_constraint_involved_points():

@@ -3,7 +3,7 @@ import math
 import numpy as np
 import pytest
 
-from kinematics.constants import EPSILON
+from kinematics.constants import TEST_TOLERANCE
 from kinematics.vector_utils.geometric import (
     compute_point_point_distance,
     compute_point_point_midpoint,
@@ -38,27 +38,33 @@ def test_point_distance_unit_vectors():
 
     # Distance from origin to unit vector offset positions should be 1.
     assert math.isclose(
-        compute_point_point_distance(pos["origin"], pos["x_unit"]), 1.0, abs_tol=EPSILON
+        compute_point_point_distance(pos["origin"], pos["x_unit"]),
+        1.0,
+        abs_tol=TEST_TOLERANCE,
     )
     assert math.isclose(
-        compute_point_point_distance(pos["origin"], pos["y_unit"]), 1.0, abs_tol=EPSILON
+        compute_point_point_distance(pos["origin"], pos["y_unit"]),
+        1.0,
+        abs_tol=TEST_TOLERANCE,
     )
     assert math.isclose(
-        compute_point_point_distance(pos["origin"], pos["z_unit"]), 1.0, abs_tol=EPSILON
+        compute_point_point_distance(pos["origin"], pos["z_unit"]),
+        1.0,
+        abs_tol=TEST_TOLERANCE,
     )
 
     # Distance between orthogonal unit vectors should be sqrt(2).
     assert math.isclose(
         compute_point_point_distance(pos["x_unit"], pos["y_unit"]),
         math.sqrt(2),
-        abs_tol=EPSILON,
+        abs_tol=TEST_TOLERANCE,
     )
 
     # Distance from origin to (1,1,1) should be sqrt(3).
     assert math.isclose(
         compute_point_point_distance(pos["origin"], pos["diagonal_xyz"]),
         math.sqrt(3),
-        abs_tol=EPSILON,
+        abs_tol=TEST_TOLERANCE,
     )
 
 
@@ -70,7 +76,7 @@ def test_point_distance_zero():
     assert math.isclose(
         compute_point_point_distance(pos["origin"], pos["origin"]),
         0.0,
-        abs_tol=EPSILON,
+        abs_tol=TEST_TOLERANCE,
     )
 
 
@@ -83,12 +89,12 @@ def test_compute_midpoint_coordinate_axes():
     # Midpoint between origin and x_unit should be (0.5, 0, 0).
     mid = compute_point_point_midpoint(pos["origin"], pos["x_unit"])
     expected = np.array([0.5, 0.0, 0.0])
-    np.testing.assert_allclose(mid, expected, atol=EPSILON)
+    np.testing.assert_allclose(mid, expected, atol=TEST_TOLERANCE)
 
     # Midpoint between x_unit and y_unit should be (0.5, 0.5, 0).
     mid = compute_point_point_midpoint(pos["x_unit"], pos["y_unit"])
     expected = np.array([0.5, 0.5, 0.0])
-    np.testing.assert_allclose(mid, expected, atol=EPSILON)
+    np.testing.assert_allclose(mid, expected, atol=TEST_TOLERANCE)
 
 
 def test_compute_midpoint_diagonal():
@@ -100,7 +106,7 @@ def test_compute_midpoint_diagonal():
     # Midpoint between origin and (1,1,1) should be (0.5, 0.5, 0.5).
     mid = compute_point_point_midpoint(pos["origin"], pos["diagonal_xyz"])
     expected = np.array([0.5, 0.5, 0.5])
-    np.testing.assert_allclose(mid, expected, atol=EPSILON)
+    np.testing.assert_allclose(mid, expected, atol=TEST_TOLERANCE)
 
 
 def test_compute_vector_angle_perpendicular():
@@ -111,11 +117,11 @@ def test_compute_vector_angle_perpendicular():
 
     # X and Y axes are perpendicular.
     angle = compute_vector_vector_angle(pos["x_unit"], pos["y_unit"])
-    assert math.isclose(angle, math.pi / 2, abs_tol=EPSILON)
+    assert math.isclose(angle, math.pi / 2, abs_tol=TEST_TOLERANCE)
 
     # Y and Z axes are perpendicular.
     angle = compute_vector_vector_angle(pos["y_unit"], pos["z_unit"])
-    assert math.isclose(angle, math.pi / 2, abs_tol=EPSILON)
+    assert math.isclose(angle, math.pi / 2, abs_tol=TEST_TOLERANCE)
 
 
 def test_compute_vector_angle_parallel():
@@ -126,12 +132,12 @@ def test_compute_vector_angle_parallel():
 
     # Vector with itself.
     angle = compute_vector_vector_angle(pos["x_unit"], pos["x_unit"])
-    assert math.isclose(angle, 0.0, abs_tol=EPSILON)
+    assert math.isclose(angle, 0.0, abs_tol=TEST_TOLERANCE)
 
     # Parallel vectors (same direction).
     v1 = np.array([2.0, 0.0, 0.0])  # 2x along X.
     angle = compute_vector_vector_angle(pos["x_unit"], v1)
-    assert math.isclose(angle, 0.0, abs_tol=EPSILON)
+    assert math.isclose(angle, 0.0, abs_tol=TEST_TOLERANCE)
 
 
 def test_compute_vector_angle_antiparallel():
@@ -143,7 +149,7 @@ def test_compute_vector_angle_antiparallel():
     # Opposite directions along X axis.
     v_neg_x = np.array([-1.0, 0.0, 0.0])
     angle = compute_vector_vector_angle(pos["x_unit"], v_neg_x)
-    assert math.isclose(angle, math.pi, abs_tol=EPSILON)
+    assert math.isclose(angle, math.pi, abs_tol=TEST_TOLERANCE)
 
 
 def test_compute_vector_angle_45_degrees():
@@ -154,7 +160,7 @@ def test_compute_vector_angle_45_degrees():
 
     # X unit vector and diagonal (1,1,0) should form 45 degrees.
     angle = compute_vector_vector_angle(pos["x_unit"], pos["diagonal_xy"])
-    assert math.isclose(angle, math.pi / 4, abs_tol=EPSILON)
+    assert math.isclose(angle, math.pi / 4, abs_tol=TEST_TOLERANCE)
 
 
 def test_compute_vector_angle_zero_vector():
@@ -179,7 +185,7 @@ def test_cross_product_magnitude_perpendicular():
 
     # Perpendicular unit vectors have cross product magnitude 1.
     cross_mag = compute_vectors_cross_product_magnitude(pos["x_unit"], pos["y_unit"])
-    assert math.isclose(cross_mag, 1.0, abs_tol=EPSILON)
+    assert math.isclose(cross_mag, 1.0, abs_tol=TEST_TOLERANCE)
 
 
 def test_cross_product_magnitude_parallel():
@@ -191,7 +197,7 @@ def test_cross_product_magnitude_parallel():
     # Parallel vectors have cross product magnitude 0.
     v_parallel = np.array([2.0, 0.0, 0.0])  # Parallel to x_unit
     cross_mag = compute_vectors_cross_product_magnitude(pos["x_unit"], v_parallel)
-    assert math.isclose(cross_mag, 0.0, abs_tol=EPSILON)
+    assert math.isclose(cross_mag, 0.0, abs_tol=TEST_TOLERANCE)
 
 
 def test_cross_product_magnitude_45_degrees():
@@ -205,7 +211,7 @@ def test_cross_product_magnitude_45_degrees():
         pos["x_unit"], pos["diagonal_xy"]
     )
     expected = math.sin(math.pi / 4)  # sqrt(2)/2 ~= 0.707
-    assert math.isclose(cross_mag, expected, abs_tol=EPSILON)
+    assert math.isclose(cross_mag, expected, abs_tol=TEST_TOLERANCE)
 
 
 def test_dot_product_perpendicular():
@@ -216,7 +222,7 @@ def test_dot_product_perpendicular():
 
     # Perpendicular unit vectors have dot product 0.
     dot = compute_vectors_dot_product(pos["x_unit"], pos["y_unit"])
-    assert math.isclose(dot, 0.0, abs_tol=EPSILON)
+    assert math.isclose(dot, 0.0, abs_tol=TEST_TOLERANCE)
 
 
 def test_dot_product_parallel():
@@ -228,7 +234,7 @@ def test_dot_product_parallel():
     # Parallel unit vectors have dot product 1.
     v_parallel = np.array([2.0, 0.0, 0.0])  # Parallel to x_unit
     dot = compute_vectors_dot_product(pos["x_unit"], v_parallel)
-    assert math.isclose(dot, 1.0, abs_tol=EPSILON)
+    assert math.isclose(dot, 1.0, abs_tol=TEST_TOLERANCE)
 
 
 def test_dot_product_antiparallel():
@@ -240,7 +246,7 @@ def test_dot_product_antiparallel():
     # Anti-parallel unit vectors have dot product -1.
     v_antiparallel = np.array([-1.0, 0.0, 0.0])
     dot = compute_vectors_dot_product(pos["x_unit"], v_antiparallel)
-    assert math.isclose(dot, -1.0, abs_tol=EPSILON)
+    assert math.isclose(dot, -1.0, abs_tol=TEST_TOLERANCE)
 
 
 def test_dot_product_45_degrees():
@@ -252,7 +258,7 @@ def test_dot_product_45_degrees():
     # 45 degree angle should give dot product cos(pi/4) = sqrt(2)/2
     dot = compute_vectors_dot_product(pos["x_unit"], pos["diagonal_xy"])
     expected = math.cos(math.pi / 4)  # sqrt(2)/2 ~= 0.707
-    assert math.isclose(dot, expected, abs_tol=EPSILON)
+    assert math.isclose(dot, expected, abs_tol=TEST_TOLERANCE)
 
 
 def test_point_to_line_distance_on_line():
@@ -267,7 +273,7 @@ def test_point_to_line_distance_on_line():
     test_point = np.array([0.0, 2.0, 0.0])  # On Y axis
 
     distance = compute_point_to_line_distance(test_point, line_point, line_direction)
-    assert math.isclose(distance, 0.0, abs_tol=EPSILON)
+    assert math.isclose(distance, 0.0, abs_tol=TEST_TOLERANCE)
 
 
 def test_point_to_line_distance_perpendicular():
@@ -282,7 +288,7 @@ def test_point_to_line_distance_perpendicular():
     test_point = pos["x_unit"]
 
     distance = compute_point_to_line_distance(test_point, line_point, line_direction)
-    assert math.isclose(distance, 1.0, abs_tol=EPSILON)
+    assert math.isclose(distance, 1.0, abs_tol=TEST_TOLERANCE)
 
 
 def test_point_to_line_distance_diagonal():
@@ -297,7 +303,7 @@ def test_point_to_line_distance_diagonal():
     test_point = pos["diagonal_xy"]
 
     distance = compute_point_to_line_distance(test_point, line_point, line_direction)
-    assert math.isclose(distance, 1.0, abs_tol=EPSILON)
+    assert math.isclose(distance, 1.0, abs_tol=TEST_TOLERANCE)
 
 
 def test_point_to_plane_distance_on_plane():
@@ -312,7 +318,7 @@ def test_point_to_plane_distance_on_plane():
     test_point = pos["diagonal_xy"]  # (1,1,0) - on Z=0 plane
 
     distance = compute_point_to_plane_distance(test_point, plane_point, plane_normal)
-    assert math.isclose(distance, 0.0, abs_tol=EPSILON)
+    assert math.isclose(distance, 0.0, abs_tol=TEST_TOLERANCE)
 
 
 def test_point_to_plane_distance_positive():
@@ -327,7 +333,7 @@ def test_point_to_plane_distance_positive():
     test_point = np.array([0.0, 0.0, 2.0])  # 2 units above Z=0.
 
     distance = compute_point_to_plane_distance(test_point, plane_point, plane_normal)
-    assert math.isclose(distance, 2.0, abs_tol=EPSILON)
+    assert math.isclose(distance, 2.0, abs_tol=TEST_TOLERANCE)
 
 
 def test_point_to_plane_distance_negative():
@@ -342,7 +348,7 @@ def test_point_to_plane_distance_negative():
     test_point = np.array([0.0, 0.0, -1.5])  # 1.5 units below Z=0
 
     distance = compute_point_to_plane_distance(test_point, plane_point, plane_normal)
-    assert math.isclose(distance, -1.5, abs_tol=EPSILON)
+    assert math.isclose(distance, -1.5, abs_tol=TEST_TOLERANCE)
 
 
 def test_scalar_triple_product_right_handed_basis():
@@ -357,7 +363,7 @@ def test_scalar_triple_product_right_handed_basis():
         pos["y_unit"],
         pos["z_unit"],
     )
-    assert math.isclose(triple_product, 1.0, abs_tol=EPSILON)
+    assert math.isclose(triple_product, 1.0, abs_tol=TEST_TOLERANCE)
 
 
 def test_scalar_triple_product_left_handed_basis():
@@ -372,7 +378,7 @@ def test_scalar_triple_product_left_handed_basis():
         pos["z_unit"],
         pos["y_unit"],
     )
-    assert math.isclose(triple_product, -1.0, abs_tol=EPSILON)
+    assert math.isclose(triple_product, -1.0, abs_tol=TEST_TOLERANCE)
 
 
 def test_scalar_triple_product_coplanar():
@@ -387,7 +393,7 @@ def test_scalar_triple_product_coplanar():
     v3 = pos["diagonal_xy"]  # Also in XY plane
 
     triple_product = compute_scalar_triple_product(v1, v2, v3)
-    assert math.isclose(triple_product, 0.0, abs_tol=EPSILON)
+    assert math.isclose(triple_product, 0.0, abs_tol=TEST_TOLERANCE)
 
 
 def test_zero_vector_errors():

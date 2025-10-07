@@ -5,7 +5,7 @@ Tests for the generic vector utility functions.
 import numpy as np
 import pytest
 
-from kinematics.constants import EPSILON
+from kinematics.constants import EPSILON, TEST_TOLERANCE
 from kinematics.vector_utils.generic import normalize_vector, project_coordinate
 
 
@@ -21,8 +21,8 @@ class TestNormalizeVector:
         v = np.array([1.0, 0.0, 0.0])
         result = normalize_vector(v)
         expected = np.array([1.0, 0.0, 0.0])
-        np.testing.assert_allclose(result, expected, atol=EPSILON)
-        assert np.isclose(np.linalg.norm(result), 1.0, atol=EPSILON)
+        np.testing.assert_allclose(result, expected, atol=TEST_TOLERANCE)
+        assert np.isclose(np.linalg.norm(result), 1.0, atol=TEST_TOLERANCE)
 
     def test_normalize_unit_vector_y(self):
         """
@@ -31,8 +31,8 @@ class TestNormalizeVector:
         v = np.array([0.0, 1.0, 0.0])
         result = normalize_vector(v)
         expected = np.array([0.0, 1.0, 0.0])
-        np.testing.assert_allclose(result, expected, atol=EPSILON)
-        assert np.isclose(np.linalg.norm(result), 1.0, atol=EPSILON)
+        np.testing.assert_allclose(result, expected, atol=TEST_TOLERANCE)
+        assert np.isclose(np.linalg.norm(result), 1.0, atol=TEST_TOLERANCE)
 
     def test_normalize_unit_vector_z(self):
         """
@@ -41,8 +41,8 @@ class TestNormalizeVector:
         v = np.array([0.0, 0.0, 1.0])
         result = normalize_vector(v)
         expected = np.array([0.0, 0.0, 1.0])
-        np.testing.assert_allclose(result, expected, atol=EPSILON)
-        assert np.isclose(np.linalg.norm(result), 1.0, atol=EPSILON)
+        np.testing.assert_allclose(result, expected, atol=TEST_TOLERANCE)
+        assert np.isclose(np.linalg.norm(result), 1.0, atol=TEST_TOLERANCE)
 
     def test_normalize_scaled_vector(self):
         """
@@ -51,8 +51,8 @@ class TestNormalizeVector:
         v = np.array([3.0, 4.0, 0.0])  # Magnitude = 5.
         result = normalize_vector(v)
         expected = np.array([0.6, 0.8, 0.0])
-        np.testing.assert_allclose(result, expected, atol=EPSILON)
-        assert np.isclose(np.linalg.norm(result), 1.0, atol=EPSILON)
+        np.testing.assert_allclose(result, expected, atol=TEST_TOLERANCE)
+        assert np.isclose(np.linalg.norm(result), 1.0, atol=TEST_TOLERANCE)
 
     def test_normalize_3d_vector(self):
         """
@@ -61,8 +61,8 @@ class TestNormalizeVector:
         v = np.array([1.0, 2.0, 2.0])  # Magnitude = 3.
         result = normalize_vector(v)
         expected = np.array([1 / 3, 2 / 3, 2 / 3])
-        np.testing.assert_allclose(result, expected, atol=EPSILON)
-        assert np.isclose(np.linalg.norm(result), 1.0, atol=EPSILON)
+        np.testing.assert_allclose(result, expected, atol=TEST_TOLERANCE)
+        assert np.isclose(np.linalg.norm(result), 1.0, atol=TEST_TOLERANCE)
 
     def test_normalize_negative_vector(self):
         """
@@ -71,8 +71,8 @@ class TestNormalizeVector:
         v = np.array([-3.0, -4.0, 0.0])
         result = normalize_vector(v)
         expected = np.array([-0.6, -0.8, 0.0])
-        np.testing.assert_allclose(result, expected, atol=EPSILON)
-        assert np.isclose(np.linalg.norm(result), 1.0, atol=EPSILON)
+        np.testing.assert_allclose(result, expected, atol=TEST_TOLERANCE)
+        assert np.isclose(np.linalg.norm(result), 1.0, atol=TEST_TOLERANCE)
 
     def test_normalize_mixed_sign_vector(self):
         """
@@ -81,8 +81,8 @@ class TestNormalizeVector:
         v = np.array([3.0, -4.0, 0.0])
         result = normalize_vector(v)
         expected = np.array([0.6, -0.8, 0.0])
-        np.testing.assert_allclose(result, expected, atol=EPSILON)
-        assert np.isclose(np.linalg.norm(result), 1.0, atol=EPSILON)
+        np.testing.assert_allclose(result, expected, atol=TEST_TOLERANCE)
+        assert np.isclose(np.linalg.norm(result), 1.0, atol=TEST_TOLERANCE)
 
     def test_normalize_2d_vector(self):
         """
@@ -91,8 +91,8 @@ class TestNormalizeVector:
         v = np.array([3.0, 4.0])
         result = normalize_vector(v)
         expected = np.array([0.6, 0.8])
-        np.testing.assert_allclose(result, expected, atol=EPSILON)
-        assert np.isclose(np.linalg.norm(result), 1.0, atol=EPSILON)
+        np.testing.assert_allclose(result, expected, atol=TEST_TOLERANCE)
+        assert np.isclose(np.linalg.norm(result), 1.0, atol=TEST_TOLERANCE)
 
     def test_normalize_higher_dimension_vector(self):
         """
@@ -101,18 +101,18 @@ class TestNormalizeVector:
         v = np.array([1.0, 1.0, 1.0, 1.0])  # Magnitude = 2.
         result = normalize_vector(v)
         expected = np.array([0.5, 0.5, 0.5, 0.5])
-        np.testing.assert_allclose(result, expected, atol=EPSILON)
-        assert np.isclose(np.linalg.norm(result), 1.0, atol=EPSILON)
+        np.testing.assert_allclose(result, expected, atol=TEST_TOLERANCE)
+        assert np.isclose(np.linalg.norm(result), 1.0, atol=TEST_TOLERANCE)
 
     def test_normalize_very_small_vector(self):
         """
         Test normalizing a very small but non-zero vector.
         """
-        v = np.array([EPSILON * 10, 0.0, 0.0])
+        v = np.array([TEST_TOLERANCE * 10, 0.0, 0.0])
         result = normalize_vector(v)
         expected = np.array([1.0, 0.0, 0.0])
-        np.testing.assert_allclose(result, expected, atol=EPSILON)
-        assert np.isclose(np.linalg.norm(result), 1.0, atol=EPSILON)
+        np.testing.assert_allclose(result, expected, atol=TEST_TOLERANCE)
+        assert np.isclose(np.linalg.norm(result), 1.0, atol=TEST_TOLERANCE)
 
     def test_normalize_zero_vector_raises_error(self):
         """
@@ -151,7 +151,7 @@ class TestProjectCoordinate:
         position = np.array([3.0, 2.0, 1.0])
         direction = np.array([1.0, 0.0, 0.0])
         result = project_coordinate(position, direction)
-        assert np.isclose(result, 3.0, atol=EPSILON)
+        assert np.isclose(result, 3.0, atol=TEST_TOLERANCE)
 
     def test_project_along_y_axis(self):
         """
@@ -160,7 +160,7 @@ class TestProjectCoordinate:
         position = np.array([3.0, 2.0, 1.0])
         direction = np.array([0.0, 1.0, 0.0])
         result = project_coordinate(position, direction)
-        assert np.isclose(result, 2.0, atol=EPSILON)
+        assert np.isclose(result, 2.0, atol=TEST_TOLERANCE)
 
     def test_project_along_z_axis(self):
         """
@@ -169,7 +169,7 @@ class TestProjectCoordinate:
         position = np.array([3.0, 2.0, 1.0])
         direction = np.array([0.0, 0.0, 1.0])
         result = project_coordinate(position, direction)
-        assert np.isclose(result, 1.0, atol=EPSILON)
+        assert np.isclose(result, 1.0, atol=TEST_TOLERANCE)
 
     def test_project_along_diagonal(self):
         """
@@ -181,7 +181,7 @@ class TestProjectCoordinate:
         )  # Normalized diagonal.
         result = project_coordinate(position, direction)
         expected = np.sqrt(2)  # ||(1,1,0)|| projected onto (1/sqrt(2), 1/sqrt(2), 0).
-        assert np.isclose(result, expected, atol=EPSILON)
+        assert np.isclose(result, expected, atol=TEST_TOLERANCE)
 
     def test_project_negative_direction(self):
         """
@@ -190,7 +190,7 @@ class TestProjectCoordinate:
         position = np.array([3.0, 2.0, 1.0])
         direction = np.array([-1.0, 0.0, 0.0])
         result = project_coordinate(position, direction)
-        assert np.isclose(result, -3.0, atol=EPSILON)
+        assert np.isclose(result, -3.0, atol=TEST_TOLERANCE)
 
     def test_project_orthogonal_vectors(self):
         """
@@ -199,7 +199,7 @@ class TestProjectCoordinate:
         position = np.array([1.0, 0.0, 0.0])
         direction = np.array([0.0, 1.0, 0.0])
         result = project_coordinate(position, direction)
-        assert np.isclose(result, 0.0, atol=EPSILON)
+        assert np.isclose(result, 0.0, atol=TEST_TOLERANCE)
 
     def test_project_zero_position(self):
         """
@@ -208,7 +208,7 @@ class TestProjectCoordinate:
         position = np.array([0.0, 0.0, 0.0])
         direction = np.array([1.0, 0.0, 0.0])
         result = project_coordinate(position, direction)
-        assert np.isclose(result, 0.0, atol=EPSILON)
+        assert np.isclose(result, 0.0, atol=TEST_TOLERANCE)
 
     def test_project_arbitrary_unit_direction(self):
         """
@@ -222,7 +222,7 @@ class TestProjectCoordinate:
 
         # Manual calculation: dot product.
         expected = np.dot(position, direction)
-        assert np.isclose(result, expected, atol=EPSILON)
+        assert np.isclose(result, expected, atol=TEST_TOLERANCE)
 
     def test_project_returns_float(self):
         """
@@ -258,7 +258,7 @@ class TestProjectCoordinate:
         position = np.array([1.0, 2.0, 3.0])
         # Create a direction vector that's almost but not exactly unit length.
         direction = np.array([1.0 + EPSILON / 2, 0.0, 0.0])
-        # This should pass since the difference is within EPSILON tolerance.
+        # This should pass since the difference is within TEST_TOLERANCE tolerance.
         result = project_coordinate(position, direction)
         # Should be close to projecting onto [1,0,0].
         assert np.isclose(result, 1.0, atol=1e-3)
