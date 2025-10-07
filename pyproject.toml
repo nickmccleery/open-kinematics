@@ -68,8 +68,9 @@ exclude_lines = [
 ]
 
 
-# [tool.uv.workspace]
-# members = ["src/kinematics"]
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-# [tool.hatchling.build.targets.wheel]
-# packages = ["src/kinematics"]
+[tool.hatch.build.targets.wheel]
+packages = ["src/kinematics"]
