@@ -42,10 +42,12 @@ def compute_point_point_midpoint(p1: Vec3, p2: Vec3) -> Vec3:
 
 def compute_vector_vector_angle(v1: Vec3, v2: Vec3) -> float:
     """
-    Compute the angle between two vectors in radians.
+    Compute the angle between two vectors in radians using atan2 for robustness.
 
     The vectors are automatically normalized before computing the angle,
-    so input vectors do not need to be unit length.
+    so input vectors do not need to be unit length. Uses atan2 of the cross
+    product magnitude and dot product to avoid numerical instability near
+    parallel/anti-parallel vectors.
 
     Args:
         v1: First vector in 3D space.
@@ -55,8 +57,20 @@ def compute_vector_vector_angle(v1: Vec3, v2: Vec3) -> float:
         The angle between the vectors in radians (0 to π).
 
     Raises:
-        ValueError: If either input vector has zero length.
+        ValueError: If either input vector has zero length (magnitude < EPSILON).
+
+    References:
+        Ericson, C. "Real-Time Collision Detection" (2004), Section 3.3.2, p. 39
     """
+    # Will raise ValueError if either vector is zero-length.
     v1_norm = normalize_vector(v1)
     v2_norm = normalize_vector(v2)
-    return float(np.arccos(np.clip(np.dot(v1_norm, v2_norm), -1.0, 1.0)))
+
+    dot = np.dot(v1_norm, v2_norm)
+    cross = np.cross(v1_norm, v2_norm)
+    cross_magnitude = np.linalg.norm(cross)
+
+    # atan2 handles all edge cases gracefully (parallel, anti-parallel, perpendicular).
+    theta = np.arctan2(cross_magnitude, dot)
+
+    return float(theta)
