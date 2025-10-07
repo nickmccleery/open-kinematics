@@ -35,6 +35,7 @@ from kinematics.vector_utils.geometric import (
     compute_point_point_distance,
     compute_vector_vector_angle,
 )
+from kinematics.visualization.main import LinkVisualization
 
 
 @dataclass
@@ -269,3 +270,52 @@ class DoubleWishboneProvider(SuspensionProvider):
         )
 
         return constraints
+
+    def get_visualization_links(self) -> list[LinkVisualization]:
+        """
+        Get the visualization links for rendering the double wishbone suspension.
+
+        Returns:
+            List of link definitions specifying how to visualize the suspension
+            structure, including wishbones, upright, track rod, and axle.
+        """
+        return [
+            LinkVisualization(
+                points=[
+                    PointID.UPPER_WISHBONE_INBOARD_FRONT,
+                    PointID.UPPER_WISHBONE_OUTBOARD,
+                    PointID.UPPER_WISHBONE_INBOARD_REAR,
+                ],
+                color="dodgerblue",
+                label="Upper Wishbone",
+            ),
+            LinkVisualization(
+                points=[
+                    PointID.LOWER_WISHBONE_INBOARD_FRONT,
+                    PointID.LOWER_WISHBONE_OUTBOARD,
+                    PointID.LOWER_WISHBONE_INBOARD_REAR,
+                ],
+                color="dodgerblue",
+                label="Lower Wishbone",
+            ),
+            LinkVisualization(
+                points=[
+                    PointID.TRACKROD_OUTBOARD,
+                    PointID.UPPER_WISHBONE_OUTBOARD,
+                    PointID.LOWER_WISHBONE_OUTBOARD,
+                    PointID.TRACKROD_OUTBOARD,
+                ],
+                color="slategrey",
+                label="Upright",
+            ),
+            LinkVisualization(
+                points=[PointID.TRACKROD_INBOARD, PointID.TRACKROD_OUTBOARD],
+                color="darkorange",
+                label="Track Rod",
+            ),
+            LinkVisualization(
+                points=[PointID.AXLE_INBOARD, PointID.AXLE_OUTBOARD],
+                color="forestgreen",
+                label="Axle",
+            ),
+        ]

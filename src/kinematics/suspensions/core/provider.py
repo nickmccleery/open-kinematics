@@ -16,6 +16,7 @@ from kinematics.points.derived.manager import DerivedPointsSpec
 
 if TYPE_CHECKING:
     from kinematics.suspensions.core.geometry import SuspensionGeometry
+    from kinematics.visualization.main import LinkVisualization
 
 from kinematics.state import SuspensionState
 
@@ -29,7 +30,7 @@ class SuspensionProvider(ABC):
     constraints.
     """
 
-    def __init__(self, geometry: "SuspensionGeometry") -> None:  # type: ignore[name-defined]
+    def __init__(self, geometry: "SuspensionGeometry") -> None:
         """
         Base initializer establishes the expected constructor signature for providers.
 
@@ -77,5 +78,16 @@ class SuspensionProvider(ABC):
 
         Returns:
             List of constraints that must be satisfied during solving.
+        """
+        ...
+
+    @abstractmethod
+    def get_visualization_links(self) -> "list[LinkVisualization]":
+        """
+        Get the visualization links for rendering the suspension.
+
+        Returns:
+            List of link definitions specifying how to visualize the suspension
+            structure, including connection points, colors, and visual properties.
         """
         ...

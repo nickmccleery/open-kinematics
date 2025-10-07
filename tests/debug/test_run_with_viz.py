@@ -7,7 +7,7 @@ from kinematics.constants import TEST_TOLERANCE
 from kinematics.constraints import DistanceConstraint
 from kinematics.enums import Axis, PointID, TargetPositionMode
 from kinematics.io.geometry_loader import load_geometry
-from kinematics.main import solve_suspension_sweep
+from kinematics.main import solve_sweep
 from kinematics.points.derived.manager import DerivedPointsManager
 from kinematics.solver import PointTarget
 from kinematics.suspensions.implementations.double_wishbone import (
@@ -74,7 +74,7 @@ def test_run_solver(
         raise ValueError("Invalid geometry type")
 
     # Solve for all positions.
-    position_states = solve_suspension_sweep(loaded.provider, sweep_config_fixture)
+    position_states, _ = solve_sweep(loaded.provider, sweep_config_fixture)
 
     print("Solve complete, verifying constraints...")
 
@@ -136,7 +136,8 @@ def test_run_solver(
         width=225,
     )
 
-    visualizer = SuspensionVisualizer(loaded.geometry, wheel_config)
+    visualization_links = loaded.provider.get_visualization_links()
+    visualizer = SuspensionVisualizer(visualization_links, wheel_config)
     create_animation(
         position_states_animate,
         initial_positions,
