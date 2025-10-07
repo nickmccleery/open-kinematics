@@ -5,6 +5,7 @@ This module provides functions to solve suspension kinematics by satisfying geom
 constraints and position targets using Levenberg-Marquardt.
 """
 
+from dataclasses import dataclass
 from typing import NamedTuple
 
 import numpy as np
@@ -43,6 +44,22 @@ class SolverConfig(NamedTuple):
     xtol: float = SOLVE_TOLERANCE_STEP
     gtol: float = SOLVE_TOLERANCE_GRAD
     verbose: int = 0
+
+
+@dataclass
+class SolverInfo:
+    """
+    Information about the solver's execution for a single solve step.
+
+    Attributes:
+        converged (bool): Whether the solver converged to a solution.
+        nfev (int): Number of function evaluations performed.
+        max_residual (float): Maximum residual value in the final solution.
+    """
+
+    converged: bool
+    nfev: int
+    max_residual: float
 
 
 class ResidualComputer:
@@ -159,7 +176,7 @@ def solve_suspension_sweep(
     sweep_config: SweepConfig,
     derived_manager: DerivedPointsManager,
     solver_config: SolverConfig = SolverConfig(),
-) -> list[SuspensionState]:
+) -> tuple[list[SuspensionState], list[SolverInfo]]:
     """
     Solves a series of kinematic states by sweeping through target configurations using
     damped non-linear least squares. This function performs a sweep where each step in
@@ -174,7 +191,8 @@ def solve_suspension_sweep(
         solver_config (SolverConfig): Configuration parameters for the solver.
 
     Returns:
-        list[SuspensionState]: List of solved suspension states for each step in the sweep.
+        tuple[list[SuspensionState], list[SolverInfo]]: Tuple containing the list of
+        solved suspension states and corresponding solver information for each step in the sweep.
     """
     # Convert all targets to absolute coordinates once before solving
     sweep_targets = [
@@ -190,6 +208,7 @@ def solve_suspension_sweep(
     # For each step in our sweep, we will keep a copy of the solved state; this is
     # our result dataset.
     solution_states: list[SuspensionState] = []
+    solver_stats: list[SolverInfo] = []
 
     # Residual computation utility; has explicit state reference and in-place derived
     # updates.
@@ -241,7 +260,16 @@ def solve_suspension_sweep(
         # Store finalized state for this step.
         solution_states.append(working_state.copy())
 
+        # Collect solver information for this step.
+        max_residual = float(np.max(np.abs(result.fun))) if len(result.fun) > 0 else 0.0
+        solver_info = SolverInfo(
+            converged=result.success,
+            nfev=result.nfev,
+            max_residual=max_residual,
+        )
+        solver_stats.append(solver_info)
+
         # The result becomes our local first guess for the next step.
         x_0 = result.x
 
-    return solution_states
+    return solution_states, solver_stats

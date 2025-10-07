@@ -30,13 +30,13 @@ def sweep(
     loaded = load_geometry(geometry)
     sweep_config = parse_sweep_file(sweep)
 
-    solution_states = solve_sweep(loaded.provider, sweep_config)
+    solution_states, solver_infos = solve_sweep(loaded.provider, sweep_config)
 
     # Write out in wide format.
     writer = create_writer_for_path(
         out, geometry_path=str(geometry), sweep_path=str(sweep)
     )
-    for idx, st in enumerate(solution_states):
+    for idx, (st, solver_info) in enumerate(zip(solution_states, solver_infos)):
         positions = {
             (PointID(pid).name if isinstance(pid, PointID) else str(pid)): (
                 float(pos[0]),
@@ -45,7 +45,9 @@ def sweep(
             )
             for pid, pos in st.positions.items()
         }
-        frame = SolutionFrame(positions=positions)
+
+        frame = SolutionFrame(positions=positions, solver_info=solver_info)
+
         writer.add_frame(idx, frame)
     writer.write()
 

@@ -9,13 +9,15 @@ import hashlib
 import json
 import time
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Any
 
 import pyarrow as pa
 import pyarrow.parquet as pq
+
+from kinematics.main import SolverInfo
 
 
 class MetadataKey(Enum):
@@ -80,13 +82,11 @@ class SolutionFrame:
 
     Attributes:
         positions (dict[str, tuple[float, float, float]]): Dictionary mapping point IDs to (x, y, z) coordinates.
-        derived (dict[str, float]): Optional dictionary of derived scalar quantities.
         solver_info (dict[str, Any]): Optional dictionary of solver diagnostic information.
     """
 
     positions: dict[str, tuple[float, float, float]]
-    derived: dict[str, float] = field(default_factory=dict)
-    solver_info: dict[str, Any] = field(default_factory=dict)
+    solver_info: SolverInfo
 
 
 class BaseResultsWriter(ABC):
@@ -146,23 +146,15 @@ class BaseResultsWriter(ABC):
         row: dict[str, Any] = {
             StandardColumn.STEP_INDEX.value: int(frame_index),
         }
-        row[StandardColumn.SOLVER_CONVERGED.value] = bool(
-            frame.solver_info.get("converged", True)
-        )
-        row[StandardColumn.SOLVER_MAX_RESIDUAL.value] = float(
-            frame.solver_info.get("max_residual", 0.0)
-        )
-        row[StandardColumn.SOLVER_NFEV.value] = int(frame.solver_info.get("nfev", 0))
+        row[StandardColumn.SOLVER_CONVERGED.value] = frame.solver_info.converged
+        row[StandardColumn.SOLVER_MAX_RESIDUAL.value] = frame.solver_info.max_residual
+        row[StandardColumn.SOLVER_NFEV.value] = frame.solver_info.nfev
 
         # Flatten position data into separate x/y/z columns.
         for point_id, (x, y, z) in frame.positions.items():
             row[f"{point_id}_x"] = float(x)
             row[f"{point_id}_y"] = float(y)
             row[f"{point_id}_z"] = float(z)
-
-        # Add derived quantities with prefix.
-        for key, value in frame.derived.items():
-            row[f"derived_{key}"] = float(value)
 
         self.frames.append(row)
 
@@ -221,8 +213,7 @@ class ParquetWriter(BaseResultsWriter):
         for frame_idx, solution in enumerate(solutions):
             frame = SolutionFrame(
                 positions={"WHEEL_CENTER": (0.0, 100.0, 50.0), ...},
-                derived={"camber": -3.5},
-                solver_info={"converged": True, "nfev": 12}
+                solver_info=SolverInfo(converged=True, nfev=12, max_residual=0.001)
             )
             writer.add_frame(frame_idx, frame)
 
@@ -318,8 +309,7 @@ class CsvWriter(BaseResultsWriter):
         for frame_idx, solution in enumerate(solutions):
             frame = SolutionFrame(
                 positions={"WHEEL_CENTER": (0.0, 100.0, 50.0), ...},
-                derived={"camber": -3.5},
-                solver_info={"converged": True, "nfev": 12}
+                solver_info=SolverInfo(converged=True, nfev=12, max_residual=0.001)
             )
             writer.add_frame(frame_idx, frame)
 
