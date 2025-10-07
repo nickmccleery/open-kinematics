@@ -10,6 +10,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import pyarrow as pa
 import pyarrow.parquet as pq
 
@@ -225,7 +226,7 @@ class ParquetWriter(BaseResultsWriter):
         conversions.
 
         Raises:
-            ValueError: If no frames have been added.
+            ValueError: If no frames have been added or data is malformed.
             OSError: If the file cannot be written.
         """
         if not self.frames:
@@ -243,6 +244,33 @@ class ParquetWriter(BaseResultsWriter):
             for col in all_columns:
                 column_data[col].append(frame.get(col))
 
+        # Validate data types and shapes before type inference.
+        for col in all_columns:
+            values = column_data[col]
+
+            for frame_idx, val in enumerate(values):
+                if val is None:
+                    continue  # None is always acceptable
+
+                # Check for nested structures (lists, tuples, arrays).
+                if isinstance(val, (list, tuple, np.ndarray)):
+                    raise ValueError(
+                        f"Column '{col}' at frame {frame_idx} contains nested data: {val!r}. "
+                        f"Expected scalar value (bool, int, float, or str). "
+                        f"This usually indicates corrupted position data - check that all "
+                        f"point coordinates are being flattened correctly (e.g., positions "
+                        f"should be stored as separate _x, _y, _z columns)."
+                    )
+
+                # Check for unexpected types.
+                if not isinstance(val, (bool, int, float, str)):
+                    raise ValueError(
+                        f"Column '{col}' at frame {frame_idx} contains unexpected type "
+                        f"{type(val).__name__}: {val!r}. Expected bool, int, float, str, or None. "
+                        f"This indicates data corruption in the solver or state management."
+                    )
+
+        # Now proceed with type inference (existing code continues unchanged)
         # Infer appropriate Arrow types for each column.
         arrays: list[pa.Array] = []
         names: list[str] = []
@@ -320,7 +348,7 @@ class CsvWriter(BaseResultsWriter):
         ordering. Metadata is written as comments at the top of the file.
 
         Raises:
-            ValueError: If no frames have been added.
+            ValueError: If no frames have been added or data is malformed.
             OSError: If the file cannot be written.
         """
         if not self.frames:
@@ -331,6 +359,28 @@ class CsvWriter(BaseResultsWriter):
 
         # Validate consistent columns and get column list.
         all_columns = self.build_column_list()
+
+        # Validate data types and shapes.
+        for frame_idx, frame in enumerate(self.frames):
+            for col in all_columns:
+                val = frame.get(col)
+
+                if val is None:
+                    continue  # None is acceptable
+
+                # Check for nested structures.
+                if isinstance(val, (list, tuple, np.ndarray)):
+                    raise ValueError(
+                        f"Frame {frame_idx}, column '{col}' contains nested data: {val!r}. "
+                        f"Expected scalar value. Check position data flattening."
+                    )
+
+                # Check for unexpected types.
+                if not isinstance(val, (bool, int, float, str)):
+                    raise ValueError(
+                        f"Frame {frame_idx}, column '{col}' contains unexpected type "
+                        f"{type(val).__name__}: {val!r}. Expected bool, int, float, str, or None."
+                    )
 
         # Ensure output directory exists.
         self.output_path.parent.mkdir(parents=True, exist_ok=True)
