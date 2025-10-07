@@ -2,7 +2,7 @@ import numpy as np
 
 from kinematics.enums import Axis, PointID, TargetPositionMode
 from kinematics.points.derived.manager import DerivedPointsManager, DerivedPointsSpec
-from kinematics.solver import resolve_targets_to_absolute, solve_suspension_sweep
+from kinematics.solver import convert_targets_to_absolute, solve_suspension_sweep
 from kinematics.state import SuspensionState
 from kinematics.types import PointTarget, PointTargetAxis, SweepConfig
 
@@ -21,7 +21,7 @@ def test_resolve_targets_to_absolute():
         TargetPositionMode.RELATIVE,
     )
 
-    resolved = resolve_targets_to_absolute([relative_target], initial_state)
+    resolved = convert_targets_to_absolute([relative_target], initial_state)
 
     assert resolved[0].mode == TargetPositionMode.ABSOLUTE
     assert resolved[0].value == 200.0  # 150 + 50
@@ -34,7 +34,7 @@ def test_resolve_targets_to_absolute():
         TargetPositionMode.ABSOLUTE,
     )
 
-    resolved2 = resolve_targets_to_absolute([absolute_target], initial_state)
+    resolved2 = convert_targets_to_absolute([absolute_target], initial_state)
 
     assert resolved2[0].mode == TargetPositionMode.ABSOLUTE
     assert resolved2[0].value == 400.0
