@@ -21,7 +21,7 @@ def compute_point_point_distance(p1: Vec3, p2: Vec3) -> float:
         p2: Second point in 3D space.
 
     Returns:
-        The Euclidean distance between the two points.
+        The Euclidean distance between the two points (always non-negative).
     """
     return float(np.linalg.norm(p1 - p2))
 
@@ -37,7 +37,7 @@ def compute_point_point_midpoint(p1: Vec3, p2: Vec3) -> Vec3:
     Returns:
         The midpoint vector between the two points.
     """
-    return make_vec3((p1 + p2) / 2)
+    return make_vec3((p1 + p2) / 2.0)
 
 
 def compute_vector_vector_angle(v1: Vec3, v2: Vec3) -> float:
@@ -62,7 +62,7 @@ def compute_vector_vector_angle(v1: Vec3, v2: Vec3) -> float:
     References:
         Ericson, C. "Real-Time Collision Detection" (2004), Section 3.3.2, p. 39
     """
-    # Will raise ValueError if either vector is zero-length.
+    # normalize_vector will raise ValueError if either vector is zero-length.
     v1_norm = normalize_vector(v1)
     v2_norm = normalize_vector(v2)
 
@@ -74,3 +74,123 @@ def compute_vector_vector_angle(v1: Vec3, v2: Vec3) -> float:
     theta = np.arctan2(cross_magnitude, dot)
 
     return float(theta)
+
+
+def compute_vectors_cross_product_magnitude(v1: Vec3, v2: Vec3) -> float:
+    """
+    Compute the magnitude of the cross product between two normalized vectors.
+
+    This is useful for measuring how "non-parallel" two vectors are. Returns 0
+    when vectors are parallel or anti-parallel, and 1 when perpendicular.
+
+    Args:
+        v1: First vector in 3D space.
+        v2: Second vector in 3D space.
+
+    Returns:
+        Magnitude of the cross product between normalized vectors (0 to 1).
+
+    Raises:
+        ValueError: If either input vector has zero length (magnitude < EPSILON).
+    """
+    v1_norm = normalize_vector(v1)
+    v2_norm = normalize_vector(v2)
+
+    cross = np.cross(v1_norm, v2_norm)
+    return float(np.linalg.norm(cross))
+
+
+def compute_vectors_dot_product(v1: Vec3, v2: Vec3) -> float:
+    """
+    Compute the dot product between two normalized vectors.
+
+    This is useful for measuring how "parallel" two vectors are. Returns 1 when
+    vectors are parallel, -1 when anti-parallel, and 0 when perpendicular.
+
+    Args:
+        v1: First vector in 3D space.
+        v2: Second vector in 3D space.
+
+    Returns:
+        Dot product between normalized vectors (-1 to 1).
+
+    Raises:
+        ValueError: If either input vector has zero length (magnitude < EPSILON).
+    """
+    v1_norm = normalize_vector(v1)
+    v2_norm = normalize_vector(v2)
+
+    return float(np.dot(v1_norm, v2_norm))
+
+
+def compute_point_to_line_distance(
+    point: Vec3, line_point: Vec3, line_direction: Vec3
+) -> float:
+    """
+    Compute the perpendicular distance from a point to a line.
+
+    The line is defined by a point on the line and a direction vector (which
+    will be normalized internally).
+
+    Args:
+        point: The point to measure distance from.
+        line_point: A point on the line.
+        line_direction: Direction vector of the line (will be normalized).
+
+    Returns:
+        Perpendicular distance from the point to the line (always non-negative).
+
+    Raises:
+        ValueError: If line_direction has zero length (magnitude < EPSILON).
+    """
+    line_dir_norm = normalize_vector(line_direction)
+    point_to_line = point - line_point
+
+    cross_product = np.cross(point_to_line, line_dir_norm)
+    return float(np.linalg.norm(cross_product))
+
+
+def compute_point_to_plane_distance(
+    point: Vec3, plane_point: Vec3, plane_normal: Vec3
+) -> float:
+    """
+    Compute the signed distance from a point to a plane.
+
+    The plane is defined by a point on the plane and a normal vector (which
+    will be normalized internally). Positive distance indicates the point is
+    on the side of the plane in the direction of the normal.
+
+    Args:
+        point: The point to measure distance from.
+        plane_point: A point on the plane.
+        plane_normal: Normal vector of the plane (will be normalized).
+
+    Returns:
+        Signed distance from the point to the plane.
+
+    Raises:
+        ValueError: If plane_normal has zero length (magnitude < EPSILON).
+    """
+    plane_norm = normalize_vector(plane_normal)
+    point_to_plane = point - plane_point
+
+    return float(np.dot(point_to_plane, plane_norm))
+
+
+def compute_scalar_triple_product(v1: Vec3, v2: Vec3, v3: Vec3) -> float:
+    """
+    Compute the scalar triple product v1 dot (v2 cross v3).
+
+    The scalar triple product represents the signed volume of the parallelepiped
+    defined by the three vectors. It is zero when the vectors are coplanar.
+
+    Args:
+        v1: First vector.
+        v2: Second vector.
+        v3: Third vector.
+
+    Returns:
+        The scalar triple product (can be positive, negative, or zero).
+    """
+    cross = np.cross(v2, v3)
+    return float(np.dot(v1, cross))

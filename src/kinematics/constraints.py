@@ -11,11 +11,17 @@ from typing import Set
 
 import numpy as np
 
+from kinematics.constants import EPSILON
 from kinematics.enums import Axis, PointID
 from kinematics.types import Vec3, make_vec3
 from kinematics.vector_utils.geometric import (
     compute_point_point_distance,
+    compute_point_to_line_distance,
+    compute_point_to_plane_distance,
+    compute_scalar_triple_product,
     compute_vector_vector_angle,
+    compute_vectors_cross_product_magnitude,
+    compute_vectors_dot_product,
 )
 
 
@@ -65,7 +71,15 @@ class DistanceConstraint(Constraint):
             p1: First point identifier.
             p2: Second point identifier.
             target_distance: The required distance between the points.
+
+        Raises:
+            ValueError: If target_distance is negative.
         """
+        if target_distance < 0:
+            raise ValueError(
+                f"Target distance must be non-negative, got {target_distance}"
+            )
+
         self.p1 = p1
         self.p2 = p2
         self.target_distance = target_distance
@@ -85,6 +99,38 @@ class DistanceConstraint(Constraint):
             positions[self.p1], positions[self.p2]
         )
         return float(current_distance - self.target_distance)
+
+
+class SphericalJointConstraint(Constraint):
+    """
+    Constrains two points to coincide (ball joint / spherical joint).
+
+    This is a special case of DistanceConstraint with target_distance = 0, but made
+    explicit for clarity when modeling ball joints in suspension systems.
+    """
+
+    def __init__(self, p1: PointID, p2: PointID):
+        """
+        Initialize the spherical joint constraint.
+
+        Args:
+            p1: First point identifier.
+            p2: Second point identifier.
+        """
+        self.p1 = p1
+        self.p2 = p2
+
+    @property
+    def involved_points(self) -> Set[PointID]:
+        return {self.p1, self.p2}
+
+    def residual(self, positions: dict[PointID, Vec3]) -> float:
+        """
+        Compute the distance between the two points.
+
+        Returns the distance (should be zero for a perfect joint).
+        """
+        return compute_point_point_distance(positions[self.p1], positions[self.p2])
 
 
 class AngleConstraint(Constraint):
@@ -113,7 +159,13 @@ class AngleConstraint(Constraint):
             v2_start: Starting point of the second vector.
             v2_end: Ending point of the second vector.
             target_angle: The required angle between the vectors in radians.
+
+        Raises:
+            ValueError: If target_angle is outside [0, π].
         """
+        if not (0 <= target_angle <= np.pi):
+            raise ValueError(f"Target angle must be in [0, π], got {target_angle}")
+
         self.v1_start = v1_start
         self.v1_end = v1_end
         self.v2_start = v2_start
@@ -130,13 +182,214 @@ class AngleConstraint(Constraint):
 
         Returns the difference between the current angle and target angle in radians.
         Positive values indicate the angle is larger than the target.
+
+        Raises:
+            ValueError: If either vector has zero length (degenerate geometry).
         """
         v1 = positions[self.v1_end] - positions[self.v1_start]
         v2 = positions[self.v2_end] - positions[self.v2_start]
 
+        # This will raise ValueError if vectors are zero-length.
         current_angle = compute_vector_vector_angle(make_vec3(v1), make_vec3(v2))
 
         return float(current_angle - self.target_angle)
+
+
+class ThreePointAngleConstraint(Constraint):
+    """
+    Constrains the angle formed by three points (vertex at p2).
+
+    This is often more intuitive than AngleConstraint for suspension geometry, as it
+    directly specifies the angle at a joint formed by three connection points.
+    """
+
+    def __init__(
+        self,
+        p1: PointID,
+        p2: PointID,  # vertex
+        p3: PointID,
+        target_angle: float,
+    ):
+        """
+        Initialize the three-point angle constraint.
+
+        Args:
+            p1: First point.
+            p2: Vertex point (angle is measured here).
+            p3: Third point.
+            target_angle: The required angle at p2 in radians.
+
+        Raises:
+            ValueError: If target_angle is outside [0, π].
+        """
+        if not (0 <= target_angle <= np.pi):
+            raise ValueError(f"Target angle must be in [0, π], got {target_angle}")
+
+        self.p1 = p1
+        self.p2 = p2  # vertex
+        self.p3 = p3
+        self.target_angle = target_angle
+
+    @property
+    def involved_points(self) -> Set[PointID]:
+        return {self.p1, self.p2, self.p3}
+
+    def residual(self, positions: dict[PointID, Vec3]) -> float:
+        """
+        Compute the angle residual at the vertex.
+
+        Returns the difference between the current angle and target angle in radians.
+
+        Raises:
+            ValueError: If either vector has zero length (degenerate geometry).
+        """
+        # Vectors from vertex to other points
+        v1 = positions[self.p1] - positions[self.p2]
+        v2 = positions[self.p3] - positions[self.p2]
+
+        current_angle = compute_vector_vector_angle(make_vec3(v1), make_vec3(v2))
+        return float(current_angle - self.target_angle)
+
+
+class VectorsParallelConstraint(Constraint):
+    """
+    Constrains two vectors to be parallel (or anti-parallel).
+
+    Useful for parallel links, anti-roll bars, or ensuring vectors remain aligned in
+    suspension systems.
+    """
+
+    def __init__(
+        self,
+        v1_start: PointID,
+        v1_end: PointID,
+        v2_start: PointID,
+        v2_end: PointID,
+    ):
+        """
+        Initialize the parallel vectors constraint.
+
+        Args:
+            v1_start: Starting point of the first vector.
+            v1_end: Ending point of the first vector.
+            v2_start: Starting point of the second vector.
+            v2_end: Ending point of the second vector.
+        """
+        self.v1_start = v1_start
+        self.v1_end = v1_end
+        self.v2_start = v2_start
+        self.v2_end = v2_end
+
+    @property
+    def involved_points(self) -> Set[PointID]:
+        return {self.v1_start, self.v1_end, self.v2_start, self.v2_end}
+
+    def residual(self, positions: dict[PointID, Vec3]) -> float:
+        """
+        Compute the parallel vectors constraint residual.
+
+        Returns the magnitude of the cross product between normalized vectors.
+        Zero indicates the vectors are parallel or anti-parallel.
+
+        Raises:
+            ValueError: If either vector has zero length (degenerate geometry).
+        """
+        v1 = positions[self.v1_end] - positions[self.v1_start]
+        v2 = positions[self.v2_end] - positions[self.v2_start]
+        return compute_vectors_cross_product_magnitude(make_vec3(v1), make_vec3(v2))
+
+
+class VectorsPerpendicularConstraint(Constraint):
+    """
+    Constrains two vectors to be perpendicular.
+
+    Useful for coordinate frames, orthogonal linkages, or maintaining perpendicular
+    relationships in suspension geometry.
+    """
+
+    def __init__(
+        self,
+        v1_start: PointID,
+        v1_end: PointID,
+        v2_start: PointID,
+        v2_end: PointID,
+    ):
+        """
+        Initialize the perpendicular vectors constraint.
+
+        Args:
+            v1_start: Starting point of the first vector.
+            v1_end: Ending point of the first vector.
+            v2_start: Starting point of the second vector.
+            v2_end: Ending point of the second vector.
+        """
+        self.v1_start = v1_start
+        self.v1_end = v1_end
+        self.v2_start = v2_start
+        self.v2_end = v2_end
+
+    @property
+    def involved_points(self) -> Set[PointID]:
+        return {self.v1_start, self.v1_end, self.v2_start, self.v2_end}
+
+    def residual(self, positions: dict[PointID, Vec3]) -> float:
+        """
+        Compute the perpendicular constraint residual.
+
+        Returns the dot product between normalized vectors.
+        Zero indicates the vectors are perpendicular.
+
+        Raises:
+            ValueError: If either vector has zero length (degenerate geometry).
+        """
+        v1 = positions[self.v1_end] - positions[self.v1_start]
+        v2 = positions[self.v2_end] - positions[self.v2_start]
+        return compute_vectors_dot_product(make_vec3(v1), make_vec3(v2))
+
+
+class EqualDistanceConstraint(Constraint):
+    """
+    Constrains two distances to be equal: |p1-p2| = |p3-p4|.
+
+    Useful for symmetric linkages, equal-length links, or maintaining geometric
+    relationships in suspension systems.
+    """
+
+    def __init__(
+        self,
+        p1: PointID,
+        p2: PointID,
+        p3: PointID,
+        p4: PointID,
+    ):
+        """
+        Initialize the equal distance constraint.
+
+        Args:
+            p1: First point of the first pair.
+            p2: Second point of the first pair.
+            p3: First point of the second pair.
+            p4: Second point of the second pair.
+        """
+        self.p1 = p1
+        self.p2 = p2
+        self.p3 = p3
+        self.p4 = p4
+
+    @property
+    def involved_points(self) -> Set[PointID]:
+        return {self.p1, self.p2, self.p3, self.p4}
+
+    def residual(self, positions: dict[PointID, Vec3]) -> float:
+        """
+        Compute the equal distance residual.
+
+        Returns the difference between the two distances. Zero indicates the distances
+        are equal.
+        """
+        dist1 = compute_point_point_distance(positions[self.p1], positions[self.p2])
+        dist2 = compute_point_point_distance(positions[self.p3], positions[self.p4])
+        return float(dist1 - dist2)
 
 
 class FixedAxisConstraint(Constraint):
@@ -195,10 +448,19 @@ class PointOnLineConstraint(Constraint):
             point_id: The point that must lie on the line.
             line_point: A point on the line (3D numpy array).
             line_direction: The direction vector of the line (3D numpy array).
+
+        Raises:
+            ValueError: If line_direction has zero length.
         """
         self.point_id = point_id
         self.line_point = line_point.copy()
-        self.line_direction = line_direction.copy()
+
+        # Normalize and validate direction vector.
+        direction_magnitude = np.linalg.norm(line_direction)
+        if direction_magnitude < EPSILON:
+            raise ValueError("Line direction vector cannot have zero length")
+
+        self.line_direction = line_direction / direction_magnitude
 
     @property
     def involved_points(self) -> Set[PointID]:
@@ -209,17 +471,100 @@ class PointOnLineConstraint(Constraint):
         Compute the point-to-line distance residual.
 
         Returns the perpendicular distance from the point to the line. Zero indicates
-        the point lies exactly on the line.
+        the point lies exactly on the line. Always non-negative.
         """
         current_point = positions[self.point_id]
+        return compute_point_to_line_distance(
+            current_point, make_vec3(self.line_point), make_vec3(self.line_direction)
+        )
 
-        # Vector from line point to current point.
-        point_to_line = current_point - self.line_point
 
-        # Distance from point to line using cross product.
-        cross_product = np.cross(point_to_line, self.line_direction)
-        direction_length = np.linalg.norm(self.line_direction)
+class PointOnPlaneConstraint(Constraint):
+    """
+    Constrains a point to lie on a plane.
 
-        # Return actual physical distance.
-        distance = np.linalg.norm(cross_product) / direction_length
-        return float(distance)
+    Useful for restricting motion to a plane, enforcing symmetry constraints, or
+    modeling planar mechanisms in suspension systems.
+    """
+
+    def __init__(self, point_id: PointID, plane_point: Vec3, plane_normal: Vec3):
+        """
+        Initialize the point-on-plane constraint.
+
+        Args:
+            point_id: The point that must lie on the plane.
+            plane_point: A point on the plane (3D numpy array).
+            plane_normal: The normal vector of the plane (3D numpy array).
+
+        Raises:
+            ValueError: If plane_normal has zero length.
+        """
+        self.point_id = point_id
+        self.plane_point = plane_point.copy()
+
+        # Normalize and validate normal vector.
+        normal_magnitude = np.linalg.norm(plane_normal)
+        if normal_magnitude < EPSILON:
+            raise ValueError("Plane normal cannot have zero length")
+
+        self.plane_normal = plane_normal / normal_magnitude
+
+    @property
+    def involved_points(self) -> Set[PointID]:
+        return {self.point_id}
+
+    def residual(self, positions: dict[PointID, Vec3]) -> float:
+        """
+        Compute the signed distance from point to plane.
+
+        Returns the signed distance (positive on the normal side, negative on the
+        opposite side). Zero indicates the point lies exactly on the plane.
+        """
+        return compute_point_to_plane_distance(
+            positions[self.point_id],
+            make_vec3(self.plane_point),
+            make_vec3(self.plane_normal),
+        )
+
+
+class CoplanarPointsConstraint(Constraint):
+    """
+    Constrains four points to be coplanar.
+
+    Useful for ensuring points lie in the same plane or for modeling planar mechanisms
+    in suspension systems.
+    """
+
+    def __init__(self, p1: PointID, p2: PointID, p3: PointID, p4: PointID):
+        """
+        Initialize the coplanar points constraint.
+
+        Args:
+            p1: First point.
+            p2: Second point.
+            p3: Third point.
+            p4: Fourth point.
+        """
+        self.p1 = p1
+        self.p2 = p2
+        self.p3 = p3
+        self.p4 = p4
+
+    @property
+    def involved_points(self) -> Set[PointID]:
+        return {self.p1, self.p2, self.p3, self.p4}
+
+    def residual(self, positions: dict[PointID, Vec3]) -> float:
+        """
+        Compute the coplanarity residual using scalar triple product.
+
+        Returns the scalar triple product v1 dot (v2 cross v3), where vectors are from
+        p1 to the other points. Zero indicates the points are coplanar.
+        """
+        pos1 = positions[self.p1]
+        v1 = positions[self.p2] - pos1
+        v2 = positions[self.p3] - pos1
+        v3 = positions[self.p4] - pos1
+        return compute_scalar_triple_product(
+            make_vec3(v1), make_vec3(v2), make_vec3(v3)
+        )
