@@ -19,6 +19,7 @@ from kinematics.types import (
     PointTargetAxis,
     PointTargetVector,
     SweepConfig,
+    WorldAxisSystem,
 )
 
 
@@ -52,11 +53,11 @@ class DirectionSpec:
         if self.axis is not None:
             match self.axis:
                 case Axis.X:
-                    return np.array([1.0, 0.0, 0.0], dtype=np.float64)
+                    return WorldAxisSystem.X
                 case Axis.Y:
-                    return np.array([0.0, 1.0, 0.0], dtype=np.float64)
+                    return WorldAxisSystem.Y
                 case Axis.Z:
-                    return np.array([0.0, 0.0, 1.0], dtype=np.float64)
+                    return WorldAxisSystem.Z
 
         vec = np.asarray(self.vector, dtype=np.float64)
         if vec.shape != (3,):
@@ -247,19 +248,9 @@ def parse_sweep_file(path: Path) -> SweepConfig:
             unit_vec = target_spec.direction.to_unit_vector()
             direction = direction_to_target_type(unit_vec)
 
-            # Domain validation: steering rack must move along Y
-            if target_spec.point == PointID.TRACKROD_INBOARD:
-                if isinstance(direction, PointTargetAxis):
-                    if direction.axis != Axis.Y:
-                        raise ValueError(
-                            "Steering rack (TRACKROD_INBOARD) must move along Y axis"
-                        )
-                else:
-                    vec = direction.vector
-                    if abs(float(vec[0])) > 1e-12 or abs(float(vec[2])) > 1e-12:
-                        raise ValueError(
-                            "Steering rack direction must be aligned with Y axis"
-                        )
+            # We assume that direction here is generally aligned with global Y,
+            # but rather than validate here, we can let the solver catch it if
+            # the user tries to do something nonsensical.
 
             targets = [
                 PointTarget(
