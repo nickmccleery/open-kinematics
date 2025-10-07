@@ -84,7 +84,6 @@ class ResidualComputer:
         self.constraints = constraints
         self.derived_manager = derived_manager
         self.working_state = working_state
-        self.call_count = 0
 
     def compute(
         self,
@@ -124,7 +123,7 @@ class ResidualComputer:
         return np.array(residuals, dtype=float)
 
 
-def resolve_targets_to_absolute(
+def convert_targets_to_absolute(
     targets: list[PointTarget],
     initial_state: SuspensionState,
 ) -> list[PointTarget]:
@@ -196,7 +195,7 @@ def solve_suspension_sweep(
     """
     # Convert all targets to absolute coordinates once before solving
     sweep_targets = [
-        resolve_targets_to_absolute(
+        convert_targets_to_absolute(
             [sweep[i] for sweep in sweep_config.target_sweeps], initial_state
         )
         for i in range(sweep_config.n_steps)
@@ -250,10 +249,15 @@ def solve_suspension_sweep(
             )
 
         # We now have to synchronize working_state with the accepted solution.
-        # The solver may evaluate compute() at points near the solution for gradient
-        # estimation or termination checks, then return us its best value, leaving
-        # working_state at a different position to the actual solution.
-        # We must explicitly update our scratchpad to result.x to ensure correctness.
+        # The solver evaluates residuals at many candidate positions during the solve,
+        # mutating working_state each time. When it terminates, working_state may be left
+        # at a position from gradient estimation (e.g., x* + epsilon) rather than
+        # the actual solution x*. We must explicitly restore it to result.x to
+        # ensure the stored state matches the returned solution.
+        #
+        # This synchronization is necessary because we reuse working_state across all
+        # residual evaluations for performance (avoiding dict allocations on each call).
+        # The tradeoff is this explicit sync requirement.
         working_state.update_from_array(result.x)
         derived_manager.update_in_place(working_state.positions)
 
