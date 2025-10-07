@@ -1,7 +1,3 @@
-"""
-Write kinematic solution results to multiple formats with comprehensive metadata.
-"""
-
 from __future__ import annotations
 
 import csv
