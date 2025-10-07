@@ -64,6 +64,9 @@ def sweep_config_fixture(displacements):
     return sweep_config
 
 
+@pytest.mark.skip(
+    reason="Manual test - run with pytest -m 'not skip' or pytest tests/manual/test_run_with_viz.py::test_manual_run_solver_with_animation"
+)
 def test_run_solver(
     double_wishbone_geometry_file: Path, sweep_config_fixture, displacements
 ) -> None:
@@ -125,7 +128,9 @@ def test_run_solver(
     position_states_animate = (
         position_states_positions + position_states_positions[::-1]
     )
-    output_path = Path("suspension_motion.mp4")
+    output_path = (
+        Path(__file__).parent.parent / "data" / "manual" / "suspension_motion.mp4"
+    )
 
     r_aspect = 0.55
     x_section = 270
