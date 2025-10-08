@@ -140,8 +140,8 @@ class ResidualComputer:
             current_coordinate = project_coordinate(current_pos, direction)
             self.residuals_buffer[offset + i] = current_coordinate - target.value
 
-        # Return view of the used portion. Note that we must return a copy here
-        # because Scipy's least sqaures keeps references to the evaluated arrays,
+        # Return (copy of) view of the used portion. Note that we must return a copy here
+        # because Scipy's least squares keeps references to the evaluated arrays,
         # so subsequent calls would overwrite previous values.
         n_residuals = self.n_constraints + len(step_targets)
         residuals = self.residuals_buffer[:n_residuals]
@@ -205,8 +205,8 @@ def solve_suspension_sweep(
     Solves a series of kinematic states by sweeping through target configurations using
     damped non-linear least squares. This function performs a sweep where each step in
     the sweep corresponds to a set of targets, solving sequentially from the initial
-    state. All state and residual buffers are reused across evaluations
-    to minimize allocations.
+    state. All state and residual buffers are reused across evaluations to minimize
+    allocations.
 
     Args:
         initial_state (SuspensionState): The initial suspension state to start the sweep from.
