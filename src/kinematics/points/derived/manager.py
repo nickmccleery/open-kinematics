@@ -29,15 +29,23 @@ class DerivedPointsSpec:
     def all_points(self) -> Set[PointID]:
         """
         Get all derived point IDs defined in this spec.
+
+        Returns:
+            Set of PointID values representing all derived points that can be
+            computed using this specification.
         """
         return set(self.functions.keys())
 
     def validate(self) -> None:
         """
-        Validate the spec for consistency.
+        Ensures that every point with a calculation function also has its
+        dependencies properly defined, and that no orphaned dependency
+        entries exist without corresponding functions.
 
         Raises:
-            ValueError: If spec is inconsistent
+            ValueError: If the specification is inconsistent, such as when
+                       functions exist without dependency definitions or
+                       dependency definitions exist without functions.
         """
         # Check that all points in functions have dependencies defined
         function_points = set(self.functions.keys())
@@ -78,6 +86,24 @@ class DerivedPointsManager:
     def detect_cycles_util(
         self, node: PointID, visited: set, recursion_stack: set
     ) -> bool:
+        """
+        Depth-first search utility for cycle detection in dependency graph.
+
+        Uses two sets to track node states during DFS traversal:
+        - visited: nodes that have been completely processed
+        - recursion_stack: nodes in the current DFS path being explored
+
+        A cycle is detected when we encounter a node that's already in the
+        current recursion stack, indicating a back edge.
+
+        Args:
+            node: Current node being explored in the dependency graph.
+            visited: Set of nodes that have been completely processed.
+            recursion_stack: Set of nodes in the current DFS path.
+
+        Returns:
+            True if a cycle is detected starting from this node, False otherwise.
+        """
         visited.add(node)
         recursion_stack.add(node)
 
