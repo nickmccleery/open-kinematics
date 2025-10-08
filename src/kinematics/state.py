@@ -47,6 +47,14 @@ class SuspensionState:
     def get_free_array(self) -> np.ndarray:
         """
         Convert free points to flat array for solver.
+
+        Extracts the positions of all free points and concatenates them into
+        a single 1D array for use in the scipy loop. The order is determined
+        by free_points_order for consistency.
+
+        Returns:
+            A flat numpy array containing [x1, y1, z1, x2, y2, z2, ...] coordinates
+            for all free points in the consistent ordering.
         """
         positions = [self.positions[pid] for pid in self.free_points_order]
         return np.concatenate(positions)
@@ -55,7 +63,18 @@ class SuspensionState:
         """
         Update free points from solver array in-place.
 
+        Takes a flat array from the numerical solver and updates the positions
+        of free points in the suspension state. The array is reshaped and
+        assigned according to the ordering in free_points_order.
         This modifies the state directly for performance.
+
+        Args:
+            array: Flat numpy array containing [x1, y1, z1, x2, y2, z2, ...]
+                  coordinates for all free points. Must have length 3 * num_free_points.
+
+        Raises:
+            ValueError: If the array shape doesn't match the expected dimensions
+                       based on the number of free points.
         """
         n_points = len(self.free_points_order)
         if array.shape != (n_points * 3,):
@@ -72,7 +91,13 @@ class SuspensionState:
         """
         Replace positions dictionary in-place.
 
-        This modifies the state directly for performance.
+        Completely replaces the current positions dictionary with a new one.
+        This modifies the state directly for performance, avoiding unnecessary
+        copying when bulk updates are needed.
+
+        Args:
+            new_positions: Dictionary mapping point IDs to their new 3D coordinates.
+                          Should contain entries for all points (both fixed and free).
         """
         self.positions = new_positions
 

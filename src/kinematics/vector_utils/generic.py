@@ -6,13 +6,17 @@ system. These operations do not use any types specific to this project, so can b
 in utility contexts without introducing circular dependencies.
 """
 
+from typing import TypeVar
+
 import numpy as np
 from numpy.typing import NDArray
 
 from kinematics.constants import EPSILON
 
+FloatingT = TypeVar("FloatingT", bound=np.floating)
 
-def normalize_vector(v: NDArray[np.float64]) -> NDArray[np.float64]:
+
+def normalize_vector(v: NDArray[FloatingT]) -> NDArray[FloatingT]:
     """
     Normalize a vector of any dimension to a unit vector.
 
@@ -28,7 +32,7 @@ def normalize_vector(v: NDArray[np.float64]) -> NDArray[np.float64]:
     norm = np.linalg.norm(v)
     if norm < EPSILON:
         raise ValueError("Cannot normalize zero-length vector")
-    return (v / norm).astype(np.float64)
+    return (v / norm).astype(v.dtype)
 
 
 def project_coordinate(position: np.ndarray, direction: np.ndarray) -> float:
