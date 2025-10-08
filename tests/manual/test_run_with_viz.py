@@ -64,12 +64,13 @@ def sweep_config_fixture(displacements):
     return sweep_config
 
 
-@pytest.mark.skip(
-    reason="Manual test - run with pytest -m 'not skip' or pytest tests/manual/test_run_with_viz.py::test_manual_run_solver_with_animation"
-)
+@pytest.mark.manual
 def test_run_solver(
     double_wishbone_geometry_file: Path, sweep_config_fixture, displacements
 ) -> None:
+    """
+    uv run pytest tests/manual/test_run_with_viz.py::test_run_solver
+    """
     hub_displacements, _ = displacements
 
     loaded = load_geometry(double_wishbone_geometry_file)
