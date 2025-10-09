@@ -11,7 +11,7 @@ from kinematics.metrics.antis import (
 )
 from kinematics.state import SuspensionState
 from kinematics.suspensions.core.settings import SuspensionConfig
-from kinematics.types import Vec3
+from kinematics.types import Vec3, make_vec3
 
 if TYPE_CHECKING:
     from kinematics.suspensions.core.geometry import SuspensionGeometry
@@ -109,7 +109,13 @@ class MetricsCalculator:
         return calculate_geometric_anti_dive(
             self.state,
             self.side_view_ic,
-            self.geometry_config.cg_position,
+            make_vec3(
+                [
+                    self.geometry_config.cg_position["x"],
+                    self.geometry_config.cg_position["y"],
+                    self.geometry_config.cg_position["z"],
+                ]
+            ),
             self.geometry_config.wheelbase,
             self.geometry_config.wheel.tire.nominal_radius,
         )
@@ -127,7 +133,13 @@ class MetricsCalculator:
         return calculate_geometric_anti_squat(
             self.state,
             self.side_view_ic,
-            self.geometry_config.cg_position,
+            make_vec3(
+                [
+                    self.geometry_config.cg_position["x"],
+                    self.geometry_config.cg_position["y"],
+                    self.geometry_config.cg_position["z"],
+                ]
+            ),
             self.geometry_config.wheelbase,
             self.geometry_config.wheel.tire.nominal_radius,
         )
@@ -183,7 +195,6 @@ def compute_all_metrics_from_geometry(
 
     Returns:
         A SuspensionMetrics dataclass containing all calculated values.
-
     """
 
     return compute_all_metrics(

@@ -8,7 +8,7 @@ centers.
 import numpy as np
 
 from kinematics.types import Vec3, make_vec3
-from kinematics.vector_utils.generic import compute_vector_vector_intersection
+from kinematics.vector_utils.generic import compute_2d_vector_vector_intersection
 
 
 def compute_wishbone_svic(
@@ -42,15 +42,15 @@ def compute_wishbone_svic(
         This assumes the SVIC lies on the vehicle centerline (y=0).
         For asymmetric suspensions, the caller may need to adjust the Y coordinate.
     """
-    # Project onto XZ plane (side view) for 2D intersection calculation
+    # Project onto XZ plane (side view) for 2D intersection calculation.
     upper_line_start = np.array([upper_front[0], upper_front[2]], dtype=np.float64)
     upper_line_end = np.array([upper_rear[0], upper_rear[2]], dtype=np.float64)
     lower_line_start = np.array([lower_front[0], lower_front[2]], dtype=np.float64)
     lower_line_end = np.array([lower_rear[0], lower_rear[2]], dtype=np.float64)
 
-    # Compute intersection using generic vector intersection function
-    # Use segments_only=False since we want infinite line intersection
-    intersection = compute_vector_vector_intersection(
+    # Compute intersection using vector intersection function
+    # Use segments_only=False since we want infinite line intersection.
+    intersection = compute_2d_vector_vector_intersection(
         upper_line_start,
         upper_line_end,
         lower_line_start,
@@ -59,7 +59,7 @@ def compute_wishbone_svic(
     )
 
     if intersection is None:
-        # Lines are parallel - no intersection
+        # Lines are parallel - no intersection.
         return make_vec3([np.nan, np.nan, np.nan])
 
     # Extract intersection point and return as 3D with Y=0 (assumes SVIC on centerline)
