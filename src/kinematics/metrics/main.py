@@ -109,7 +109,8 @@ class MetricsCalculator:
         return calculate_geometric_anti_dive(
             self.state,
             self.side_view_ic,
-            self.geometry_config.cg_position[2],
+            self.geometry_config.cg_position,
+            self.geometry_config.wheelbase,
             self.geometry_config.wheel.tire.nominal_radius,
         )
 
@@ -126,7 +127,8 @@ class MetricsCalculator:
         return calculate_geometric_anti_squat(
             self.state,
             self.side_view_ic,
-            self.geometry_config.cg_position[2],
+            self.geometry_config.cg_position,
+            self.geometry_config.wheelbase,
             self.geometry_config.wheel.tire.nominal_radius,
         )
 
