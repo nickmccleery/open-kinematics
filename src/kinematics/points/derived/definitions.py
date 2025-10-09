@@ -46,14 +46,14 @@ def get_wheel_center(positions: dict[PointID, Vec3], wheel_offset: float) -> Vec
     p2 = positions[PointID.AXLE_INBOARD]  # Axle inboard point.
     v = p1 - p2  # Points outboard; from inboard to axle outboard (hub face).
     v = normalize_vector(v)
-    wheel_center = make_vec3(p1 - v * wheel_offset)
+    wheel_center = make_vec3(p1 + v * wheel_offset)
     return wheel_center
 
 
 def get_wheel_inboard(positions: dict[PointID, Vec3], wheel_width: float) -> Vec3:
     """
-    Determines the inboard edge position of the wheel by moving inward from the
-    wheel center by half the wheel width along the axle axis.
+    Determines the inboard edge position of the wheel by moving inward from the wheel
+    center by half the wheel width along the axle axis.
 
     Args:
         positions: Dictionary mapping point IDs to their 3D coordinates.
@@ -73,8 +73,8 @@ def get_wheel_inboard(positions: dict[PointID, Vec3], wheel_width: float) -> Vec
 
 def get_wheel_outboard(positions: dict[PointID, Vec3], wheel_width: float) -> Vec3:
     """
-    Determines the outboard edge position of the wheel by moving outward from the
-    wheel center by half the wheel width along the axle axis.
+    Determines the outboard edge position of the wheel by moving outward from the wheel
+    center by half the wheel width along the axle axis.
 
     Args:
         positions: Dictionary mapping point IDs to their 3D coordinates.

@@ -15,6 +15,7 @@ from kinematics.constraints import (
     PointOnLineConstraint,
 )
 from kinematics.enums import PointID
+from kinematics.metrics.helpers import compute_wishbone_svic
 from kinematics.points.derived.definitions import (
     get_axle_midpoint,
     get_wheel_center,
@@ -31,6 +32,7 @@ from kinematics.suspensions.core.collections import (
 )
 from kinematics.suspensions.core.geometry import SuspensionGeometry
 from kinematics.suspensions.core.provider import SuspensionProvider
+from kinematics.types import Vec3, make_vec3
 from kinematics.vector_utils.geometric import (
     compute_point_point_distance,
     compute_vector_vector_angle,
@@ -240,11 +242,11 @@ class DoubleWishboneProvider(SuspensionProvider):
             constraints.append(DistanceConstraint(p1, p2, target_distance))
 
         # Angle constraints.
-        v1 = (
+        v1 = make_vec3(
             initial_state.positions[PointID.LOWER_WISHBONE_OUTBOARD]
             - initial_state.positions[PointID.UPPER_WISHBONE_OUTBOARD]
         )
-        v2 = (
+        v2 = make_vec3(
             initial_state.positions[PointID.AXLE_OUTBOARD]
             - initial_state.positions[PointID.AXLE_INBOARD]
         )
@@ -270,6 +272,27 @@ class DoubleWishboneProvider(SuspensionProvider):
         )
 
         return constraints
+
+    def compute_side_view_instant_center(self, state: SuspensionState) -> "Vec3":
+        """
+        Compute the side view instant center for double wishbone suspension.
+
+        The SVIC is found by projecting the upper and lower wishbone links
+        onto the side view (XZ plane) and finding their intersection point.
+
+        Args:
+            state: The solved SuspensionState to analyze.
+
+        Returns:
+            The (x, y, z) coordinates of the SVIC, or None if the wishbone
+            links are parallel.
+        """
+        return compute_wishbone_svic(
+            upper_front=state.get(PointID.UPPER_WISHBONE_INBOARD_FRONT),
+            upper_rear=state.get(PointID.UPPER_WISHBONE_INBOARD_REAR),
+            lower_front=state.get(PointID.LOWER_WISHBONE_INBOARD_FRONT),
+            lower_rear=state.get(PointID.LOWER_WISHBONE_INBOARD_REAR),
+        )
 
     def get_visualization_links(self) -> list[LinkVisualization]:
         """

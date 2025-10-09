@@ -38,9 +38,9 @@ class DerivedPointsSpec:
 
     def validate(self) -> None:
         """
-        Ensures that every point with a calculation function also has its
-        dependencies properly defined, and that no orphaned dependency
-        entries exist without corresponding functions.
+        Ensures that every point with a calculation function also has its dependencies
+        properly defined, and that no orphaned dependency entries exist without
+        corresponding functions.
 
         Raises:
             ValueError: If the specification is inconsistent, such as when

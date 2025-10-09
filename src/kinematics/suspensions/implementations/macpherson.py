@@ -21,6 +21,7 @@ from kinematics.state import SuspensionState
 from kinematics.suspensions.core.collections import LowerWishbonePoints, WheelAxlePoints
 from kinematics.suspensions.core.geometry import SuspensionGeometry
 from kinematics.suspensions.core.provider import SuspensionProvider
+from kinematics.types import Vec3
 from kinematics.vector_utils.geometric import compute_point_point_distance
 from kinematics.visualization.main import LinkVisualization
 
@@ -218,6 +219,9 @@ class MacPhersonProvider(SuspensionProvider):
             constraints.append(DistanceConstraint(p1, p2, target_distance))
 
         return constraints
+
+    def compute_side_view_instant_center(self, state: SuspensionState) -> Vec3:
+        raise NotImplementedError("SVIC calcs not defined for MacPherson strut.")
 
     def get_visualization_links(self) -> list[LinkVisualization]:
         """
