@@ -10,7 +10,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from kinematics.constants import MM_PER_INCH
-from kinematics.types import Vec3
 
 
 @dataclass
@@ -97,12 +96,12 @@ class SuspensionConfig:
         steered: Whether this suspension corner is steered.
         wheel: Wheel configuration parameters.
         static_setup: Static alignment settings.
-        cg_position: Center of gravity height above ground in mm (required for anti-dive/squat).
+        cg_position: Center of gravity position coordinates (x, y, z) in mm (required for anti-dive/squat).
         wheelbase: Wheelbase distance in mm.
     """
 
     steered: bool
     wheel: WheelConfig
     static_setup: StaticSetupConfig
-    cg_position: Vec3
+    cg_position: dict[str, float]
     wheelbase: float

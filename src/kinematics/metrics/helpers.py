@@ -7,8 +7,8 @@ centers.
 
 import numpy as np
 
-from kinematics.constants import EPSILON
 from kinematics.types import Vec3, make_vec3
+from kinematics.vector_utils.generic import compute_vector_vector_intersection
 
 
 def compute_wishbone_svic(
@@ -42,28 +42,26 @@ def compute_wishbone_svic(
         This assumes the SVIC lies on the vehicle centerline (y=0).
         For asymmetric suspensions, the caller may need to adjust the Y coordinate.
     """
-    # TODO: Slop generated, need to do this by hand because we don't trust clankers.
-    # Project onto XZ plane (side view)
-    x1, _, z1 = upper_front
-    x2, _, z2 = upper_rear
-    x3, _, z3 = lower_front
-    x4, _, z4 = lower_rear
+    # Project onto XZ plane (side view) for 2D intersection calculation
+    upper_line_start = np.array([upper_front[0], upper_front[2]], dtype=np.float64)
+    upper_line_end = np.array([upper_rear[0], upper_rear[2]], dtype=np.float64)
+    lower_line_start = np.array([lower_front[0], lower_front[2]], dtype=np.float64)
+    lower_line_end = np.array([lower_rear[0], lower_rear[2]], dtype=np.float64)
 
-    # Solve 2D line-line intersection using parametric form
-    # Line A: P = P1 + t(P2 - P1)
-    # Line B: P = P3 + s(P4 - P3)
-    den = (x1 - x2) * (z3 - z4) - (z1 - z2) * (x3 - x4)
+    # Compute intersection using generic vector intersection function
+    # Use segments_only=False since we want infinite line intersection
+    intersection = compute_vector_vector_intersection(
+        upper_line_start,
+        upper_line_end,
+        lower_line_start,
+        lower_line_end,
+        segments_only=False,
+    )
 
-    if abs(den) < EPSILON:
-        # Lines are parallel - no intersection.
+    if intersection is None:
+        # Lines are parallel - no intersection
         return make_vec3([np.nan, np.nan, np.nan])
 
-    # Calculate parameter t for line A
-    t = ((x1 - x3) * (z3 - z4) - (z1 - z3) * (x3 - x4)) / den
-
-    # Find intersection point
-    ic_x = x1 + t * (x2 - x1)
-    ic_z = z1 + t * (z2 - z1)
-
-    # Return with Y=0 (assumes SVIC on centerline)
+    # Extract intersection point and return as 3D with Y=0 (assumes SVIC on centerline)
+    ic_x, ic_z = intersection.point
     return np.array([ic_x, 0.0, ic_z])
