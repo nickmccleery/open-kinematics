@@ -152,7 +152,7 @@ def create_four_view_plot(
                 contact_pt[2],
                 color="red",
                 s=100,
-                marker="*",
+                marker="o",
                 label="Contact Patch" if view_name == "iso" else None,
             )
 
