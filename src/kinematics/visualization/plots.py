@@ -1,8 +1,8 @@
 """
 Standard plotting functions for suspension visualization.
 
-This module provides reusable plotting functionality for both single states
-and animation sequences.
+This module provides reusable plotting functionality for both single states and
+animation sequences.
 """
 
 from pathlib import Path
@@ -10,12 +10,201 @@ from typing import cast
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.figure import Figure
 from mpl_toolkits.mplot3d.axes3d import Axes3D
 
 from kinematics.enums import PointID
 from kinematics.state import SuspensionState
 from kinematics.suspensions.core.provider import SuspensionProvider
+from kinematics.types import Vec3
 from kinematics.visualization.main import SuspensionVisualizer, WheelVisualization
+
+
+def compute_bounds_from_positions(
+    positions: dict[PointID, Vec3],
+) -> tuple[Vec3, Vec3, tuple[float, float, float, float]]:
+    """
+    Compute axis bounds and limits from position data.
+
+    Args:
+        positions: Dictionary mapping PointID to 3D positions.
+
+    Returns:
+        Tuple of (min_bounds, max_bounds, (x_mid, y_mid, z_mid, max_range))
+    """
+    all_points = np.array(list(positions.values()))
+    min_bounds = all_points.min(axis=0) - 100
+    max_bounds = all_points.max(axis=0) + 100
+
+    x_mid = (max_bounds[0] + min_bounds[0]) * 0.5
+    y_mid = (max_bounds[1] + min_bounds[1]) * 0.5
+    z_mid = (max_bounds[2] + min_bounds[2]) * 0.5
+    max_range = max(
+        max_bounds[0] - min_bounds[0],
+        max_bounds[1] - min_bounds[1],
+        max_bounds[2] - min_bounds[2],
+    )
+
+    return min_bounds, max_bounds, (x_mid, y_mid, z_mid, max_range)
+
+
+def compute_bounds_from_states(
+    states: list[dict[PointID, Vec3]],
+) -> tuple[Vec3, Vec3, tuple[float, float, float, float]]:
+    """
+    Compute axis bounds and limits from multiple position states.
+
+    Args:
+        states: List of position dictionaries.
+
+    Returns:
+        Tuple of (min_bounds, max_bounds, (x_mid, y_mid, z_mid, max_range))
+    """
+    all_points = np.array([p for state in states for p in state.values()])
+    min_bounds = all_points.min(axis=0) - 100
+    max_bounds = all_points.max(axis=0) + 100
+
+    x_mid = (max_bounds[0] + min_bounds[0]) * 0.5
+    y_mid = (max_bounds[1] + min_bounds[1]) * 0.5
+    z_mid = (max_bounds[2] + min_bounds[2]) * 0.5
+    max_range = max(
+        max_bounds[0] - min_bounds[0],
+        max_bounds[1] - min_bounds[1],
+        max_bounds[2] - min_bounds[2],
+    )
+
+    return min_bounds, max_bounds, (x_mid, y_mid, z_mid, max_range)
+
+
+def configure_3d_axis(
+    ax: Axes3D,
+    view_name: str,
+    x_mid: float,
+    y_mid: float,
+    z_mid: float,
+    max_range: float,
+) -> None:
+    """
+    Configure a 3D axis with standard view settings.
+
+    Args:
+        ax: The 3D axis to configure.
+        view_name: View type ("front", "top", "side", "iso").
+        x_mid, y_mid, z_mid: Center coordinates for the view.
+        max_range: Range for consistent scaling.
+    """
+    # Set view-specific properties
+    if view_name == "top":
+        ax.view_init(elev=90, azim=0)
+        ax.set_title("Top View [X-Y]")
+        ax.set_proj_type("ortho")
+        ax.set_zticklabels([])  # type: ignore[attr-defined]
+    elif view_name == "front":
+        ax.view_init(elev=0, azim=0)
+        ax.set_title("Front View [Y-Z]")
+        ax.set_proj_type("ortho")
+        ax.set_xticklabels([])
+    elif view_name == "side":
+        ax.view_init(elev=0, azim=90)
+        ax.set_title("Side View [X-Z]")
+        ax.set_proj_type("ortho")
+        ax.set_yticklabels([])
+    else:  # isometric
+        ax.view_init(elev=20, azim=45)
+        ax.set_title("Isometric View")
+        ax.set_proj_type("ortho")
+
+    # Set consistent axis limits and aspect ratio
+    ax.set_xlim3d([x_mid - max_range / 2, x_mid + max_range / 2])
+    ax.set_ylim3d([y_mid - max_range / 2, y_mid + max_range / 2])
+    ax.set_zlim3d([z_mid - max_range / 2, z_mid + max_range / 2])
+    ax.set_box_aspect([1, 1, 1])  # type: ignore[arg-type]
+    ax.set_xlabel("X [mm]")
+    ax.set_ylabel("Y [mm]")
+    ax.set_zlabel("Z [mm]")
+
+
+def create_four_view_axes() -> tuple[Figure, dict[str, Axes3D]]:
+    """
+    Create a figure with four 3D subplots for standard views.
+
+    Returns:
+        Tuple of (figure, axes_dict) where axes_dict maps view names to 3D axes.
+    """
+    fig_scalar = 1.25
+    fig = plt.figure(figsize=(16 * fig_scalar, 10 * fig_scalar))
+    gs = fig.add_gridspec(2, 2)
+
+    axes = {
+        "front": cast(Axes3D, fig.add_subplot(gs[0, 0], projection="3d")),
+        "top": cast(Axes3D, fig.add_subplot(gs[1, 0], projection="3d")),
+        "side": cast(Axes3D, fig.add_subplot(gs[0, 1], projection="3d")),
+        "iso": cast(Axes3D, fig.add_subplot(gs[1, 1], projection="3d")),
+    }
+
+    return fig, axes
+
+
+def plot_suspension_on_axis(
+    ax: Axes3D,
+    visualizer: SuspensionVisualizer,
+    positions: dict[PointID, Vec3],
+    view_name: str,
+    show_labels: bool = True,
+) -> None:
+    """
+    Plot suspension links and wheel on a 3D axis.
+
+    Args:
+        ax: The 3D axis to plot on.
+        visualizer: Suspension visualizer with links and wheel config.
+        positions: Position data for all points.
+        view_name: View name for label filtering.
+        show_labels: Whether to show labels on this view.
+    """
+    # Plot suspension links
+    for link in visualizer.links:
+        if len(link.points) > 1:
+            pts = np.array([positions[pid] for pid in link.points])
+            ax.plot(
+                pts[:, 0],
+                pts[:, 1],
+                pts[:, 2],
+                color=link.color,
+                linewidth=link.linewidth,
+                linestyle=link.linestyle,
+                marker=link.marker,
+                markersize=link.markersize,
+                label=link.label if show_labels else None,
+            )
+        else:
+            # Single point
+            pt = positions[link.points[0]]
+            ax.scatter(
+                pt[0],
+                pt[1],
+                pt[2],
+                color=link.color,
+                s=int(link.markersize**2),
+                marker=link.marker,
+                label=link.label if show_labels else None,
+            )
+
+    # Draw the wheel
+    visualizer.draw_wheel(ax, positions)
+
+    # Add contact patch center if it exists
+    if PointID.CONTACT_PATCH_CENTER in positions:
+        contact_pt = positions[PointID.CONTACT_PATCH_CENTER]
+        ax.scatter(
+            contact_pt[0],
+            contact_pt[1],
+            contact_pt[2],
+            color="red",
+            s=100,
+            marker="o",
+            label="Contact Patch" if show_labels else None,
+        )
 
 
 def create_four_view_plot(
@@ -52,109 +241,19 @@ def create_four_view_plot(
     visualizer = SuspensionVisualizer(visualization_links, wheel_config)
 
     # Create figure with four subplots
-    fig_scalar = 1.25
-    fig = plt.figure(figsize=(16 * fig_scalar, 10 * fig_scalar))
-    gs = fig.add_gridspec(2, 2)
-
-    axes = {
-        "front": fig.add_subplot(gs[0, 0], projection="3d"),
-        "top": fig.add_subplot(gs[1, 0], projection="3d"),
-        "side": fig.add_subplot(gs[0, 1], projection="3d"),
-        "iso": fig.add_subplot(gs[1, 1], projection="3d"),
-    }
+    fig, axes = create_four_view_axes()
 
     # Compute global bounds for consistent scaling
-    all_points = np.array(list(state.positions.values()))
-    min_bounds = all_points.min(axis=0) - 100
-    max_bounds = all_points.max(axis=0) + 100
-
-    # Common axis limits and aspect
-    x_mid = (max_bounds[0] + min_bounds[0]) * 0.5
-    y_mid = (max_bounds[1] + min_bounds[1]) * 0.5
-    z_mid = (max_bounds[2] + min_bounds[2]) * 0.5
-    max_range = max(
-        max_bounds[0] - min_bounds[0],
-        max_bounds[1] - min_bounds[1],
-        max_bounds[2] - min_bounds[2],
+    _, _, (x_mid, y_mid, z_mid, max_range) = compute_bounds_from_positions(
+        state.positions
     )
 
-    # Configure each view
+    # Configure each view and plot suspension
     for view_name, ax in axes.items():
-        ax3d = cast(Axes3D, ax)
-
-        # Set view-specific properties
-        if view_name == "top":
-            ax3d.view_init(elev=90, azim=0)
-            ax3d.set_title("Top View [X-Y]")
-            ax3d.set_proj_type("ortho")
-            ax3d.set_zticklabels([])  # type: ignore[attr-defined]
-        elif view_name == "front":
-            ax3d.view_init(elev=0, azim=0)
-            ax3d.set_title("Front View [Y-Z]")
-            ax3d.set_proj_type("ortho")
-            ax3d.set_xticklabels([])
-        elif view_name == "side":
-            ax3d.view_init(elev=0, azim=90)
-            ax3d.set_title("Side View [X-Z]")
-            ax3d.set_proj_type("ortho")
-            ax3d.set_yticklabels([])
-        else:  # isometric
-            ax3d.view_init(elev=20, azim=45)
-            ax3d.set_title("Isometric View")
-            ax3d.set_proj_type("ortho")
-
-        # Set consistent axis limits and aspect ratio
-        ax3d.set_xlim3d([x_mid - max_range / 2, x_mid + max_range / 2])
-        ax3d.set_ylim3d([y_mid - max_range / 2, y_mid + max_range / 2])
-        ax3d.set_zlim3d([z_mid - max_range / 2, z_mid + max_range / 2])
-        ax3d.set_box_aspect([1, 1, 1])  # type: ignore[arg-type]
-        ax3d.set_xlabel("X [mm]")
-        ax3d.set_ylabel("Y [mm]")
-        ax3d.set_zlabel("Z [mm]")
-
-        # Plot suspension links
-        for link in visualizer.links:
-            if len(link.points) > 1:
-                pts = np.array([state.positions[pid] for pid in link.points])
-                ax3d.plot(
-                    pts[:, 0],
-                    pts[:, 1],
-                    pts[:, 2],
-                    color=link.color,
-                    linewidth=link.linewidth,
-                    linestyle=link.linestyle,
-                    marker=link.marker,
-                    markersize=link.markersize,
-                    label=link.label if view_name == "iso" else None,
-                )
-            else:
-                # Single point
-                pt = state.positions[link.points[0]]
-                ax3d.scatter(
-                    pt[0],
-                    pt[1],
-                    pt[2],
-                    color=link.color,
-                    s=int(link.markersize**2),
-                    marker=link.marker,
-                    label=link.label if view_name == "iso" else None,
-                )
-
-        # Draw the wheel
-        visualizer.draw_wheel(ax3d, state.positions)
-
-        # Add contact patch center if it exists
-        if PointID.CONTACT_PATCH_CENTER in state.positions:
-            contact_pt = state.positions[PointID.CONTACT_PATCH_CENTER]
-            ax3d.scatter(
-                contact_pt[0],
-                contact_pt[1],
-                contact_pt[2],
-                color="red",
-                s=100,
-                marker="o",
-                label="Contact Patch" if view_name == "iso" else None,
-            )
+        configure_3d_axis(ax, view_name, x_mid, y_mid, z_mid, max_range)
+        plot_suspension_on_axis(
+            ax, visualizer, state.positions, view_name, view_name == "iso"
+        )
 
     # Add legend only to isometric view
     axes["iso"].legend(loc="upper left")
@@ -210,87 +309,20 @@ def create_single_view_plot(
     ax_raw = fig.add_subplot(111, projection="3d")
     ax = cast(Axes3D, ax_raw)
 
-    # Set view-specific properties
-    if view == "top":
-        ax.view_init(elev=90, azim=0)
-        ax.set_title("Top View [X-Y]")
-    elif view == "front":
-        ax.view_init(elev=0, azim=0)
-        ax.set_title("Front View [Y-Z]")
-    elif view == "side":
-        ax.view_init(elev=0, azim=90)
-        ax.set_title("Side View [X-Z]")
-    else:  # isometric
-        ax.view_init(elev=20, azim=45)
-        ax.set_title(title)
-
-    ax.set_proj_type("ortho")
-
-    # Compute bounds and set axis limits
-    all_points = np.array(list(state.positions.values()))
-    min_bounds = all_points.min(axis=0) - 100
-    max_bounds = all_points.max(axis=0) + 100
-
-    x_mid = (max_bounds[0] + min_bounds[0]) * 0.5
-    y_mid = (max_bounds[1] + min_bounds[1]) * 0.5
-    z_mid = (max_bounds[2] + min_bounds[2]) * 0.5
-    max_range = max(
-        max_bounds[0] - min_bounds[0],
-        max_bounds[1] - min_bounds[1],
-        max_bounds[2] - min_bounds[2],
+    # Compute bounds and configure axis
+    _, _, (x_mid, y_mid, z_mid, max_range) = compute_bounds_from_positions(
+        state.positions
     )
 
-    ax.set_xlim3d([x_mid - max_range / 2, x_mid + max_range / 2])
-    ax.set_ylim3d([y_mid - max_range / 2, y_mid + max_range / 2])
-    ax.set_zlim3d([z_mid - max_range / 2, z_mid + max_range / 2])
-    ax.set_box_aspect([1, 1, 1])  # type: ignore[arg-type]
-    ax.set_xlabel("X [mm]")
-    ax.set_ylabel("Y [mm]")
-    ax.set_zlabel("Z [mm]")
+    # Set custom title for isometric view
+    if view == "iso":
+        configure_3d_axis(ax, view, x_mid, y_mid, z_mid, max_range)
+        ax.set_title(title)  # Override default iso title
+    else:
+        configure_3d_axis(ax, view, x_mid, y_mid, z_mid, max_range)
 
-    # Plot suspension links
-    for link in visualizer.links:
-        if len(link.points) > 1:
-            pts = np.array([state.positions[pid] for pid in link.points])
-            ax.plot(
-                pts[:, 0],
-                pts[:, 1],
-                pts[:, 2],
-                color=link.color,
-                linewidth=link.linewidth,
-                linestyle=link.linestyle,
-                marker=link.marker,
-                markersize=link.markersize,
-                label=link.label,
-            )
-        else:
-            # Single point
-            pt = state.positions[link.points[0]]
-            ax.scatter(
-                pt[0],
-                pt[1],
-                pt[2],
-                color=link.color,
-                s=link.markersize**2,  # type: ignore[arg-type]
-                marker=link.marker,
-                label=link.label,
-            )
-
-    # Draw the wheel
-    visualizer.draw_wheel(ax, state.positions)
-
-    # Add contact patch center if it exists
-    if PointID.CONTACT_PATCH_CENTER in state.positions:
-        contact_pt = state.positions[PointID.CONTACT_PATCH_CENTER]
-        ax.scatter(
-            contact_pt[0],
-            contact_pt[1],
-            contact_pt[2],
-            color="red",
-            s=100,
-            marker="*",
-            label="Contact Patch Center",
-        )
+    # Plot suspension
+    plot_suspension_on_axis(ax, visualizer, state.positions, view, show_labels=True)
 
     ax.legend()
 

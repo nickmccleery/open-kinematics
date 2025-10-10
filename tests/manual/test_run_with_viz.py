@@ -15,7 +15,7 @@ from kinematics.suspensions.implementations.double_wishbone import (
     DoubleWishboneProvider,
 )
 from kinematics.types import PointTargetAxis, SweepConfig
-from kinematics.visualization.debug import create_animation
+from kinematics.visualization.animation import create_animation
 from kinematics.visualization.main import SuspensionVisualizer, WheelVisualization
 
 

@@ -47,7 +47,7 @@ def visualize_suspension_sweep(
         ImportError: If visualization dependencies are not installed.
     """
     try:
-        from kinematics.visualization.debug import create_animation
+        from kinematics.visualization.animation import create_animation
         from kinematics.visualization.main import (
             SuspensionVisualizer,
             WheelVisualization,

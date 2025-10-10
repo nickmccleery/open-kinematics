@@ -1,14 +1,24 @@
+"""
+Animation utilities for suspension visualization.
+
+This module provides animation functionality for suspension systems, making use of the
+common plotting utilities from plots.py.
+"""
+
 from pathlib import Path
-from typing import cast
 
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import numpy as np
-from mpl_toolkits.mplot3d.axes3d import Axes3D
 
 from kinematics.enums import PointID
 from kinematics.types import Vec3
 from kinematics.visualization.main import SuspensionVisualizer
+from kinematics.visualization.plots import (
+    compute_bounds_from_states,
+    configure_3d_axis,
+    create_four_view_axes,
+)
 
 
 def create_animation(
@@ -22,64 +32,31 @@ def create_animation(
     dpi: int = 200,
     show_live: bool = True,
 ) -> None:
-    fig_scalar = 1.25
-    fig = plt.figure(figsize=(16 * fig_scalar, 10 * fig_scalar))
-    gs = fig.add_gridspec(2, 2)
+    """
+    Create an animation showing suspension movement through multiple states.
 
-    axes = {
-        "front": fig.add_subplot(gs[0, 0], projection="3d"),
-        "top": fig.add_subplot(gs[1, 0], projection="3d"),
-        "side": fig.add_subplot(gs[0, 1], projection="3d"),
-        "iso": fig.add_subplot(gs[1, 1], projection="3d"),
-    }
+    Args:
+        position_states: List of position dictionaries for each frame.
+        initial_positions: Initial position state for reference.
+        visualizer: Suspension visualizer with links and wheel config.
+        output_path: Path where the animation will be saved.
+        fps: Frames per second for the animation.
+        writer: Animation writer to use ('ffmpeg', 'pillow', etc.).
+        codec: Video codec to use (for ffmpeg writer).
+        dpi: DPI for the output animation.
+        show_live: Whether to show the animation live during creation.
+    """
+    # Create figure with four subplots using common function
+    fig, axes = create_four_view_axes()
 
-    # Compute global bounds.
-    all_points = np.array([p for state in position_states for p in state.values()])
-    min_bounds = all_points.min(axis=0) - 100
-    max_bounds = all_points.max(axis=0) + 100
+    # Compute global bounds for all states
+    _, _, (x_mid, y_mid, z_mid, max_range) = compute_bounds_from_states(position_states)
 
-    # Common axis limits and aspect.
-    x_mid = (max_bounds[0] + min_bounds[0]) * 0.5
-    y_mid = (max_bounds[1] + min_bounds[1]) * 0.5
-    z_mid = (max_bounds[2] + min_bounds[2]) * 0.5
-    max_range = max(
-        max_bounds[0] - min_bounds[0],
-        max_bounds[1] - min_bounds[1],
-        max_bounds[2] - min_bounds[2],
-    )
-
-    # Configure axes once.
+    # Configure axes once using common function
     for view_name, ax in axes.items():
-        ax3d = cast(Axes3D, ax)
-        if view_name == "top":
-            ax3d.view_init(elev=90, azim=0)
-            ax3d.set_title("Top View [X-Y]")
-            ax3d.set_proj_type("ortho")
-            ax3d.set_zticklabels([])  # type: ignore[attr-defined]
-        elif view_name == "front":
-            ax3d.view_init(elev=0, azim=0)
-            ax3d.set_title("Front View [Y-Z]")
-            ax3d.set_proj_type("ortho")
-            ax3d.set_xticklabels([])
-        elif view_name == "side":
-            ax3d.view_init(elev=0, azim=90)
-            ax3d.set_title("Side View [X-Z]")
-            ax3d.set_proj_type("ortho")
-            ax3d.set_yticklabels([])
-        else:
-            ax3d.view_init(elev=20, azim=45)
-            ax3d.set_title("Isometric View")
-            ax3d.set_proj_type("ortho")
+        configure_3d_axis(ax, view_name, x_mid, y_mid, z_mid, max_range)
 
-        ax3d.set_xlim3d([x_mid - max_range / 2, x_mid + max_range / 2])
-        ax3d.set_ylim3d([y_mid - max_range / 2, y_mid + max_range / 2])
-        ax3d.set_zlim3d([z_mid - max_range / 2, z_mid + max_range / 2])
-        ax3d.set_box_aspect([1, 1, 1])  # type: ignore[arg-type]
-        ax3d.set_xlabel("X [mm]")
-        ax3d.set_ylabel("Y [mm]")
-        ax3d.set_zlabel("Z [mm]")
-
-    # Pre-create link line artists per axis so we can just update data each frame.
+    # Pre-create link line artists per axis so we can just update data each frame
     link_artists: dict[str, list] = {k: [] for k in axes.keys()}
     for view_name, ax in axes.items():
         for link in visualizer.links:
@@ -98,10 +75,10 @@ def create_animation(
             )
             link_artists[view_name].append(line)
 
-    # Add legend once on iso view.
+    # Add legend once on iso view
     axes["iso"].legend(loc="upper left")
 
-    # Create artists.
+    # Create wheel artists using visualizer's wheel config
     wheel_cfg = visualizer.wheel_config
     theta = np.linspace(0, 2 * np.pi, wheel_cfg.num_points)
     cos_t = np.cos(theta)
@@ -113,7 +90,7 @@ def create_animation(
         k: {"rims": [], "spokes": []} for k in axes.keys()
     }
 
-    # Helper to compute wheel geometry for a given positions dict.
+    # Helper to compute wheel geometry for a given positions dict
     def compute_wheel_points(positions: dict[PointID, Vec3]):
         wheel_center = positions[PointID.WHEEL_CENTER]
         wheel_inboard = positions[PointID.WHEEL_INBOARD]
@@ -133,7 +110,7 @@ def create_animation(
         rim_outboard = wheel_outboard + radius * ring
         return rim_center, rim_inboard, rim_outboard
 
-    # Create initial wheel artists using the initial positions.
+    # Create initial wheel artists using the initial positions
     rim_center, rim_inboard, rim_outboard = compute_wheel_points(initial_positions)
     for view_name, ax in axes.items():
         (rim_center_line,) = ax.plot(
@@ -179,19 +156,19 @@ def create_animation(
             )
             wheel_artists[view_name]["spokes"].append(sp_line)
 
-    # Layout.
+    # Layout
     plt.subplots_adjust(
         left=0.0, right=1, bottom=0.025, top=0.95, wspace=0.01, hspace=0.01
     )
 
-    # Persistent title updated each frame (cheaper than re-creating).
+    # Persistent title updated each frame (cheaper than re-creating)
     title_artist = fig.suptitle("", fontsize=16)
 
-    # Update function that only updates artist data (no clears/plots).
+    # Update function that only updates artist data (no clears/plots)
     def update(frame: int):
         positions = position_states[frame]
 
-        # Update links.
+        # Update links
         for view_name in axes.keys():
             for line, link in zip(link_artists[view_name], visualizer.links):
                 pts = np.array([positions[pid] for pid in link.points])
@@ -199,7 +176,7 @@ def create_animation(
                 # For 3D lines, z is set via set_3d_properties
                 line.set_3d_properties(pts[:, 2])  # type: ignore[attr-defined]
 
-        # Update wheel geometry.
+        # Update wheel geometry
         rim_center_u, rim_inboard_u, rim_outboard_u = compute_wheel_points(positions)
         for view_name in axes.keys():
             rims = wheel_artists[view_name]["rims"]
@@ -222,7 +199,7 @@ def create_animation(
                     [rim_inboard_u[idx, 2], rim_outboard_u[idx, 2]]
                 )  # type: ignore[attr-defined]
 
-        # Update global title.
+        # Update global title
         title_string = (
             f"Wheel Center Z: {positions[PointID.WHEEL_CENTER][2] - initial_positions[PointID.WHEEL_CENTER][2]:.1f} [mm]",
             f"Rack Displacement: {positions[PointID.TRACKROD_INBOARD][1] - initial_positions[PointID.TRACKROD_INBOARD][1]:.1f} [mm]",
@@ -236,10 +213,10 @@ def create_animation(
             artists.extend(wheel_artists[view_name]["spokes"])
         return artists
 
-    # Allow frame skipping for faster renders.
+    # Allow frame skipping for faster renders
     frame_indices = range(0, len(position_states), 1)
 
-    # Choose writer automatically if not provided.
+    # Choose writer automatically if not provided
     out_suffix = output_path.suffix.lower()
     chosen_writer: str
     if writer is not None:
@@ -270,7 +247,7 @@ def create_animation(
             for frame in frame_indices:
                 update(frame)
                 if show_live:
-                    # Draw immediately and let GUI process events.
+                    # Draw immediately and let GUI process events
                     fig.canvas.draw()
                     fig.canvas.flush_events()
 
