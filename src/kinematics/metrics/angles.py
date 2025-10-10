@@ -6,7 +6,7 @@ All functions operate on a solved SuspensionState and return angles in degrees.
 
 import numpy as np
 
-from kinematics.enums import PointID
+from kinematics.enums import Axis, PointID
 from kinematics.state import SuspensionState
 from kinematics.types import WorldAxisSystem
 from kinematics.vector_utils.generic import normalize_vector
@@ -34,8 +34,8 @@ def calculate_camber(state: SuspensionState) -> float:
     wheel_up_vector = np.cross(axle_vector, WorldAxisSystem.X)
 
     # Project the wheel's up vector onto the front view plane (YZ plane)
-    wheel_up_proj_y = wheel_up_vector[1]
-    wheel_up_proj_z = wheel_up_vector[2]
+    wheel_up_proj_y = wheel_up_vector[Axis.Y]
+    wheel_up_proj_z = wheel_up_vector[Axis.Z]
 
     # Calculate angle with the global Z-axis
     camber_rad = np.arctan2(wheel_up_proj_y, wheel_up_proj_z)
@@ -65,8 +65,8 @@ def calculate_caster(state: SuspensionState) -> float:
     steering_axis_vector = upper_pivot - lower_pivot
 
     # Project the steering axis vector onto the side view plane (XZ plane).
-    steering_axis_proj_x = steering_axis_vector[0]
-    steering_axis_proj_z = steering_axis_vector[2]
+    steering_axis_proj_x = steering_axis_vector[Axis.X]
+    steering_axis_proj_z = steering_axis_vector[Axis.Z]
 
     # Angle with the global Z-axis. Positive angle means rearward tilt (positive caster).
     caster_rad = np.arctan2(steering_axis_proj_x, steering_axis_proj_z)
@@ -90,8 +90,8 @@ def calculate_toe(state: SuspensionState) -> float:
     axle_vector = state.get(PointID.AXLE_OUTBOARD) - state.get(PointID.AXLE_INBOARD)
 
     # Project the axle vector onto the top view plane (XY plane).
-    axle_proj_x = axle_vector[0]
-    axle_proj_y = axle_vector[1]
+    axle_proj_x = axle_vector[Axis.X]
+    axle_proj_y = axle_vector[Axis.Y]
 
     # Angle with the global Y-axis (vehicle transverse axis is X).
     # We use arctan2(y, x) to get the angle from the X-axis, so we swap here.

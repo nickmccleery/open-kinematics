@@ -14,8 +14,7 @@ from kinematics.constraints import (
     DistanceConstraint,
     PointOnLineConstraint,
 )
-from kinematics.enums import PointID
-from kinematics.metrics.helpers import compute_wishbone_svic
+from kinematics.enums import Axis, PointID
 from kinematics.points.derived.definitions import (
     get_axle_midpoint,
     get_wheel_center,
@@ -33,6 +32,7 @@ from kinematics.suspensions.core.collections import (
 from kinematics.suspensions.core.geometry import SuspensionGeometry
 from kinematics.suspensions.core.provider import SuspensionProvider
 from kinematics.types import Vec3, make_vec3
+from kinematics.vector_utils.generic import compute_2d_vector_vector_intersection
 from kinematics.vector_utils.geometric import (
     compute_point_point_distance,
     compute_vector_vector_angle,
@@ -273,26 +273,76 @@ class DoubleWishboneProvider(SuspensionProvider):
 
         return constraints
 
-    def compute_side_view_instant_center(self, state: SuspensionState) -> "Vec3":
+    def compute_side_view_instant_center(self, state: SuspensionState) -> Vec3:
         """
-        Compute the side view instant center for double wishbone suspension.
+        Compute the side view instant center (SVIC) for a double wishbone suspension.
 
-        The SVIC is found by projecting the upper and lower wishbone links
-        onto the side view (XZ plane) and finding their intersection point.
+        This method follows the standard kinematic approach by projecting the suspension
+        geometry onto the side-view (X-Z) plane and finding the intersection of the
+        lines representing the effective swing arms.
+
+        The process is as follows:
+        1. For each wishbone, the 3D inboard pivot axis is defined by the vector
+           connecting the two inboard mounting points.
+        2. This axis vector is projected onto the 2D side-view plane to get a direction.
+        3. A 2D line is constructed that passes through the projected outboard point
+           and is parallel to the projected inboard axis direction.
+        4. The 2D intersection of these two lines (one for the upper wishbone, one for
+           the lower) is the side view instant center.
 
         Args:
-            state: The solved SuspensionState to analyze.
+            state: The current suspension state containing point positions.
 
         Returns:
-            The (x, y, z) coordinates of the SVIC, or None if the wishbone
-            links are parallel.
+            The (x, y, z) coordinates of the SVIC, with the y-coordinate set to 0.
+            Returns [inf, 0.0, inf] if the projected lines are parallel.
         """
-        return compute_wishbone_svic(
-            upper_front=state.get(PointID.UPPER_WISHBONE_INBOARD_FRONT),
-            upper_rear=state.get(PointID.UPPER_WISHBONE_INBOARD_REAR),
-            lower_front=state.get(PointID.LOWER_WISHBONE_INBOARD_FRONT),
-            lower_rear=state.get(PointID.LOWER_WISHBONE_INBOARD_REAR),
+        # Get 3D positions of all relevant points from the current state.
+        upper_front_3d = state.positions[PointID.UPPER_WISHBONE_INBOARD_FRONT]
+        upper_rear_3d = state.positions[PointID.UPPER_WISHBONE_INBOARD_REAR]
+        upper_outboard_3d = state.positions[PointID.UPPER_WISHBONE_OUTBOARD]
+
+        lower_front_3d = state.positions[PointID.LOWER_WISHBONE_INBOARD_FRONT]
+        lower_rear_3d = state.positions[PointID.LOWER_WISHBONE_INBOARD_REAR]
+        lower_outboard_3d = state.positions[PointID.LOWER_WISHBONE_OUTBOARD]
+
+        # Upper wishbone side view projection.
+        upper_axis_3d = upper_rear_3d - upper_front_3d
+
+        # Project the axis and the outboard point to the 2D side view plane (X-Z).
+        upper_axis_2d = np.array([upper_axis_3d[Axis.X], upper_axis_3d[Axis.Z]])
+        upper_outboard_2d = np.array(
+            [upper_outboard_3d[Axis.X], upper_outboard_3d[Axis.Z]]
         )
+
+        # Lower wishbone side view projection.
+        lower_axis_3d = lower_rear_3d - lower_front_3d
+
+        # Project the axis and the outboard point to the 2D side-view plane (X-Z).
+        lower_axis_2d = np.array([lower_axis_3d[Axis.X], lower_axis_3d[Axis.Z]])
+        lower_outboard_2d = np.array(
+            [lower_outboard_3d[Axis.X], lower_outboard_3d[Axis.Z]]
+        )
+
+        # Find the intersection of the two projected lines. Each line is defined by
+        # its start point (the outboard point) and end point (outboard + inboard axis
+        # vector). Basically, we use start point and direction, and we're working
+        # with everything in the projected space.
+        intersection = compute_2d_vector_vector_intersection(
+            line1_start=lower_outboard_2d,
+            line1_end=(lower_outboard_2d + lower_axis_2d).astype(np.float64),
+            line2_start=upper_outboard_2d,
+            line2_end=(upper_outboard_2d + upper_axis_2d).astype(np.float64),
+            segments_only=False,
+        )
+
+        if intersection is None:
+            # The projected lines are parallel, so the SVIC is at infinity.
+            return make_vec3([np.inf, 0.0, np.inf])
+
+        # Convert the 2D intersection point back to 3D space, treat y=0.
+        svic_2d = intersection.point
+        return make_vec3([svic_2d[0], 0.0, svic_2d[1]])
 
     def get_visualization_links(self) -> list[LinkVisualization]:
         """
