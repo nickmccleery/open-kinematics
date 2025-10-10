@@ -198,10 +198,10 @@ class DoubleWishboneProvider(SuspensionProvider):
                 get_wheel_center, wheel_offset=wheel_cfg.offset
             ),
             PointID.WHEEL_INBOARD: partial(
-                get_wheel_inboard, wheel_width=wheel_cfg.width
+                get_wheel_inboard, wheel_width=wheel_cfg.tire.section_width
             ),
             PointID.WHEEL_OUTBOARD: partial(
-                get_wheel_outboard, wheel_width=wheel_cfg.width
+                get_wheel_outboard, wheel_width=wheel_cfg.tire.section_width
             ),
             PointID.WHEEL_CENTER_ON_GROUND: partial(get_wheel_center_on_ground),
             PointID.CONTACT_PATCH_CENTER: partial(

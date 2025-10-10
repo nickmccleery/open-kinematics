@@ -52,8 +52,6 @@ hard_points:
 configuration:
   steered: true
   wheel:
-    diameter: 457.2
-    width: 225.0
     offset: 0
     tire:
       aspect_ratio: 0.55
