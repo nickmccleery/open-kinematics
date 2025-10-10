@@ -40,68 +40,79 @@ def compute_2d_vector_vector_intersection(
     segments_only: bool = True,
 ) -> Optional[LineIntersectionResult]:
     """
-    Compute the intersection of two 2D line segments.
-
-    This function solves for the intersection point of two lines defined by their
-    start and end points. The lines are parameterized as:
-    - Line 1: P = line1_start + t1 * (line1_end - line1_start)
-    - Line 2: P = line2_start + t2 * (line2_end - line2_start)
-
-    Args:
-        line1_start: Start point of first line as [x, y] coordinates.
-        line1_end: End point of first line as [x, y] coordinates.
-        line2_start: Start point of second line as [x, y] coordinates.
-        line2_end: End point of second line as [x, y] coordinates.
-        segments_only: If True, only return intersection if it lies on both line
-            segments (0 <= t1, t2 <= 1). If False, treat as infinite lines.
+    Compute the intersection of two 2D line segments or their infinite extensions.
 
     Returns:
-        LineIntersectionResult with intersection point and parameters, or None if:
-        - Lines are parallel (no intersection)
-        - Lines are degenerate (zero length)
-        - segments_only=True and intersection is outside both segments
+        LineIntersectionResult(point, t1, t2) or None if:
+        - Lines are parallel/colinear (no unique intersection)
+        - Any line is degenerate (zero length)
+        - segments_only=True and the intersection lies outside either segment
+    Notes:
+        - Parallel test is scale-aware: |den| < EPSILON * |d1| * |d2|
+        - Endpoints are accepted with a small tolerance when segments_only=True
     """
-    # Extract coordinates.
-    x1, y1 = line1_start[0], line1_start[1]
-    x2, y2 = line1_end[0], line1_end[1]
-    x3, y3 = line2_start[0], line2_start[1]
-    x4, y4 = line2_end[0], line2_end[1]
 
-    # Calculate direction vectors.
+    # Ensure dtype and finiteness.
+    p1 = np.asarray(line1_start, dtype=np.float64)
+    p2 = np.asarray(line1_end, dtype=np.float64)
+    p3 = np.asarray(line2_start, dtype=np.float64)
+    p4 = np.asarray(line2_end, dtype=np.float64)
+
+    if not (
+        np.isfinite(p1).all()
+        and np.isfinite(p2).all()
+        and np.isfinite(p3).all()
+        and np.isfinite(p4).all()
+    ):
+        return None
+
+    # Extract coordinates.
+    x1, y1 = p1[0], p1[1]
+    x2, y2 = p2[0], p2[1]
+    x3, y3 = p3[0], p3[1]
+    x4, y4 = p4[0], p4[1]
+
+    # Direction vectors and lengths.
     d1x = x2 - x1
     d1y = y2 - y1
     d2x = x4 - x3
     d2y = y4 - y3
-
-    # Calculate denominator for parametric solution.
-    denominator = d1x * d2y - d1y * d2x
-
-    # Check for parallel or degenerate lines.
-    if (
-        abs(denominator) < EPSILON
-        or np.hypot(d1x, d1y) < EPSILON
-        or np.hypot(d2x, d2y) < EPSILON
-    ):
+    len1 = np.hypot(d1x, d1y)
+    len2 = np.hypot(d2x, d2y)
+    if len1 < EPSILON or len2 < EPSILON:
+        # Degenerate line segment.
         return None
 
-    # Calculate relative position.
+    # Denominator (2D cross of directions) with scale-aware parallel test.
+    denominator = d1x * d2y - d1y * d2x
+    if abs(denominator) < (EPSILON * len1 * len2):
+        # Parallel or colinear: no unique intersection point.
+        return None
+
+    # Relative position from line1 start to line2 start.
     dx = x3 - x1
     dy = y3 - y1
 
-    # Solve for parameters.
+    # Solve for parameters using cross products.
+    # t1 gives intersection along line1; t2 along line2.
     t1 = (dx * d2y - dy * d2x) / denominator
     t2 = (dx * d1y - dy * d1x) / denominator
 
-    # Check if intersection is on line segments (if required).
-    if segments_only and not (0 <= t1 <= 1 and 0 <= t2 <= 1):
-        return None
+    # Segment check with endpoint tolerance.
+    if segments_only:
+        # Tolerance scaled by segment size to catch endpoint hits.
+        tol = EPSILON / max(max(len1, len2), 1.0)
+        t1c = min(max(t1, 0.0), 1.0)
+        t2c = min(max(t2, 0.0), 1.0)
+        if abs(t1 - t1c) > tol or abs(t2 - t2c) > tol:
+            return None
 
-    # Calculate intersection point.
+    # Intersection point.
     point_x = x1 + t1 * d1x
     point_y = y1 + t1 * d1y
     point = np.array([point_x, point_y], dtype=np.float64)
 
-    return LineIntersectionResult(point=point, t1=t1, t2=t2)
+    return LineIntersectionResult(point=point, t1=float(t1), t2=float(t2))
 
 
 def normalize_vector(v: NDArray[FloatingT]) -> NDArray[FloatingT]:

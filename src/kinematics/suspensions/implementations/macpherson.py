@@ -22,11 +22,11 @@ from kinematics.state import SuspensionState
 from kinematics.suspensions.core.collections import LowerWishbonePoints, WheelAxlePoints
 from kinematics.suspensions.core.geometry import SuspensionGeometry
 from kinematics.suspensions.core.provider import SuspensionProvider
-from kinematics.types import NAN_VEC3, Vec3, make_vec3
+from kinematics.types import Vec3, make_vec3
 from kinematics.vector_utils.generic import (
     compute_2d_vector_vector_intersection,
     normalize_vector,
-    rotate_2d_vector,
+    perpendicular_2d,
 )
 from kinematics.vector_utils.geometric import compute_point_point_distance
 from kinematics.visualization.main import LinkVisualization
@@ -234,7 +234,6 @@ class MacPhersonProvider(SuspensionProvider):
         #   (2) Line through the strut top mount, perpendicular to the strut axis (side view).
         #
         # Returns a 3D point on the vehicle centerline (Y=0).
-        # Returns NaNs if the lines are parallel or geometry is degenerate.
 
         strut_top = state.positions[PointID.STRUT_TOP]
         strut_bottom = state.positions[PointID.STRUT_BOTTOM]
@@ -249,10 +248,7 @@ class MacPhersonProvider(SuspensionProvider):
 
         # Strut axis.
         strut_axis = normalize_vector(strut_bottom_2d - strut_top_2d)
-        strut_normal = rotate_2d_vector(
-            strut_axis,
-            angle_radians=np.pi / 2,
-        )
+        strut_normal = perpendicular_2d(strut_axis, clockwise=False)
 
         # Intersection detection.
         # Line 1: through strut top, direction = strut_normal.
@@ -266,7 +262,7 @@ class MacPhersonProvider(SuspensionProvider):
 
         # We don't need the normalized axis, just check for degenerate case.
         if np.linalg.norm(lwb_axis) < EPSILON:
-            return NAN_VEC3
+            raise ValueError("Degenerate lower wishbone axis. Cannot compute IC.")
 
         intersection = compute_2d_vector_vector_intersection(
             strut_normal_start,
@@ -278,9 +274,8 @@ class MacPhersonProvider(SuspensionProvider):
 
         if intersection is None:
             # Lines are parallel; IC at infinity.
-            return NAN_VEC3
+            return make_vec3([np.inf, 0.0, np.inf])
 
-        # Return as 3D (Y=0 for vehicle centerplane).
         ic_x, ic_z = intersection.point
         return make_vec3([float(ic_x), 0.0, float(ic_z)])
 
