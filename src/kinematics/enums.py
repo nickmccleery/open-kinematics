@@ -30,12 +30,13 @@ class PointID(IntEnum):
     AXLE_OUTBOARD = 12
     AXLE_MIDPOINT = 13
 
-    STRUT_INBOARD = 14
-    STRUT_OUTBOARD = 15
+    STRUT_TOP = 14
+    STRUT_BOTTOM = 15
 
     WHEEL_CENTER = 16
     WHEEL_INBOARD = 17
     WHEEL_OUTBOARD = 18
+    WHEEL_CENTER_ON_GROUND = 19
 
 
 class Axis(IntEnum):

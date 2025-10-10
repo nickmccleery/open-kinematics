@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Sequence
 from kinematics.constraints import Constraint
 from kinematics.enums import PointID
 from kinematics.points.derived.manager import DerivedPointsSpec
+from kinematics.types import Vec3
 
 if TYPE_CHECKING:
     from kinematics.suspensions.core.geometry import SuspensionGeometry
@@ -78,6 +79,24 @@ class SuspensionProvider(ABC):
 
         Returns:
             List of constraints that must be satisfied during solving.
+        """
+        ...
+
+    @abstractmethod
+    def compute_side_view_instant_center(self, state: SuspensionState) -> "Vec3 | None":
+        """
+        Compute the side view instant center for this suspension type.
+        Args:
+            state: The solved SuspensionState to analyze.
+
+        Returns:
+            The (x, y, z) coordinate of the SVIC, or None if:
+            - SVIC calculation is not applicable for this suspension type
+            - Links are parallel (no intersection point)
+
+        Note:
+            The Y coordinate is typically 0 (vehicle centerline) but may
+            vary for asymmetric suspensions.
         """
         ...
 

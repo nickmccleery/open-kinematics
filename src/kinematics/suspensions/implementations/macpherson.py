@@ -8,11 +8,13 @@ from typing import Sequence
 
 import numpy as np
 
+from kinematics.constants import EPSILON
 from kinematics.constraints import Constraint, DistanceConstraint
 from kinematics.enums import PointID
 from kinematics.points.derived.definitions import (
     get_axle_midpoint,
     get_wheel_center,
+    get_wheel_center_on_ground,
     get_wheel_inboard,
     get_wheel_outboard,
 )
@@ -21,6 +23,12 @@ from kinematics.state import SuspensionState
 from kinematics.suspensions.core.collections import LowerWishbonePoints, WheelAxlePoints
 from kinematics.suspensions.core.geometry import SuspensionGeometry
 from kinematics.suspensions.core.provider import SuspensionProvider
+from kinematics.types import Vec3, make_vec3
+from kinematics.vector_utils.generic import (
+    compute_2d_vector_vector_intersection,
+    normalize_vector,
+    perpendicular_2d,
+)
 from kinematics.vector_utils.geometric import compute_point_point_distance
 from kinematics.visualization.main import LinkVisualization
 
@@ -31,12 +39,12 @@ class StrutPoints:
     Points defining the strut geometry.
 
     Attributes:
-        inboard: Inboard strut mounting point coordinates.
-        outboard: Outboard strut mounting point coordinates.
+        top: Top (typically inboard) strut mounting point coordinates.
+        bottom: Bottom (typically outboard) strut mounting point coordinates.
     """
 
-    inboard: dict[str, float]
-    outboard: dict[str, float]
+    top: dict[str, float]
+    bottom: dict[str, float]
 
 
 @dataclass
@@ -122,11 +130,11 @@ class MacPhersonProvider(SuspensionProvider):
 
         # Strut.
         strut = hard_points.strut
-        positions[PointID.STRUT_INBOARD] = np.array(
-            [strut.inboard["x"], strut.inboard["y"], strut.inboard["z"]]
+        positions[PointID.STRUT_TOP] = np.array(
+            [strut.top["x"], strut.top["y"], strut.top["z"]]
         )
-        positions[PointID.STRUT_OUTBOARD] = np.array(
-            [strut.outboard["x"], strut.outboard["y"], strut.outboard["z"]]
+        positions[PointID.STRUT_BOTTOM] = np.array(
+            [strut.bottom["x"], strut.bottom["y"], strut.bottom["z"]]
         )
 
         # Wheel axle.
@@ -154,7 +162,7 @@ class MacPhersonProvider(SuspensionProvider):
         """
         return [
             PointID.LOWER_WISHBONE_OUTBOARD,
-            PointID.STRUT_OUTBOARD,
+            PointID.STRUT_BOTTOM,
             PointID.AXLE_INBOARD,
             PointID.AXLE_OUTBOARD,
         ]
@@ -179,6 +187,7 @@ class MacPhersonProvider(SuspensionProvider):
             PointID.WHEEL_OUTBOARD: partial(
                 get_wheel_outboard, wheel_width=wheel_cfg.width
             ),
+            PointID.WHEEL_CENTER_ON_GROUND: partial(get_wheel_center_on_ground),
         }
 
         dependencies = {
@@ -186,6 +195,11 @@ class MacPhersonProvider(SuspensionProvider):
             PointID.WHEEL_CENTER: {PointID.AXLE_INBOARD, PointID.AXLE_OUTBOARD},
             PointID.WHEEL_INBOARD: {PointID.WHEEL_CENTER, PointID.AXLE_INBOARD},
             PointID.WHEEL_OUTBOARD: {PointID.WHEEL_CENTER, PointID.AXLE_INBOARD},
+            PointID.WHEEL_CENTER_ON_GROUND: {
+                PointID.WHEEL_CENTER,
+                PointID.AXLE_INBOARD,
+                PointID.AXLE_OUTBOARD,
+            },
         }
 
         return DerivedPointsSpec(functions=functions, dependencies=dependencies)
@@ -204,12 +218,12 @@ class MacPhersonProvider(SuspensionProvider):
         length_pairs = [
             (PointID.LOWER_WISHBONE_INBOARD_FRONT, PointID.LOWER_WISHBONE_OUTBOARD),
             (PointID.LOWER_WISHBONE_INBOARD_REAR, PointID.LOWER_WISHBONE_OUTBOARD),
-            (PointID.STRUT_INBOARD, PointID.STRUT_OUTBOARD),
+            (PointID.STRUT_TOP, PointID.STRUT_BOTTOM),
             (PointID.AXLE_INBOARD, PointID.AXLE_OUTBOARD),
             (PointID.AXLE_INBOARD, PointID.LOWER_WISHBONE_OUTBOARD),
             (PointID.AXLE_OUTBOARD, PointID.LOWER_WISHBONE_OUTBOARD),
-            (PointID.AXLE_INBOARD, PointID.STRUT_OUTBOARD),
-            (PointID.AXLE_OUTBOARD, PointID.STRUT_OUTBOARD),
+            (PointID.AXLE_INBOARD, PointID.STRUT_BOTTOM),
+            (PointID.AXLE_OUTBOARD, PointID.STRUT_BOTTOM),
         ]
         for p1, p2 in length_pairs:
             target_distance = compute_point_point_distance(
@@ -218,6 +232,59 @@ class MacPhersonProvider(SuspensionProvider):
             constraints.append(DistanceConstraint(p1, p2, target_distance))
 
         return constraints
+
+    def compute_side_view_instant_center(self, state: SuspensionState) -> Vec3:
+        # From Milliken & Milliken, p.633.
+        # Side view swing arm IC for a MacPherson strut:
+        # Intersection of:
+        #   (1) Line through the lower wishbone's inboard pivots (projected to side view).
+        #   (2) Line through the strut top mount, perpendicular to the strut axis (side view).
+        #
+        # Returns a 3D point on the vehicle centerline (Y=0).
+
+        strut_top = state.positions[PointID.STRUT_TOP]
+        strut_bottom = state.positions[PointID.STRUT_BOTTOM]
+        lower_front = state.positions[PointID.LOWER_WISHBONE_INBOARD_FRONT]
+        lower_rear = state.positions[PointID.LOWER_WISHBONE_INBOARD_REAR]
+
+        # Project.
+        strut_top_2d = np.array([strut_top[0], strut_top[2]], dtype=np.float64)
+        strut_bottom_2d = np.array([strut_bottom[0], strut_bottom[2]], dtype=np.float64)
+        lwb_front_2d = np.array([lower_front[0], lower_front[2]], dtype=np.float64)
+        lwb_rear_2d = np.array([lower_rear[0], lower_rear[2]], dtype=np.float64)
+
+        # Strut axis.
+        strut_axis = normalize_vector(strut_bottom_2d - strut_top_2d)
+        strut_normal = perpendicular_2d(strut_axis, clockwise=False)
+
+        # Intersection detection.
+        # Line 1: through strut top, direction = strut_normal.
+        strut_normal_start = strut_top_2d
+        strut_normal_end = (strut_top_2d + strut_normal).astype(np.float64)
+
+        # Line 2: through lower wishbone inboard pivots.
+        lwb_line_start = lwb_front_2d
+        lwb_line_end = lwb_rear_2d
+        lwb_axis = lwb_line_end - lwb_line_start
+
+        # We don't need the normalized axis, just check for degenerate case.
+        if np.linalg.norm(lwb_axis) < EPSILON:
+            raise ValueError("Degenerate lower wishbone axis. Cannot compute IC.")
+
+        intersection = compute_2d_vector_vector_intersection(
+            strut_normal_start,
+            strut_normal_end,
+            lwb_line_start,
+            lwb_line_end,
+            segments_only=False,
+        )
+
+        if intersection is None:
+            # Lines are parallel; IC at infinity.
+            return make_vec3([np.inf, 0.0, np.inf])
+
+        ic_x, ic_z = intersection.point
+        return make_vec3([float(ic_x), 0.0, float(ic_z)])
 
     def get_visualization_links(self) -> list[LinkVisualization]:
         """
@@ -238,12 +305,12 @@ class MacPhersonProvider(SuspensionProvider):
                 label="Lower Control Arm",
             ),
             LinkVisualization(
-                points=[PointID.STRUT_INBOARD, PointID.STRUT_OUTBOARD],
+                points=[PointID.STRUT_TOP, PointID.STRUT_BOTTOM],
                 color="darkorange",
                 label="Strut",
             ),
             LinkVisualization(
-                points=[PointID.LOWER_WISHBONE_OUTBOARD, PointID.STRUT_OUTBOARD],
+                points=[PointID.LOWER_WISHBONE_OUTBOARD, PointID.STRUT_BOTTOM],
                 color="slategrey",
                 label="Upright",
             ),
@@ -251,5 +318,13 @@ class MacPhersonProvider(SuspensionProvider):
                 points=[PointID.AXLE_INBOARD, PointID.AXLE_OUTBOARD],
                 color="forestgreen",
                 label="Axle",
+            ),
+            LinkVisualization(
+                points=[PointID.WHEEL_CENTER_ON_GROUND],
+                color="black",
+                label="Ground Contact",
+                linewidth=0.0,  # No line for single point
+                marker="o",
+                markersize=15.0,  # Large marker for visibility
             ),
         ]

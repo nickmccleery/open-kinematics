@@ -8,6 +8,8 @@ kinematic analysis and constraint evaluation.
 
 import numpy as np
 
+from kinematics.constants import EPSILON
+from kinematics.enums import Axis
 from kinematics.types import Vec3, make_vec3
 from kinematics.vector_utils.generic import normalize_vector
 
@@ -194,3 +196,108 @@ def compute_scalar_triple_product(v1: Vec3, v2: Vec3, v3: Vec3) -> float:
     """
     cross = np.cross(v2, v3)
     return float(np.dot(v1, cross))
+
+
+def plane_from_three_points(
+    a: Vec3, b: Vec3, c: Vec3
+) -> tuple[np.ndarray, float] | None:
+    """
+    Construct a plane from three 3D points.
+
+    The plane is represented in the form n·x + d = 0, where n is the unit normal
+    vector and d is the distance offset.
+
+    Args:
+        a: First point defining the plane.
+        b: Second point defining the plane.
+        c: Third point defining the plane.
+
+    Returns:
+        A tuple containing the normal vector and distance `d`, or None if the points
+        are degenerate and do not form a unique plane.
+    """
+    # Compute two edge vectors on the plane.
+    v1 = b - a
+    v2 = c - a
+
+    # The normal is perpendicular to both edge vectors.
+    normal = np.cross(v1, v2)
+    normal_magnitude = np.linalg.norm(normal)
+
+    # If the magnitude of the normal is near zero, the points are collinear.
+    if normal_magnitude < EPSILON:
+        return None
+
+    # Normalize the normal vector for a consistent plane representation.
+    normal /= normal_magnitude
+
+    # Compute d for the plane equation n·x + d = 0 using point a.
+    d = -float(np.dot(normal, a))
+
+    return normal, d
+
+
+def intersect_two_planes(
+    n1: np.ndarray, d1: float, n2: np.ndarray, d2: float
+) -> tuple[np.ndarray, np.ndarray] | None:
+    """
+    Find the 3D line of intersection between two planes.
+
+    The line is represented by a point on the line and a direction vector. This
+    function handles the case where planes may be parallel.
+
+    Args:
+        n1: The normal vector of the first plane.
+        d1: The distance offset of the first plane.
+        n2: The normal vector of the second plane.
+        d2: The distance offset of the second plane.
+
+    Returns:
+        A tuple containing a point on the line and the line's direction vector,
+        or None if the planes are parallel and have no unique intersection.
+    """
+    # The direction of the intersection line is perpendicular to both plane normals.
+    direction = np.cross(n1, n2)
+    direction_magnitude_squared = float(np.dot(direction, direction))
+
+    # If the magnitude is near zero, the normals are parallel, so the planes are.
+    if direction_magnitude_squared < EPSILON * EPSILON:
+        return None
+
+    # Find a specific point on the intersection line. This formula derives from
+    # solving the system of linear equations for the two planes.
+    point = np.cross(d2 * n1 - d1 * n2, direction) / direction_magnitude_squared
+
+    return point, direction
+
+
+def intersect_line_with_vertical_plane(
+    line_point: np.ndarray,
+    line_direction: np.ndarray,
+    plane_y: float,
+) -> np.ndarray | None:
+    """
+    Find where a 3D line intersects a vertical plane defined by y = constant.
+
+    This represents the intersection with a side-view plane in vehicle coordinates.
+
+    Args:
+        line_point: A point on the 3D line.
+        line_direction: The direction vector of the 3D line.
+        plane_y: The Y-coordinate that defines the vertical plane.
+
+    Returns:
+        The 3D intersection point, or None if the line is parallel to the plane.
+    """
+    direction_y = float(line_direction[Axis.Y])
+
+    # If the line's direction in Y is near zero, it is parallel to the plane.
+    if abs(direction_y) < EPSILON:
+        return None
+
+    # Solve for the parameter t where the line's Y-coordinate equals the plane's.
+    # The line equation is P(t) = line_point + t * line_direction.
+    # We solve P(t).y = plane_y.
+    t = (plane_y - float(line_point[Axis.Y])) / direction_y
+
+    return line_point + t * line_direction

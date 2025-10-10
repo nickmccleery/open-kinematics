@@ -55,7 +55,16 @@ configuration:
     diameter: 457.2
     width: 225.0
     offset: 0
+    tire:
+      aspect_ratio: 0.55
+      section_width: 270
+      rim_diameter: 13 # SPECIFIED IN INCHES.
   static_setup:
     static_camber: -3.0
     static_toe: 0.0
     static_caster: 5.0
+  cg_position:
+    x: 1250
+    y: 0
+    z: 450
+  wheelbase: 2500.0  # Wheelbase in mm.
