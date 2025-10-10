@@ -143,3 +143,42 @@ def project_coordinate(position: np.ndarray, direction: np.ndarray) -> float:
             f"Direction vector not normalized; magnitude {np.linalg.norm(direction)}"
         )
     return float(np.dot(position, direction))
+
+
+def rotate_2d_vector(vector: np.ndarray, angle_radians: float) -> np.ndarray:
+    """
+    Rotate a 2D vector by the specified angle.
+
+    Args:
+        vector: 2D vector [x, y] to rotate
+        angle_radians: Rotation angle in radians (positive = counter-clockwise)
+
+    Returns:
+        Rotated 2D vector
+    """
+    cos_a = np.cos(angle_radians)
+    sin_a = np.sin(angle_radians)
+
+    rotation_matrix = np.array([[cos_a, -sin_a], [sin_a, cos_a]], dtype=np.float64)
+
+    return rotation_matrix @ vector
+
+
+def perpendicular_2d(vector: np.ndarray, clockwise: bool = False) -> np.ndarray:
+    """
+    Compute the perpendicular to a 2D vector.
+
+    Args:
+        vector: 2D vector [x, y]
+        clockwise: If True, rotate clockwise (right-hand perpendicular),
+                   if False, rotate anti-clockwise (left-hand perpendicular)
+
+    Returns:
+        Perpendicular 2D vector with same magnitude as input.
+    """
+    if clockwise:
+        # 90° clockwise: [x, y] -> [y, -x].
+        return np.array([vector[1], -vector[0]], dtype=np.float64)
+    else:
+        # 90° anti-clockwise: [x, y] -> [-y, x].
+        return np.array([-vector[1], vector[0]], dtype=np.float64)

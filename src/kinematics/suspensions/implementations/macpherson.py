@@ -21,7 +21,11 @@ from kinematics.state import SuspensionState
 from kinematics.suspensions.core.collections import LowerWishbonePoints, WheelAxlePoints
 from kinematics.suspensions.core.geometry import SuspensionGeometry
 from kinematics.suspensions.core.provider import SuspensionProvider
-from kinematics.types import Vec3
+from kinematics.types import Vec3, make_vec3
+from kinematics.vector_utils.generic import (
+    compute_2d_vector_vector_intersection,
+    perpendicular_2d,
+)
 from kinematics.vector_utils.geometric import compute_point_point_distance
 from kinematics.visualization.main import LinkVisualization
 
@@ -32,12 +36,12 @@ class StrutPoints:
     Points defining the strut geometry.
 
     Attributes:
-        inboard: Inboard strut mounting point coordinates.
-        outboard: Outboard strut mounting point coordinates.
+        top: Top (typically inboard) strut mounting point coordinates.
+        bottom: Bottom (typically outboard) strut mounting point coordinates.
     """
 
-    inboard: dict[str, float]
-    outboard: dict[str, float]
+    top: dict[str, float]
+    bottom: dict[str, float]
 
 
 @dataclass
@@ -123,11 +127,11 @@ class MacPhersonProvider(SuspensionProvider):
 
         # Strut.
         strut = hard_points.strut
-        positions[PointID.STRUT_INBOARD] = np.array(
-            [strut.inboard["x"], strut.inboard["y"], strut.inboard["z"]]
+        positions[PointID.STRUT_TOP] = np.array(
+            [strut.top["x"], strut.top["y"], strut.top["z"]]
         )
-        positions[PointID.STRUT_OUTBOARD] = np.array(
-            [strut.outboard["x"], strut.outboard["y"], strut.outboard["z"]]
+        positions[PointID.STRUT_BOTTOM] = np.array(
+            [strut.bottom["x"], strut.bottom["y"], strut.bottom["z"]]
         )
 
         # Wheel axle.
@@ -155,7 +159,7 @@ class MacPhersonProvider(SuspensionProvider):
         """
         return [
             PointID.LOWER_WISHBONE_OUTBOARD,
-            PointID.STRUT_OUTBOARD,
+            PointID.STRUT_BOTTOM,
             PointID.AXLE_INBOARD,
             PointID.AXLE_OUTBOARD,
         ]
@@ -205,12 +209,12 @@ class MacPhersonProvider(SuspensionProvider):
         length_pairs = [
             (PointID.LOWER_WISHBONE_INBOARD_FRONT, PointID.LOWER_WISHBONE_OUTBOARD),
             (PointID.LOWER_WISHBONE_INBOARD_REAR, PointID.LOWER_WISHBONE_OUTBOARD),
-            (PointID.STRUT_INBOARD, PointID.STRUT_OUTBOARD),
+            (PointID.STRUT_TOP, PointID.STRUT_BOTTOM),
             (PointID.AXLE_INBOARD, PointID.AXLE_OUTBOARD),
             (PointID.AXLE_INBOARD, PointID.LOWER_WISHBONE_OUTBOARD),
             (PointID.AXLE_OUTBOARD, PointID.LOWER_WISHBONE_OUTBOARD),
-            (PointID.AXLE_INBOARD, PointID.STRUT_OUTBOARD),
-            (PointID.AXLE_OUTBOARD, PointID.STRUT_OUTBOARD),
+            (PointID.AXLE_INBOARD, PointID.STRUT_BOTTOM),
+            (PointID.AXLE_OUTBOARD, PointID.STRUT_BOTTOM),
         ]
         for p1, p2 in length_pairs:
             target_distance = compute_point_point_distance(
@@ -221,7 +225,52 @@ class MacPhersonProvider(SuspensionProvider):
         return constraints
 
     def compute_side_view_instant_center(self, state: SuspensionState) -> Vec3:
-        raise NotImplementedError("SVIC calcs not defined for MacPherson strut.")
+        # From Milliken and Milliken, p633.
+        # The SVSA IC is given by the intersection of:
+        # - A line through the lower wishbone's inboard points.
+        # - A line perpendicular to the strut axis, passing through the strut inboard
+        #   (top) point.
+
+        # Get required points.
+        strut_top = state.positions[PointID.STRUT_TOP]
+        strut_bottom = state.positions[PointID.STRUT_BOTTOM]
+        lower_front = state.positions[PointID.LOWER_WISHBONE_INBOARD_FRONT]
+        lower_rear = state.positions[PointID.LOWER_WISHBONE_INBOARD_REAR]
+
+        # Project onto XZ plane (side view).
+        strut_top_2d = np.array([strut_top[0], strut_top[2]], dtype=np.float64)
+        strut_bottom_2d = np.array([strut_bottom[0], strut_bottom[2]], dtype=np.float64)
+
+        # Compute strut axis vector in 2D (side view projection).
+        strut_axis = strut_bottom_2d - strut_top_2d
+
+        # Compute perpendicular vector to strut axis.
+        strut_normal = perpendicular_2d(strut_axis, clockwise=False)
+
+        # Create a line perpendicular to strut through top mount
+        strut_normal_start = strut_top_2d
+        strut_normal_end = (strut_top_2d + strut_normal).astype(np.float64)
+
+        # Lower arm line (projected to XZ plane).
+        lwb_line_start = np.array([lower_front[0], lower_front[2]], dtype=np.float64)
+        lwb_line_end = np.array([lower_rear[0], lower_rear[2]], dtype=np.float64)
+
+        # Compute intersection of perpendicular line with lower arm line
+        intersection = compute_2d_vector_vector_intersection(
+            strut_normal_start,
+            strut_normal_end,
+            lwb_line_start,
+            lwb_line_end,
+            segments_only=False,
+        )
+
+        if intersection is None:
+            # Lines are parallel; no intersection.
+            return make_vec3([np.nan, np.nan, np.nan])
+
+        # Extract intersection point and return as 3D with Y=0 (centerline).
+        ic_x, ic_z = intersection.point
+        return make_vec3([ic_x, 0.0, ic_z])
 
     def get_visualization_links(self) -> list[LinkVisualization]:
         """
@@ -242,12 +291,12 @@ class MacPhersonProvider(SuspensionProvider):
                 label="Lower Control Arm",
             ),
             LinkVisualization(
-                points=[PointID.STRUT_INBOARD, PointID.STRUT_OUTBOARD],
+                points=[PointID.STRUT_TOP, PointID.STRUT_BOTTOM],
                 color="darkorange",
                 label="Strut",
             ),
             LinkVisualization(
-                points=[PointID.LOWER_WISHBONE_OUTBOARD, PointID.STRUT_OUTBOARD],
+                points=[PointID.LOWER_WISHBONE_OUTBOARD, PointID.STRUT_BOTTOM],
                 color="slategrey",
                 label="Upright",
             ),
