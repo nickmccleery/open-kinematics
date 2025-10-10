@@ -8,7 +8,7 @@ import numpy as np
 
 from kinematics.types import Vec3
 
-PLOTTING_ENABLED = True
+PLOTTING_ENABLED = False
 
 
 def should_plot() -> bool:
