@@ -8,6 +8,7 @@ from typing import Sequence
 
 import numpy as np
 
+from kinematics.constants import EPSILON
 from kinematics.constraints import (
     AngleConstraint,
     Constraint,
@@ -32,10 +33,12 @@ from kinematics.suspensions.core.collections import (
 from kinematics.suspensions.core.geometry import SuspensionGeometry
 from kinematics.suspensions.core.provider import SuspensionProvider
 from kinematics.types import Vec3, make_vec3
-from kinematics.vector_utils.generic import compute_2d_vector_vector_intersection
 from kinematics.vector_utils.geometric import (
     compute_point_point_distance,
     compute_vector_vector_angle,
+    intersect_line_with_vertical_plane,
+    intersect_two_planes,
+    plane_from_three_points,
 )
 from kinematics.visualization.main import LinkVisualization
 
@@ -273,77 +276,6 @@ class DoubleWishboneProvider(SuspensionProvider):
 
         return constraints
 
-    def compute_side_view_instant_center(self, state: SuspensionState) -> Vec3:
-        """
-        Compute the side view instant center (SVIC) for a double wishbone suspension.
-
-        This method follows the standard kinematic approach by projecting the suspension
-        geometry onto the side-view (X-Z) plane and finding the intersection of the
-        lines representing the effective swing arms.
-
-        The process is as follows:
-        1. For each wishbone, the 3D inboard pivot axis is defined by the vector
-           connecting the two inboard mounting points.
-        2. This axis vector is projected onto the 2D side-view plane to get a direction.
-        3. A 2D line is constructed that passes through the projected outboard point
-           and is parallel to the projected inboard axis direction.
-        4. The 2D intersection of these two lines (one for the upper wishbone, one for
-           the lower) is the side view instant center.
-
-        Args:
-            state: The current suspension state containing point positions.
-
-        Returns:
-            The (x, y, z) coordinates of the SVIC, with the y-coordinate set to 0.
-            Returns [inf, 0.0, inf] if the projected lines are parallel.
-        """
-        # Get 3D positions of all relevant points from the current state.
-        upper_front_3d = state.positions[PointID.UPPER_WISHBONE_INBOARD_FRONT]
-        upper_rear_3d = state.positions[PointID.UPPER_WISHBONE_INBOARD_REAR]
-        upper_outboard_3d = state.positions[PointID.UPPER_WISHBONE_OUTBOARD]
-
-        lower_front_3d = state.positions[PointID.LOWER_WISHBONE_INBOARD_FRONT]
-        lower_rear_3d = state.positions[PointID.LOWER_WISHBONE_INBOARD_REAR]
-        lower_outboard_3d = state.positions[PointID.LOWER_WISHBONE_OUTBOARD]
-
-        # Upper wishbone side view projection.
-        upper_axis_3d = upper_rear_3d - upper_front_3d
-
-        # Project the axis and the outboard point to the 2D side view plane (X-Z).
-        upper_axis_2d = np.array([upper_axis_3d[Axis.X], upper_axis_3d[Axis.Z]])
-        upper_outboard_2d = np.array(
-            [upper_outboard_3d[Axis.X], upper_outboard_3d[Axis.Z]]
-        )
-
-        # Lower wishbone side view projection.
-        lower_axis_3d = lower_rear_3d - lower_front_3d
-
-        # Project the axis and the outboard point to the 2D side-view plane (X-Z).
-        lower_axis_2d = np.array([lower_axis_3d[Axis.X], lower_axis_3d[Axis.Z]])
-        lower_outboard_2d = np.array(
-            [lower_outboard_3d[Axis.X], lower_outboard_3d[Axis.Z]]
-        )
-
-        # Find the intersection of the two projected lines. Each line is defined by
-        # its start point (the outboard point) and end point (outboard + inboard axis
-        # vector). Basically, we use start point and direction, and we're working
-        # with everything in the projected space.
-        intersection = compute_2d_vector_vector_intersection(
-            line1_start=lower_outboard_2d,
-            line1_end=(lower_outboard_2d + lower_axis_2d).astype(np.float64),
-            line2_start=upper_outboard_2d,
-            line2_end=(upper_outboard_2d + upper_axis_2d).astype(np.float64),
-            segments_only=False,
-        )
-
-        if intersection is None:
-            # The projected lines are parallel, so the SVIC is at infinity.
-            return make_vec3([np.inf, 0.0, np.inf])
-
-        # Convert the 2D intersection point back to 3D space, treat y=0.
-        svic_2d = intersection.point
-        return make_vec3([svic_2d[0], 0.0, svic_2d[1]])
-
     def get_visualization_links(self) -> list[LinkVisualization]:
         """
         Get the visualization links for rendering the double wishbone suspension.
@@ -392,3 +324,136 @@ class DoubleWishboneProvider(SuspensionProvider):
                 label="Axle",
             ),
         ]
+
+    def compute_instant_axis(self, state: SuspensionState) -> tuple[Vec3, Vec3] | None:
+        """
+        Compute the 3D instantaneous axis of rotation for the upright.
+
+        This axis is the line formed by the intersection of the two 3D planes
+        defined by the upper and lower wishbones.
+
+        Args:
+            state: The current suspension state.
+
+        Returns:
+            A tuple containing a point on the axis and the axis direction vector.
+            Returns None only if the wishbone planes are parallel (a valid state
+            resulting in an instant center at infinity).
+
+        Raises:
+            ValueError: If either wishbone's points are collinear, as this
+                        represents a degenerate geometry and not a valid plane.
+        """
+        # Gather the points that define the upper and lower wishbone planes.
+        upper_front = state.positions[PointID.UPPER_WISHBONE_INBOARD_FRONT]
+        upper_rear = state.positions[PointID.UPPER_WISHBONE_INBOARD_REAR]
+        upper_outboard = state.positions[PointID.UPPER_WISHBONE_OUTBOARD]
+
+        lower_front = state.positions[PointID.LOWER_WISHBONE_INBOARD_FRONT]
+        lower_rear = state.positions[PointID.LOWER_WISHBONE_INBOARD_REAR]
+        lower_outboard = state.positions[PointID.LOWER_WISHBONE_OUTBOARD]
+
+        # Construct the plane for each wishbone.
+        upper_plane = plane_from_three_points(upper_front, upper_rear, upper_outboard)
+        lower_plane = plane_from_three_points(lower_front, lower_rear, lower_outboard)
+
+        if upper_plane is None or lower_plane is None:
+            # A degenerate wishbone's points are collinear and cannot form a
+            # plane. This is a modeling error, not a kinematic state.
+            raise ValueError(
+                "Degenerate wishbone geometry. Cannot compute instant axis."
+            )
+
+        # Find the 3D line of intersection between the two planes.
+        # This will return None if the planes are parallel.
+        return intersect_two_planes(
+            n1=upper_plane[0],
+            d1=upper_plane[1],
+            n2=lower_plane[0],
+            d2=lower_plane[1],
+        )
+
+    def compute_side_view_instant_center(self, state: SuspensionState) -> Vec3:
+        """
+        Compute the side view instant center (SVIC) in the plane of the wheel.
+
+        This method follows the Milliken & Milliken approach by finding the
+        intersection of the 3D instant axis with the vertical side-view plane
+        that passes through the wheel center's Y-coordinate.
+
+        Args:
+            state: The current suspension state containing point positions.
+
+        Returns:
+            The (x, y, z) coordinates of the SVIC. Returns a vector with np.inf
+            components if the instant axis is parallel to the viewing plane.
+        """
+        try:
+            instant_axis = self.compute_instant_axis(state)
+        except ValueError:
+            # Re-raise modeling errors immediately.
+            raise
+
+        wheel_center_y = float(state.positions[PointID.WHEEL_CENTER][Axis.Y])
+        wheel_center_z = float(state.positions[PointID.WHEEL_CENTER][Axis.Z])
+
+        if instant_axis is None:
+            # Wishbone planes are parallel, so the instant axis is undefined and
+            # the instant center is considered to be at infinity.
+            return make_vec3([np.inf, wheel_center_y, wheel_center_z])
+
+        axis_point, axis_direction = instant_axis
+
+        # Intersect the instant axis with the defined side-view plane.
+        svic = intersect_line_with_vertical_plane(
+            axis_point, axis_direction, wheel_center_y
+        )
+
+        if svic is None:
+            # The instant axis is parallel to the side-view plane, meaning the
+            # SVIC is at infinity in the X-Z plane.
+            return make_vec3([np.inf, wheel_center_y, wheel_center_z])
+
+        return svic
+
+    def compute_front_view_instant_center(self, state: SuspensionState) -> Vec3:
+        """
+        Compute the front view instant center (FVIC) in the plane of the wheel.
+
+        This method follows the Milliken & Milliken approach by finding the
+        intersection of the 3D instant axis with the vertical front-view
+        plane that passes through the wheel center's X-coordinate.
+
+        Args:
+            state: The current suspension state containing point positions.
+
+        Returns:
+            The (x, y, z) coordinates of the FVIC. Returns a vector with np.inf
+            components if the instant axis is parallel to the viewing plane.
+        """
+        try:
+            instant_axis = self.compute_instant_axis(state)
+        except ValueError:
+            # Re-raise modeling errors immediately.
+            raise
+
+        wheel_center_x = float(state.positions[PointID.WHEEL_CENTER][Axis.X])
+        wheel_center_z = float(state.positions[PointID.WHEEL_CENTER][Axis.Z])
+
+        if instant_axis is None:
+            # Wishbone planes are parallel, so the instant center is at infinity.
+            return make_vec3([wheel_center_x, np.inf, wheel_center_z])
+
+        axis_point, axis_direction = instant_axis
+        direction_x = float(axis_direction[Axis.X])
+
+        # If the axis has no X-component, it is parallel to the Y-Z (front) plane.
+        if abs(direction_x) < EPSILON:
+            # The FVIC is at infinity in the Y-Z plane.
+            return make_vec3([wheel_center_x, np.inf, wheel_center_z])
+
+        # Solve for the parameter t where the line's X-coordinate equals the plane's.
+        t = (wheel_center_x - float(axis_point[Axis.X])) / direction_x
+        fvic = make_vec3(axis_point + t * axis_direction)
+
+        return fvic
