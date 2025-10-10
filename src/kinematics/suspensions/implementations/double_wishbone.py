@@ -344,7 +344,7 @@ class DoubleWishboneProvider(SuspensionProvider):
             LinkVisualization(
                 points=[PointID.WHEEL_CENTER_ON_GROUND],
                 color="black",
-                label="Ground Contact",
+                label="Wheel Center on Ground",
                 linewidth=0.0,  # No line for single point
                 marker="o",
                 markersize=15.0,  # Large marker for visibility
