@@ -23,6 +23,14 @@ clean:
 test:
     uv run pytest tests/ --cov=. --cov-report=term --durations=0
 
+# Regenerate e2e test reference files after geometry.yaml changes.
+regen-refs:
+    @echo "Regenerating e2e test reference files..."
+    uv run kinematics sweep --geometry tests/data/geometry.yaml --sweep tests/data/sweep.yaml --out tests/data/e2e/output.csv
+    uv run kinematics sweep --geometry tests/data/geometry.yaml --sweep tests/data/sweep.yaml --out tests/data/e2e/output.parquet
+    @echo "✓ Reference files regenerated successfully"
+    @echo "Run 'just test-e2e' to verify the new reference files work correctly"
+
 # Linting.
 lint:
     uv run ruff check .

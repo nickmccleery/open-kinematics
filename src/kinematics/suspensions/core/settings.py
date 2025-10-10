@@ -73,14 +73,10 @@ class StaticSetupConfig:
     Attributes:
         static_camber: Static camber angle in degrees.
         static_toe: Static toe angle in degrees.
-        static_caster: Static caster angle in degrees.
     """
 
     static_camber: float
     static_toe: float
-    static_caster: float
-
-    # Note: These angle values can be negative, so no validation needed for sign
 
 
 @dataclass

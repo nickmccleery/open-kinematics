@@ -140,9 +140,6 @@ def visualize_geometry(
         typer.secho(
             f"The contact patch center currently located at Z = {z_offset:.3f}mm."
         )
-        typer.secho(
-            "Hard points must be adjusted to place the contact patch center at Z=0.",
-        )
         typer.echo("─" * 60)
 
     # Create visualization.
