@@ -13,6 +13,7 @@ from numpy.typing import NDArray
 from kinematics.enums import Axis, PointID, TargetPositionMode
 
 Vec3 = Annotated[NDArray[np.float64], Literal[3]]
+NAN_VEC3: Final[Vec3] = np.array([np.nan, np.nan, np.nan], dtype=np.float64)
 
 
 def make_vec3(data) -> NDArray[np.float64]:

@@ -8,6 +8,7 @@ from typing import Sequence
 
 import numpy as np
 
+from kinematics.constants import EPSILON
 from kinematics.constraints import Constraint, DistanceConstraint
 from kinematics.enums import PointID
 from kinematics.points.derived.definitions import (
@@ -21,10 +22,11 @@ from kinematics.state import SuspensionState
 from kinematics.suspensions.core.collections import LowerWishbonePoints, WheelAxlePoints
 from kinematics.suspensions.core.geometry import SuspensionGeometry
 from kinematics.suspensions.core.provider import SuspensionProvider
-from kinematics.types import Vec3, make_vec3
+from kinematics.types import NAN_VEC3, Vec3, make_vec3
 from kinematics.vector_utils.generic import (
     compute_2d_vector_vector_intersection,
-    perpendicular_2d,
+    normalize_vector,
+    rotate_2d_vector,
 )
 from kinematics.vector_utils.geometric import compute_point_point_distance
 from kinematics.visualization.main import LinkVisualization
@@ -225,37 +227,47 @@ class MacPhersonProvider(SuspensionProvider):
         return constraints
 
     def compute_side_view_instant_center(self, state: SuspensionState) -> Vec3:
-        # From Milliken and Milliken, p633.
-        # The SVSA IC is given by the intersection of:
-        # - A line through the lower wishbone's inboard points.
-        # - A line perpendicular to the strut axis, passing through the strut inboard
-        #   (top) point.
+        # From Milliken & Milliken, p.633.
+        # Side view swing arm IC for a MacPherson strut:
+        # Intersection of:
+        #   (1) Line through the lower wishbone's inboard pivots (projected to side view).
+        #   (2) Line through the strut top mount, perpendicular to the strut axis (side view).
+        #
+        # Returns a 3D point on the vehicle centerline (Y=0).
+        # Returns NaNs if the lines are parallel or geometry is degenerate.
 
-        # Get required points.
         strut_top = state.positions[PointID.STRUT_TOP]
         strut_bottom = state.positions[PointID.STRUT_BOTTOM]
         lower_front = state.positions[PointID.LOWER_WISHBONE_INBOARD_FRONT]
         lower_rear = state.positions[PointID.LOWER_WISHBONE_INBOARD_REAR]
 
-        # Project onto XZ plane (side view).
+        # Project.
         strut_top_2d = np.array([strut_top[0], strut_top[2]], dtype=np.float64)
         strut_bottom_2d = np.array([strut_bottom[0], strut_bottom[2]], dtype=np.float64)
+        lwb_front_2d = np.array([lower_front[0], lower_front[2]], dtype=np.float64)
+        lwb_rear_2d = np.array([lower_rear[0], lower_rear[2]], dtype=np.float64)
 
-        # Compute strut axis vector in 2D (side view projection).
-        strut_axis = strut_bottom_2d - strut_top_2d
+        # Strut axis.
+        strut_axis = normalize_vector(strut_bottom_2d - strut_top_2d)
+        strut_normal = rotate_2d_vector(
+            strut_axis,
+            angle_radians=np.pi / 2,
+        )
 
-        # Compute perpendicular vector to strut axis.
-        strut_normal = perpendicular_2d(strut_axis, clockwise=False)
-
-        # Create a line perpendicular to strut through top mount
+        # Intersection detection.
+        # Line 1: through strut top, direction = strut_normal.
         strut_normal_start = strut_top_2d
         strut_normal_end = (strut_top_2d + strut_normal).astype(np.float64)
 
-        # Lower arm line (projected to XZ plane).
-        lwb_line_start = np.array([lower_front[0], lower_front[2]], dtype=np.float64)
-        lwb_line_end = np.array([lower_rear[0], lower_rear[2]], dtype=np.float64)
+        # Line 2: through lower wishbone inboard pivots.
+        lwb_line_start = lwb_front_2d
+        lwb_line_end = lwb_rear_2d
+        lwb_axis = lwb_line_end - lwb_line_start
 
-        # Compute intersection of perpendicular line with lower arm line
+        # We don't need the normalized axis, just check for degenerate case.
+        if np.linalg.norm(lwb_axis) < EPSILON:
+            return NAN_VEC3
+
         intersection = compute_2d_vector_vector_intersection(
             strut_normal_start,
             strut_normal_end,
@@ -265,12 +277,12 @@ class MacPhersonProvider(SuspensionProvider):
         )
 
         if intersection is None:
-            # Lines are parallel; no intersection.
-            return make_vec3([np.nan, np.nan, np.nan])
+            # Lines are parallel; IC at infinity.
+            return NAN_VEC3
 
-        # Extract intersection point and return as 3D with Y=0 (centerline).
+        # Return as 3D (Y=0 for vehicle centerplane).
         ic_x, ic_z = intersection.point
-        return make_vec3([ic_x, 0.0, ic_z])
+        return make_vec3([float(ic_x), 0.0, float(ic_z)])
 
     def get_visualization_links(self) -> list[LinkVisualization]:
         """
