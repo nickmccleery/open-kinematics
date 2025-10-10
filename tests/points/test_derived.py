@@ -7,6 +7,7 @@ from kinematics.enums import PointID
 from kinematics.points.derived.definitions import (
     get_axle_midpoint,
     get_wheel_center,
+    get_wheel_center_on_ground,
     get_wheel_inboard,
     get_wheel_outboard,
 )
@@ -138,3 +139,131 @@ def test_circular_dependency_detection():
 
     with pytest.raises(ValueError, match="Circular dependency detected"):
         DerivedPointsManager(spec)
+
+
+def test_wheel_center_on_ground_zero_camber():
+    """
+    Test ground projection with zero camber (vertical wheel).
+    """
+    positions = {
+        PointID.WHEEL_CENTER: np.array([0.0, 900.0, 350.0]),
+        PointID.AXLE_INBOARD: np.array([0.0, 850.0, 350.0]),
+        PointID.AXLE_OUTBOARD: np.array([0.0, 950.0, 350.0]),  # Horizontal axle
+    }
+
+    result = get_wheel_center_on_ground(positions, ground_plane_z=0.0)
+
+    # With zero camber, projection should be directly below wheel center
+    np.testing.assert_allclose(result[0], 0.0, atol=0.1)  # Same X
+    np.testing.assert_allclose(result[1], 900.0, atol=0.1)  # Same Y
+    np.testing.assert_allclose(result[2], 0.0, atol=0.1)  # On ground
+
+
+def test_wheel_center_on_ground_with_camber():
+    """
+    Test ground projection with negative camber.
+    """
+    positions = {
+        PointID.WHEEL_CENTER: np.array([0.0, 900.0, 350.0]),
+        PointID.AXLE_INBOARD: np.array([0.0, 850.0, 350.0]),
+        PointID.AXLE_OUTBOARD: np.array([0.0, 950.0, 344.8]),  # ~3° camber
+    }
+
+    result = get_wheel_center_on_ground(positions, ground_plane_z=0.0)
+
+    # With camber, Y coordinate should differ from wheel center
+    assert abs(result[1] - 900.0) > 5.0  # Y offset due to camber
+
+    # Should still be on ground plane
+    np.testing.assert_allclose(result[2], 0.0, atol=0.1)
+
+    # X coordinate should remain close to wheel center (pure camber, no toe)
+    np.testing.assert_allclose(result[0], 0.0, atol=0.5)
+
+
+def test_wheel_center_on_ground_with_toe():
+    """
+    Test ground projection with toe angle.
+    """
+    positions = {
+        PointID.WHEEL_CENTER: np.array([0.0, 900.0, 350.0]),
+        PointID.AXLE_INBOARD: np.array([0.0, 850.0, 350.0]),
+        PointID.AXLE_OUTBOARD: np.array([5.2, 950.0, 350.0]),  # ~3° toe
+    }
+
+    result = get_wheel_center_on_ground(positions, ground_plane_z=0.0)
+
+    # With pure toe (no camber), should project straight down
+    # Y coordinate should equal wheel center Y
+    np.testing.assert_allclose(result[1], 900.0, atol=0.1)
+
+    # X coordinate should equal wheel center X
+    np.testing.assert_allclose(result[0], 0.0, atol=0.1)
+
+    # Should be on ground
+    np.testing.assert_allclose(result[2], 0.0, atol=0.1)
+
+
+def test_wheel_center_on_ground_with_camber_and_toe():
+    """
+    Test ground projection with both camber and toe.
+    """
+    positions = {
+        PointID.WHEEL_CENTER: np.array([0.0, 900.0, 350.0]),
+        PointID.AXLE_INBOARD: np.array([0.0, 850.0, 350.0]),
+        PointID.AXLE_OUTBOARD: np.array([5.2, 950.0, 344.8]),  # Both camber and toe
+    }
+
+    result = get_wheel_center_on_ground(positions, ground_plane_z=0.0)
+
+    # Should be on ground plane
+    np.testing.assert_allclose(result[2], 0.0, atol=0.1)
+
+    # Both X and Y should differ from wheel center due to combined effects
+    assert abs(result[1] - 900.0) > 5.0  # Y changed by camber
+    # X may have small offset due to interaction of camber and toe
+
+
+def test_wheel_center_on_ground_custom_ground_plane():
+    """
+    Test ground projection with non-zero ground plane.
+    """
+    positions = {
+        PointID.WHEEL_CENTER: np.array([0.0, 900.0, 450.0]),
+        PointID.AXLE_INBOARD: np.array([0.0, 850.0, 450.0]),
+        PointID.AXLE_OUTBOARD: np.array([0.0, 950.0, 450.0]),
+    }
+
+    # Project onto ground plane at Z = 100mm
+    result = get_wheel_center_on_ground(positions, ground_plane_z=100.0)
+
+    # Should be on the specified ground plane
+    np.testing.assert_allclose(result[2], 100.0, atol=0.1)
+
+    # X and Y should match wheel center (zero camber/toe)
+    np.testing.assert_allclose(result[0], 0.0, atol=0.1)
+    np.testing.assert_allclose(result[1], 900.0, atol=0.1)
+
+
+def test_wheel_center_on_ground_in_provider():
+    """
+    Test that WHEEL_CENTER_ON_GROUND is computed through provider.
+    """
+    from pathlib import Path
+
+    from kinematics.io.geometry_loader import load_geometry
+
+    # Load test geometry
+    test_data_dir = Path(__file__).parent.parent / "data"
+    geometry_file = test_data_dir / "geometry.yaml"
+
+    if geometry_file.exists():
+        loaded = load_geometry(geometry_file)
+        state = loaded.provider.initial_state()
+
+        # Verify the point exists
+        assert PointID.WHEEL_CENTER_ON_GROUND in state.positions
+
+        # Verify it's on the ground
+        ground_point = state.positions[PointID.WHEEL_CENTER_ON_GROUND]
+        assert ground_point[2] < 10.0  # Should be near Z=0

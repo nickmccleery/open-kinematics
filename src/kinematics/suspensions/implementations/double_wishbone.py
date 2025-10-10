@@ -19,6 +19,7 @@ from kinematics.enums import Axis, PointID
 from kinematics.points.derived.definitions import (
     get_axle_midpoint,
     get_wheel_center,
+    get_wheel_center_on_ground,
     get_wheel_inboard,
     get_wheel_outboard,
 )
@@ -199,6 +200,7 @@ class DoubleWishboneProvider(SuspensionProvider):
             PointID.WHEEL_OUTBOARD: partial(
                 get_wheel_outboard, wheel_width=wheel_cfg.width
             ),
+            PointID.WHEEL_CENTER_ON_GROUND: partial(get_wheel_center_on_ground),
         }
 
         dependencies = {
@@ -206,6 +208,11 @@ class DoubleWishboneProvider(SuspensionProvider):
             PointID.WHEEL_CENTER: {PointID.AXLE_INBOARD, PointID.AXLE_OUTBOARD},
             PointID.WHEEL_INBOARD: {PointID.WHEEL_CENTER, PointID.AXLE_INBOARD},
             PointID.WHEEL_OUTBOARD: {PointID.WHEEL_CENTER, PointID.AXLE_INBOARD},
+            PointID.WHEEL_CENTER_ON_GROUND: {
+                PointID.WHEEL_CENTER,
+                PointID.AXLE_INBOARD,
+                PointID.AXLE_OUTBOARD,
+            },
         }
 
         return DerivedPointsSpec(functions=functions, dependencies=dependencies)

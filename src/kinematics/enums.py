@@ -36,6 +36,7 @@ class PointID(IntEnum):
     WHEEL_CENTER = 16
     WHEEL_INBOARD = 17
     WHEEL_OUTBOARD = 18
+    WHEEL_CENTER_ON_GROUND = 19
 
 
 class Axis(IntEnum):
