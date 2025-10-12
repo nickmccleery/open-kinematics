@@ -8,54 +8,60 @@ hard_points:
     inboard_front:
       x: 250
       y: 400
-      z: 0
+      z: 200
     inboard_rear:
       x: -250
       y: 450
-      z: 0
+      z: 200
     outboard:
       x: 0
       y: 900
-      z: 0
+      z: 200
   upper_wishbone:
     inboard_front:
       x: 225
       y: 350
-      z: 275
+      z: 500
     inboard_rear:
       x: -275
       y: 350
-      z: 275
+      z: 500
     outboard:
       x: -25
       y: 750
-      z: 300
+      z: 500
   wheel_axle:
     # Axle outer point is the hub face.
     inner:
       x: -20
       y: 800
-      z: 150
+      z: 316.6
     outer:
       x: -20
       y: 950
-      z: 150
+      z: 313.535
   track_rod:
     inner:
       x: 50
       y: 200
-      z: 100
+      z: 250
     outer:
       x: 150
       y: 800
-      z: 100
+      z: 300
 configuration:
   steered: true
   wheel:
-    diameter: 457.2
-    width: 225.0
     offset: 0
+    tire:
+      aspect_ratio: 0.55
+      section_width: 270
+      rim_diameter: 13 # SPECIFIED IN INCHES.
   static_setup:
     static_camber: -3.0
     static_toe: 0.0
-    static_caster: 5.0
+  cg_position:
+    x: 1250
+    y: 0
+    z: 450
+  wheelbase: 2500.0  # Wheelbase in mm.

@@ -30,12 +30,18 @@ class PointID(IntEnum):
     AXLE_OUTBOARD = 12
     AXLE_MIDPOINT = 13
 
-    STRUT_INBOARD = 14
-    STRUT_OUTBOARD = 15
+    STRUT_TOP = 14
+    STRUT_BOTTOM = 15
 
     WHEEL_CENTER = 16
     WHEEL_INBOARD = 17
     WHEEL_OUTBOARD = 18
+
+    # Contact patch center is effectively the wheel and tyre centerline's Z minimum,
+    # while wheel center on ground is the projection of the wheel centre line onto
+    # the ground plane, i.e., world axis system Z=0.
+    CONTACT_PATCH_CENTER = 19
+    WHEEL_CENTER_ON_GROUND = 20
 
 
 class Axis(IntEnum):

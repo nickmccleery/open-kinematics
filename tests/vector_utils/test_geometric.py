@@ -13,6 +13,14 @@ from kinematics.vector_utils.geometric import (
     compute_vector_vector_angle,
     compute_vectors_cross_product_magnitude,
     compute_vectors_dot_product,
+    intersect_line_with_vertical_plane,
+    intersect_two_planes,
+    plane_from_three_points,
+)
+from kinematics.vector_utils.visualization import (
+    plot_line_plane_intersection,
+    plot_plane_from_points,
+    plot_plane_intersection,
 )
 
 
@@ -415,3 +423,349 @@ def test_zero_vector_errors():
 
     with pytest.raises(ValueError):
         compute_point_to_plane_distance(unit_vec, unit_vec, zero_vec)
+
+
+# Tests for plane_from_three_points
+
+
+def test_plane_from_three_points_xy_plane():
+    """
+    Test plane construction from three points in XY plane.
+    """
+    # Three points in XY plane (Z=0)
+    a = np.array([0.0, 0.0, 0.0])
+    b = np.array([1.0, 0.0, 0.0])
+    c = np.array([0.0, 1.0, 0.0])
+
+    result = plane_from_three_points(a, b, c)
+    assert result is not None
+
+    normal, d = result
+
+    # Visualize the result if plotting is enabled
+    plot_plane_from_points(a, b, c, normal, d, "XY Plane from Three Points")
+
+    # Normal should be pointing in +Z direction (or -Z, but consistent)
+    assert math.isclose(abs(normal[2]), 1.0, abs_tol=TEST_TOLERANCE)
+    assert math.isclose(abs(normal[0]), 0.0, abs_tol=TEST_TOLERANCE)
+    assert math.isclose(abs(normal[1]), 0.0, abs_tol=TEST_TOLERANCE)
+
+    # Distance d should be 0 since plane passes through origin
+    assert math.isclose(d, 0.0, abs_tol=TEST_TOLERANCE)
+
+
+def test_plane_from_three_points_arbitrary():
+    """
+    Test plane construction from three arbitrary non-collinear points.
+    """
+    # Three points forming a triangle
+    a = np.array([1.0, 0.0, 0.0])
+    b = np.array([0.0, 1.0, 0.0])
+    c = np.array([0.0, 0.0, 1.0])
+
+    result = plane_from_three_points(a, b, c)
+    assert result is not None
+
+    normal, d = result
+
+    # Visualize the result if plotting is enabled
+    plot_plane_from_points(a, b, c, normal, d, "Arbitrary Triangle Plane")
+
+    # Normal should be unit length
+    assert math.isclose(np.linalg.norm(normal), 1.0, abs_tol=TEST_TOLERANCE)
+
+    # All three points should satisfy the plane equation n·x + d = 0
+    assert math.isclose(np.dot(normal, a) + d, 0.0, abs_tol=TEST_TOLERANCE)
+    assert math.isclose(np.dot(normal, b) + d, 0.0, abs_tol=TEST_TOLERANCE)
+    assert math.isclose(np.dot(normal, c) + d, 0.0, abs_tol=TEST_TOLERANCE)
+
+
+def test_plane_from_three_points_collinear():
+    """
+    Test that collinear points return None (degenerate case).
+    """
+    # Three collinear points
+    a = np.array([0.0, 0.0, 0.0])
+    b = np.array([1.0, 1.0, 1.0])
+    c = np.array([2.0, 2.0, 2.0])
+
+    result = plane_from_three_points(a, b, c)
+    assert result is None
+
+
+def test_plane_from_three_points_duplicate():
+    """
+    Test that duplicate points return None (degenerate case).
+    """
+    # Two identical points
+    a = np.array([1.0, 2.0, 3.0])
+    b = np.array([1.0, 2.0, 3.0])  # Same as a
+    c = np.array([4.0, 5.0, 6.0])
+
+    result = plane_from_three_points(a, b, c)
+    assert result is None
+
+
+def test_plane_from_three_points_offset_plane():
+    """
+    Test plane construction for a plane not passing through origin.
+    """
+    # Three points in plane Z = 5
+    a = np.array([0.0, 0.0, 5.0])
+    b = np.array([1.0, 0.0, 5.0])
+    c = np.array([0.0, 1.0, 5.0])
+
+    result = plane_from_three_points(a, b, c)
+    assert result is not None
+
+    normal, d = result
+
+    # Normal should be pointing in Z direction
+    assert math.isclose(abs(normal[2]), 1.0, abs_tol=TEST_TOLERANCE)
+
+    # Distance should be -5 (since n·x + d = 0 and points have Z = 5)
+    expected_d = -5.0 if normal[2] > 0 else 5.0
+    assert math.isclose(d, expected_d, abs_tol=TEST_TOLERANCE)
+
+
+# Tests for intersect_two_planes
+
+
+def test_intersect_two_planes_xy_xz():
+    """
+    Test intersection of XY plane and XZ plane (should give X axis).
+    """
+    # XY plane: normal = (0, 0, 1), d = 0
+    n1 = np.array([0.0, 0.0, 1.0])
+    d1 = 0.0
+
+    # XZ plane: normal = (0, 1, 0), d = 0
+    n2 = np.array([0.0, 1.0, 0.0])
+    d2 = 0.0
+
+    result = intersect_two_planes(n1, d1, n2, d2)
+    assert result is not None
+
+    point, direction = result
+
+    # Visualize the result if plotting is enabled
+    plot_plane_intersection(
+        n1, d1, n2, d2, point, direction, "XY and XZ Plane Intersection"
+    )
+
+    # Direction should be along X axis
+    direction_norm = direction / np.linalg.norm(direction)
+    assert math.isclose(abs(direction_norm[0]), 1.0, abs_tol=TEST_TOLERANCE)
+    assert math.isclose(abs(direction_norm[1]), 0.0, abs_tol=TEST_TOLERANCE)
+    assert math.isclose(abs(direction_norm[2]), 0.0, abs_tol=TEST_TOLERANCE)
+
+    # Point should be on X axis (Y = 0, Z = 0)
+    assert math.isclose(point[1], 0.0, abs_tol=TEST_TOLERANCE)
+    assert math.isclose(point[2], 0.0, abs_tol=TEST_TOLERANCE)
+
+
+def test_intersect_two_planes_parallel():
+    """
+    Test that parallel planes return None.
+    """
+    # Two parallel planes with same normal but different d values
+    n1 = np.array([0.0, 0.0, 1.0])
+    d1 = 0.0
+
+    n2 = np.array([0.0, 0.0, 1.0])  # Same normal
+    d2 = 5.0  # Different offset
+
+    result = intersect_two_planes(n1, d1, n2, d2)
+    assert result is None
+
+
+def test_intersect_two_planes_antiparallel():
+    """
+    Test that anti-parallel planes return None.
+    """
+    # Two anti-parallel planes
+    n1 = np.array([1.0, 0.0, 0.0])
+    d1 = 0.0
+
+    n2 = np.array([-1.0, 0.0, 0.0])  # Anti-parallel normal
+    d2 = 5.0
+
+    result = intersect_two_planes(n1, d1, n2, d2)
+    assert result is None
+
+
+def test_intersect_two_planes_arbitrary():
+    """
+    Test intersection of two arbitrary planes.
+    """
+    # Plane 1: x + y = 0 (normal = (1, 1, 0), d = 0)
+    n1 = np.array([1.0, 1.0, 0.0])
+    n1 = n1 / np.linalg.norm(n1)  # Normalize
+    d1 = 0.0
+
+    # Plane 2: z = 1 (normal = (0, 0, 1), d = -1)
+    n2 = np.array([0.0, 0.0, 1.0])
+    d2 = -1.0
+
+    result = intersect_two_planes(n1, d1, n2, d2)
+    assert result is not None
+
+    point, direction = result
+
+    # The intersection line should be at Z = 1 and in direction (-1, 1, 0)
+    assert math.isclose(point[2], 1.0, abs_tol=TEST_TOLERANCE)
+
+    # Direction should be perpendicular to both normals
+    assert math.isclose(np.dot(direction, n1), 0.0, abs_tol=TEST_TOLERANCE)
+    assert math.isclose(np.dot(direction, n2), 0.0, abs_tol=TEST_TOLERANCE)
+
+
+def test_intersect_two_planes_validation():
+    """
+    Test that intersection result satisfies both plane equations.
+    """
+    # Two intersecting planes
+    n1 = np.array([1.0, 0.0, 0.0])  # YZ plane
+    d1 = -2.0  # x = 2
+
+    n2 = np.array([0.0, 1.0, 1.0])  # y + z = d2
+    n2 = n2 / np.linalg.norm(n2)  # Normalize
+    d2 = -3.0
+
+    result = intersect_two_planes(n1, d1, n2, d2)
+    assert result is not None
+
+    point, direction = result
+
+    # Point should satisfy both plane equations
+    assert math.isclose(np.dot(n1, point) + d1, 0.0, abs_tol=TEST_TOLERANCE)
+    assert math.isclose(np.dot(n2, point) + d2, 0.0, abs_tol=TEST_TOLERANCE)
+
+    # Another point on the line should also satisfy both equations
+    test_point = point + 5.0 * direction
+    assert math.isclose(np.dot(n1, test_point) + d1, 0.0, abs_tol=TEST_TOLERANCE)
+    assert math.isclose(np.dot(n2, test_point) + d2, 0.0, abs_tol=TEST_TOLERANCE)
+
+
+# Tests for intersect_line_with_vertical_plane
+
+
+def test_intersect_line_with_vertical_plane_simple():
+    """
+    Test line intersection with vertical plane Y = constant.
+    """
+    # Line from origin along diagonal (1, 1, 1)
+    line_point = np.array([0.0, 0.0, 0.0])
+    line_direction = np.array([1.0, 1.0, 1.0])
+    plane_y = 5.0
+
+    intersection = intersect_line_with_vertical_plane(
+        line_point, line_direction, plane_y
+    )
+    assert intersection is not None
+
+    # Visualize the result if plotting is enabled
+    plot_line_plane_intersection(
+        line_point,
+        line_direction,
+        plane_y,
+        intersection,
+        "Simple Line-Plane Intersection",
+    )
+
+    # Intersection should be at (5, 5, 5)
+    expected = np.array([5.0, 5.0, 5.0])
+    np.testing.assert_allclose(intersection, expected, atol=TEST_TOLERANCE)
+
+
+def test_intersect_line_with_vertical_plane_parallel():
+    """
+    Test that line parallel to vertical plane returns None.
+    """
+    # Line along X axis (no Y component)
+    line_point = np.array([0.0, 2.0, 0.0])
+    line_direction = np.array([1.0, 0.0, 0.0])  # No Y direction
+    plane_y = 5.0
+
+    intersection = intersect_line_with_vertical_plane(
+        line_point, line_direction, plane_y
+    )
+    assert intersection is None
+
+
+def test_intersect_line_with_vertical_plane_negative_direction():
+    """
+    Test line intersection with negative Y direction.
+    """
+    # Line starts at Y = 10 and goes in -Y direction
+    line_point = np.array([1.0, 10.0, 2.0])
+    line_direction = np.array([0.0, -2.0, 1.0])  # Y decreases
+    plane_y = 4.0
+
+    intersection = intersect_line_with_vertical_plane(
+        line_point, line_direction, plane_y
+    )
+    assert intersection is not None
+
+    # Should intersect when Y decreases from 10 to 4 (difference of 6)
+    # Since direction Y component is -2, t = 6/2 = 3
+    # Point = (1, 10, 2) + 3 * (0, -2, 1) = (1, 4, 5)
+    expected = np.array([1.0, 4.0, 5.0])
+    np.testing.assert_allclose(intersection, expected, atol=TEST_TOLERANCE)
+
+
+def test_intersect_line_with_vertical_plane_already_on_plane():
+    """
+    Test line that starts on the vertical plane.
+    """
+    # Line starts exactly on the plane Y = 3
+    line_point = np.array([0.0, 3.0, 0.0])
+    line_direction = np.array([1.0, 2.0, 1.0])
+    plane_y = 3.0
+
+    intersection = intersect_line_with_vertical_plane(
+        line_point, line_direction, plane_y
+    )
+    assert intersection is not None
+
+    # Should return the starting point since t = 0
+    np.testing.assert_allclose(intersection, line_point, atol=TEST_TOLERANCE)
+
+
+def test_intersect_line_with_vertical_plane_arbitrary():
+    """
+    Test intersection with arbitrary line and plane values.
+    """
+    # Line from (2, -1, 3) in direction (1, 3, -2)
+    line_point = np.array([2.0, -1.0, 3.0])
+    line_direction = np.array([1.0, 3.0, -2.0])
+    plane_y = 8.0
+
+    intersection = intersect_line_with_vertical_plane(
+        line_point, line_direction, plane_y
+    )
+    assert intersection is not None
+
+    # Y changes from -1 to 8 (difference of 9)
+    # Direction Y component is 3, so t = 9/3 = 3
+    # Point = (2, -1, 3) + 3 * (1, 3, -2) = (5, 8, -3)
+    expected = np.array([5.0, 8.0, -3.0])
+    np.testing.assert_allclose(intersection, expected, atol=TEST_TOLERANCE)
+
+
+def test_intersect_line_with_vertical_plane_small_direction():
+    """
+    Test line with very small Y direction component (near parallel).
+    """
+    # Line with very small Y component (larger than EPSILON but still small)
+    line_point = np.array([0.0, 0.0, 0.0])
+    line_direction = np.array([1.0, 1e-5, 1.0])  # Small but larger than EPSILON (1e-6)
+    plane_y = 1.0
+
+    intersection = intersect_line_with_vertical_plane(
+        line_point, line_direction, plane_y
+    )
+    assert intersection is not None
+
+    # Should still compute intersection, just with very large t value
+    assert math.isclose(intersection[1], 1.0, abs_tol=TEST_TOLERANCE)

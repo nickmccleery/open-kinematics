@@ -18,6 +18,17 @@ pip install kinematics[viz]
 
 ## Usage examples
 
+Use of [uv](https://github.com/astral-sh/uv) is generally advised when running the tool, e.g.,
+
+````
+uv run kinematics <command> [options]
+````   
+
+### Visualization of a geometry at design condition:
+
+```
+kinematics visualize --geometry=tests/data/geometry.yaml --output=plot.png
+```
 
 ### Basic sweep with CSV export:
 

@@ -33,6 +33,12 @@ dev = [
     "ty>=0.0.1a21",
 ]
 
+# Pytest settings to exclude manual tests by default.
+# --------------------------------------------------------------------------------------
+[tool.pytest.ini_options]
+addopts = "-m 'not manual'"
+markers = ["manual: marks tests as manual (deselected by default)"]
+
 # Documentation formatter settings.
 # --------------------------------------------------------------------------------------
 [tool.docformatter]

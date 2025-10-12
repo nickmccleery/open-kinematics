@@ -66,24 +66,36 @@ class ResidualComputer:
     """
     Computes residuals for kinematic constraints and targets.
 
-    This class explicitly holds a reference to a working state that it mutates
-    during residual computation, making the data flow clear to readers and debuggers.
+    This class holds buffers that are reused across multiple solver evaluations
+    to minimize allocations. A single instance is used for an entire sweep,
+    with different targets passed to compute() for each step.
 
     Attributes:
         constraints: Geometric constraints to evaluate.
         derived_manager: Manager for computing derived points in-place.
-        working_state: State object that is mutated during computation.
+        state_buffer: Suspension state object that is mutated during computation.
+        residuals_buffer: Pre-allocated array for residual computation (reused across calls).
     """
 
     def __init__(
         self,
         constraints: list[Constraint],
         derived_manager: DerivedPointsManager,
-        working_state: SuspensionState,
+        state_buffer: SuspensionState,
+        n_target_variables: int,
     ):
         self.constraints = constraints
         self.derived_manager = derived_manager
-        self.working_state = working_state
+        self.state_buffer = state_buffer
+
+        # Pre-allocate residuals buffer.
+        # This is our constraint residuals + target residuals. Each target adds one
+        # element to the residuals vector, so if we're sweeping wheel center Z and
+        # steering at the same time, we need two extra slots.
+        self.n_constraints = len(constraints)
+        self.residuals_buffer = np.empty(
+            self.n_constraints + n_target_variables, dtype=np.float64
+        )
 
     def compute(
         self,
@@ -93,34 +105,47 @@ class ResidualComputer:
         """
         Compute residuals for the given free point positions and targets.
 
-        This method mutates self.working_state in-place for performance.
+        This method mutates state_buffer in-place and reuses residuals_buffer
+        for performance. Returns a view of the buffer containing only the
+        residuals for this evaluation.
 
         Args:
             free_array: Flattened array of free point coordinates.
             step_targets: Target constraints for this solve step.
 
         Returns:
-            Array of residual values (constraints followed by targets).
+            View of residuals array containing [constraint_residuals, target_residuals].
+            The view length matches the actual number of residuals for this step.
+
+        Note:
+            The returned array is a view into residuals_buffer and will be
+            overwritten on the next call. The solver consumes values immediately,
+            so this is safe.
         """
-        # Update working state in-place with current guess.
-        self.working_state.update_from_array(free_array)
+        # Update state buffer in-place with current guess.
+        self.state_buffer.update_from_array(free_array)
 
-        # Compute derived points in-place (avoids dict copy).
-        self.derived_manager.update_in_place(self.working_state.positions)
+        # Compute derived points in-place.
+        self.derived_manager.update_in_place(self.state_buffer.positions)
 
-        # Evaluate constraint residuals.
-        residuals: list[float] = []
-        for constraint in self.constraints:
-            residuals.append(constraint.residual(self.working_state.positions))
+        # Fill constraint residuals section: residuals[0:n_constraints].
+        for i, constraint in enumerate(self.constraints):
+            self.residuals_buffer[i] = constraint.residual(self.state_buffer.positions)
 
-        # Evaluate target residuals.
-        for target in step_targets:
+        # Fill target residuals section: residuals[n_constraints:n_constraints+n_targets].
+        offset = self.n_constraints
+        for i, target in enumerate(step_targets):
             direction = resolve_target(target.direction)
-            current_pos = self.working_state.positions[target.point_id]
+            current_pos = self.state_buffer.positions[target.point_id]
             current_coordinate = project_coordinate(current_pos, direction)
-            residuals.append(current_coordinate - target.value)
+            self.residuals_buffer[offset + i] = current_coordinate - target.value
 
-        return np.array(residuals, dtype=float)
+        # Return (copy of) view of the used portion. Note that we must return a copy here
+        # because Scipy's least squares keeps references to the evaluated arrays,
+        # so subsequent calls would overwrite previous values.
+        n_residuals = self.n_constraints + len(step_targets)
+        residuals = self.residuals_buffer[:n_residuals]
+        return residuals.copy()
 
 
 def convert_targets_to_absolute(
@@ -135,11 +160,11 @@ def convert_targets_to_absolute(
     exclusively with absolute coordinates.
 
     Args:
-        targets: List of targets in mixed modes (RELATIVE or ABSOLUTE)
-        initial_state: Reference state for resolving RELATIVE targets
+        targets: List of targets in mixed modes (RELATIVE or ABSOLUTE).
+        initial_state: Reference state for resolving RELATIVE targets.
 
     Returns:
-        List of targets with all modes converted to ABSOLUTE
+        List of targets with all modes converted to ABSOLUTE.
     """
     resolved: list[PointTarget] = []
 
@@ -180,7 +205,8 @@ def solve_suspension_sweep(
     Solves a series of kinematic states by sweeping through target configurations using
     damped non-linear least squares. This function performs a sweep where each step in
     the sweep corresponds to a set of targets, solving sequentially from the initial
-    state.
+    state. All state and residual buffers are reused across evaluations to minimize
+    allocations.
 
     Args:
         initial_state (SuspensionState): The initial suspension state to start the sweep from.
@@ -190,10 +216,15 @@ def solve_suspension_sweep(
         solver_config (SolverConfig): Configuration parameters for the solver.
 
     Returns:
-        tuple[list[SuspensionState], list[SolverInfo]]: Tuple containing the list of
-        solved suspension states and corresponding solver information for each step in the sweep.
+        Tuple of (solved_states, solver_stats) where:
+        - solved_states: List of converged suspension states for each sweep step
+        - solver_stats: List of solver diagnostics for each step
+
+    Raises:
+        ValueError: If the system is underdetermined (more variables than residuals).
+        RuntimeError: If the solver fails to converge at any step.
     """
-    # Convert all targets to absolute coordinates once before solving
+    # Convert all targets to absolute coordinates once before solving.
     sweep_targets = [
         convert_targets_to_absolute(
             [sweep[i] for sweep in sweep_config.target_sweeps], initial_state
@@ -209,12 +240,13 @@ def solve_suspension_sweep(
     solution_states: list[SuspensionState] = []
     solver_stats: list[SolverInfo] = []
 
-    # Residual computation utility; has explicit state reference and in-place derived
-    # updates.
+    # Create residual computer with pre-allocated buffers.
+    # This single instance is reused across all solver evaluations in the sweep.
     residual_computer = ResidualComputer(
         constraints=constraints,
         derived_manager=derived_manager,
-        working_state=working_state,
+        state_buffer=working_state,
+        n_target_variables=len(sweep_config.target_sweeps),
     )
 
     # Initial guess built from the working state's free points.

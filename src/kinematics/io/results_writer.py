@@ -1,3 +1,11 @@
+"""
+Results output and serialization.
+
+This module provides functionality for writing kinematic analysis results to file,
+handling the serialization of simulation data, solver information, and configuration
+parameters.
+"""
+
 from __future__ import annotations
 
 import csv

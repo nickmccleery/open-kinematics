@@ -39,6 +39,20 @@ class SuspensionVisualizer:
         ax,
         positions: dict[PointID, Vec3],
     ) -> None:
+        """
+        Draws a 3D wheel representation on the given matplotlib axes.
+
+        Creates a wheel visualization by constructing rim circles at the
+        inboard and outboard edges, connecting them with spokes, and adding a
+        center reference circle. The wheel is oriented along the axle vector
+        using an orthonormal coordinate system.
+
+        Args:
+            ax: Matplotlib 3D axes object where the wheel will be drawn.
+            positions: Dictionary mapping point IDs to their 3D coordinates.
+                      Must contain WHEEL_CENTER, WHEEL_INBOARD, WHEEL_OUTBOARD,
+                      AXLE_INBOARD, and AXLE_OUTBOARD entries.
+        """
         wheel_center = positions[PointID.WHEEL_CENTER]
         wheel_inboard = positions[PointID.WHEEL_INBOARD]
         wheel_outboard = positions[PointID.WHEEL_OUTBOARD]
