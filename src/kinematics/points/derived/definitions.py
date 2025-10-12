@@ -10,11 +10,11 @@ import numpy as np
 
 from kinematics.constants import EPSILON
 from kinematics.enums import Axis, PointID
-from kinematics.types import Vec3, make_vec3
+from kinematics.types import Vec3, WorldAxisSystem, make_vec3
 from kinematics.vector_utils.generic import normalize_vector
 
 
-def _get_wheel_plane_down_vector(positions: dict[PointID, Vec3]) -> Vec3:
+def get_wheel_plane_down_vector(positions: dict[PointID, Vec3]) -> Vec3:
     """
     Calculates the 'down' direction vector in the wheel's plane of rotation.
 
@@ -42,7 +42,7 @@ def _get_wheel_plane_down_vector(positions: dict[PointID, Vec3]) -> Vec3:
     axle_direction = normalize_vector(axle_vector)
 
     # Find the wheel plane normal (points 'down' in wheel's reference frame).
-    global_down = np.array([0.0, 0.0, -1.0])
+    global_down = -1 * WorldAxisSystem.Z
 
     # Project global down onto the plane perpendicular to the axle. This removes
     # the component of 'down' that is parallel to the axle.
@@ -154,7 +154,7 @@ def get_wheel_center_on_ground(
         The 3D coordinates where the wheel center projects onto the ground plane.
     """
     wheel_center = positions[PointID.WHEEL_CENTER]
-    wheel_down_normalized = _get_wheel_plane_down_vector(positions)
+    wheel_down_normalized = get_wheel_plane_down_vector(positions)
 
     # Find where a ray from the wheel center intersects the horizontal ground plane.
     wheel_down_z = wheel_down_normalized[Axis.Z]
@@ -190,7 +190,7 @@ def get_contact_patch_center(
         The 3D coordinates of the geometric contact point.
     """
     wheel_center = positions[PointID.WHEEL_CENTER]
-    wheel_down_normalized = _get_wheel_plane_down_vector(positions)
+    wheel_down_normalized = get_wheel_plane_down_vector(positions)
 
     # Calculate the contact point by moving from the wheel center by the radius.
     contact_point = wheel_center + wheel_down_normalized * tire_radius
