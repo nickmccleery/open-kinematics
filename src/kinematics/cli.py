@@ -95,8 +95,8 @@ def visualize(
     Visualize a suspension geometry at its design condition.
 
     This command loads a single geometry file, calculates its initial state, and
-    generates a debug plot. It also reports whether the geometric contact point
-    is tangent to the ground plane (Z=0).
+    generates a debug plot. It also reports whether the contact patch approximation
+    (minimum Z position on wheel center plane) is tangent to the ground plane (Z=0).
 
     Example:
     uv run kinematics visualize --geometry=tests/data/geometry.yaml --output=plot.png
