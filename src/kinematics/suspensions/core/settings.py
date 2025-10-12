@@ -66,20 +66,6 @@ class WheelConfig:
 
 
 @dataclass
-class StaticSetupConfig:
-    """
-    Static alignment configuration for a suspension.
-
-    Attributes:
-        static_camber: Static camber angle in degrees.
-        static_toe: Static toe angle in degrees.
-    """
-
-    static_camber: float
-    static_toe: float
-
-
-@dataclass
 class SuspensionConfig:
     """
     Complete configuration for a suspension system.
@@ -87,13 +73,11 @@ class SuspensionConfig:
     Attributes:
         steered: Whether this suspension corner is steered.
         wheel: Wheel configuration parameters.
-        static_setup: Static alignment settings.
         cg_position: Center of gravity position coordinates (x, y, z) in mm (required for anti-dive/squat).
         wheelbase: Wheelbase distance in mm.
     """
 
     steered: bool
     wheel: WheelConfig
-    static_setup: StaticSetupConfig
     cg_position: dict[str, float]
     wheelbase: float
