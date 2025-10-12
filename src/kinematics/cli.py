@@ -66,8 +66,8 @@ def sweep(
                 provider=loaded.provider,
                 solution_states=solution_states,
                 output_path=animation_out,
-                wheel_diameter=wheel_cfg.diameter,
-                wheel_width=wheel_cfg.width,
+                wheel_diameter=wheel_cfg.tire.nominal_radius * 2,
+                wheel_width=wheel_cfg.tire.section_width,
                 fps=20,
                 show_live=False,
             )
@@ -82,6 +82,42 @@ def sweep(
                 err=True,
             )
             typer.Exit(1)
+
+
+@app.command()
+def visualize(
+    geometry: Path = typer.Option(..., exists=True, help="Path to geometry YAML."),
+    output: Path = typer.Option(
+        ..., help="Output path for the plot image (.png, .jpg)."
+    ),
+):
+    """
+    Visualize a suspension geometry at its design condition.
+
+    This command loads a single geometry file, calculates its initial state, and
+    generates a debug plot. It also reports whether the contact patch approximation
+    (minimum Z position on wheel center plane) is tangent to the ground plane (Z=0).
+
+    Example:
+    uv run kinematics visualize --geometry=tests/data/geometry.yaml --output=plot.png
+    """
+    try:
+        from kinematics.visualization.api import visualize_geometry
+    except ImportError as e:
+        typer.echo(
+            f"Error: Visualization dependencies not installed.\n"
+            f'Install with: pip install "kinematics[viz]"\n'
+            f"Details: {e}",
+            err=True,
+        )
+        raise typer.Exit(1)
+
+    loaded = load_geometry(geometry)
+
+    visualize_geometry(
+        provider=loaded.provider,
+        output_path=output,
+    )
 
 
 if __name__ == "__main__":

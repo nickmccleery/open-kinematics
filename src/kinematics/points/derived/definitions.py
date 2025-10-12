@@ -10,8 +10,48 @@ import numpy as np
 
 from kinematics.constants import EPSILON
 from kinematics.enums import Axis, PointID
-from kinematics.types import Vec3, make_vec3
+from kinematics.types import Vec3, WorldAxisSystem, make_vec3
 from kinematics.vector_utils.generic import normalize_vector
+
+
+def get_wheel_plane_down_vector(positions: dict[PointID, Vec3]) -> Vec3:
+    """
+    Calculates the 'down' direction vector in the wheel's plane of rotation.
+
+    This vector is always perpendicular to the axle's direction and is calculated
+    by finding the component of the global down vector that is orthogonal to
+    the axle vector (using Gram-Schmidt orthogonalization).
+
+    Args:
+        positions: Dictionary of point coordinates. Must contain AXLE_INBOARD
+                   and AXLE_OUTBOARD.
+
+    Returns:
+        A normalized 3D vector representing the 'down' direction in the
+        wheel's plane.
+
+    Raises:
+        ValueError: If the axle has zero length or the resulting projected
+                    down vector is a zero vector (i.e., axle is vertical).
+    """
+    axle_inboard = positions[PointID.AXLE_INBOARD]
+    axle_outboard = positions[PointID.AXLE_OUTBOARD]
+
+    # Compute the normalized axle direction (wheel's spin axis).
+    axle_vector = axle_outboard - axle_inboard
+    axle_direction = normalize_vector(axle_vector)
+
+    # Find the wheel plane normal (points 'down' in wheel's reference frame).
+    global_down = -1 * WorldAxisSystem.Z
+
+    # Project global down onto the plane perpendicular to the axle. This removes
+    # the component of 'down' that is parallel to the axle.
+    down_parallel_to_axle = np.dot(global_down, axle_direction) * axle_direction
+    wheel_down = global_down - down_parallel_to_axle
+
+    # Normalize to get the final unit vector. This will raise a ValueError if
+    # the axle is vertical, which is the correct fail-fast behavior.
+    return normalize_vector(wheel_down)
 
 
 def get_axle_midpoint(positions: dict[PointID, Vec3]) -> Vec3:
@@ -103,68 +143,56 @@ def get_wheel_center_on_ground(
     Project the wheel center onto the ground plane along the wheel plane normal.
 
     This function computes where the wheel center projects onto the ground when
-    following the wheel's plane normal direction (perpendicular to the axle).
-    This accounts for both camber and toe.
-
-    The projection direction is found by:
-    1. Taking the global down vector (0, 0, -1).
-    2. Removing its component parallel to the axle direction.
-    3. Normalizing the result to get the wheel plane normal.
-    4. Following this direction from wheel center to the ground plane.
+    following the wheel's plane normal direction (perpendicular to the axle),
+    accounting for camber and caster.
 
     Args:
-        positions: Dictionary mapping point IDs to their 3D coordinates.
-                  Must contain WHEEL_CENTER, AXLE_INBOARD, and AXLE_OUTBOARD.
+        positions: Dictionary of point coordinates.
         ground_plane_z: Z-coordinate of the ground plane in mm (default: 0.0).
 
     Returns:
-        A numpy array representing the 3D coordinates where the wheel center
-        projects onto the ground plane.
-
-    Note:
-        This is a purely geometric calculation. In a full suspension analysis,
-        this point can be used as a reference for calculations that need a
-        ground-referenced position accounting for wheel orientation.
+        The 3D coordinates where the wheel center projects onto the ground plane.
     """
-
     wheel_center = positions[PointID.WHEEL_CENTER]
-    axle_inboard = positions[PointID.AXLE_INBOARD]
-    axle_outboard = positions[PointID.AXLE_OUTBOARD]
+    wheel_down_normalized = get_wheel_plane_down_vector(positions)
 
-    # Compute axle direction (wheel spin axis).
-    axle_vector = axle_outboard - axle_inboard
-    axle_direction = normalize_vector(axle_vector)
-
-    # Find the wheel plane normal (points 'down' in wheel's reference frame).
-    # Start with global down direction.
-    global_down = np.array([0.0, 0.0, -1.0])
-
-    # Project global down onto plane perpendicular to axle (Gram-Schmidt orthogonalization).
-    # https://en.wikipedia.org/wiki/Gram%E2%80%93Schmidt_process
-    # This removes the component of 'down' that's parallel to the axle.
-    down_parallel_to_axle = np.dot(global_down, axle_direction) * axle_direction
-    wheel_down = global_down - down_parallel_to_axle
-
-    # Normalize to get unit vector.
-    wheel_down_normalized = normalize_vector(wheel_down)
-
-    # Find where ray from wheel center intersects ground plane
-    # Ray equation: P(t) = wheel_center + t * wheel_down_normalized
-    # Ground plane equation: Z = ground_plane_z
-    # Solve for t: wheel_center[2] + t * wheel_down_normalized[2] = ground_plane_z
+    # Find where a ray from the wheel center intersects the horizontal ground plane.
     wheel_down_z = wheel_down_normalized[Axis.Z]
 
     if abs(wheel_down_z) < EPSILON:
-        # Wheel down vector is horizontal; parallel to ground plane. Something
-        # is not happy here.
+        # The projection direction is horizontal (e.g., at 90° camber).
         raise ValueError(
             "Wheel plane normal is parallel to ground plane; cannot project."
         )
-    else:
-        # Solve for parameter t where ray intersects ground plane.
-        t = (ground_plane_z - wheel_center[Axis.Z]) / wheel_down_z
 
-        # Compute intersection point.
-        ground_projection = wheel_center + t * wheel_down_normalized
+    # Solve for parameter t where the ray intersects the ground plane.
+    t = (ground_plane_z - wheel_center[Axis.Z]) / wheel_down_z
+    ground_projection = wheel_center + t * wheel_down_normalized
 
     return make_vec3(ground_projection)
+
+
+def get_contact_patch_center(
+    positions: dict[PointID, Vec3], tire_radius: float
+) -> Vec3:
+    """
+    Computes the position of the geometric contact patch center.
+
+    This point is found by moving from the wheel center in the 'down'
+    direction of the wheel's plane by a distance equal to the tire radius.
+    Its Z-coordinate is not fixed and will move with the suspension.
+
+    Args:
+        positions: Dictionary of point coordinates.
+        tire_radius: The radius of the tire in mm.
+
+    Returns:
+        The 3D coordinates of the geometric contact point.
+    """
+    wheel_center = positions[PointID.WHEEL_CENTER]
+    wheel_down_normalized = get_wheel_plane_down_vector(positions)
+
+    # Calculate the contact point by moving from the wheel center by the radius.
+    contact_point = wheel_center + wheel_down_normalized * tire_radius
+
+    return make_vec3(contact_point)

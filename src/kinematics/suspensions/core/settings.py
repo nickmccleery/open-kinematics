@@ -57,14 +57,10 @@ class WheelConfig:
     Configuration parameters for a wheel and tire assembly.
 
     Attributes:
-        diameter: Wheel diameter in specified units.
-        width: Wheel width in specified units.
-        offset: Wheel offset from mounting surface.
+        offset: Wheel offset from mounting surface in mm.
         tire: Tire configuration parameters.
     """
 
-    diameter: float
-    width: float
     offset: float
     tire: TireConfig
 
@@ -77,14 +73,10 @@ class StaticSetupConfig:
     Attributes:
         static_camber: Static camber angle in degrees.
         static_toe: Static toe angle in degrees.
-        static_caster: Static caster angle in degrees.
     """
 
     static_camber: float
     static_toe: float
-    static_caster: float
-
-    # Note: These angle values can be negative, so no validation needed for sign
 
 
 @dataclass

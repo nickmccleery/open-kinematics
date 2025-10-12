@@ -18,6 +18,7 @@ from kinematics.constraints import (
 from kinematics.enums import Axis, PointID
 from kinematics.points.derived.definitions import (
     get_axle_midpoint,
+    get_contact_patch_center,
     get_wheel_center,
     get_wheel_center_on_ground,
     get_wheel_inboard,
@@ -188,6 +189,8 @@ class DoubleWishboneProvider(SuspensionProvider):
             Specification containing functions and dependencies for derived points.
         """
         wheel_cfg = self.geometry.configuration.wheel
+        # Use the nominal tire radius from the configuration.
+        tire_radius = self.geometry.configuration.wheel.tire.nominal_radius
 
         functions = {
             PointID.AXLE_MIDPOINT: get_axle_midpoint,
@@ -195,12 +198,15 @@ class DoubleWishboneProvider(SuspensionProvider):
                 get_wheel_center, wheel_offset=wheel_cfg.offset
             ),
             PointID.WHEEL_INBOARD: partial(
-                get_wheel_inboard, wheel_width=wheel_cfg.width
+                get_wheel_inboard, wheel_width=wheel_cfg.tire.section_width
             ),
             PointID.WHEEL_OUTBOARD: partial(
-                get_wheel_outboard, wheel_width=wheel_cfg.width
+                get_wheel_outboard, wheel_width=wheel_cfg.tire.section_width
             ),
             PointID.WHEEL_CENTER_ON_GROUND: partial(get_wheel_center_on_ground),
+            PointID.CONTACT_PATCH_CENTER: partial(
+                get_contact_patch_center, tire_radius=tire_radius
+            ),
         }
 
         dependencies = {
@@ -209,6 +215,11 @@ class DoubleWishboneProvider(SuspensionProvider):
             PointID.WHEEL_INBOARD: {PointID.WHEEL_CENTER, PointID.AXLE_INBOARD},
             PointID.WHEEL_OUTBOARD: {PointID.WHEEL_CENTER, PointID.AXLE_INBOARD},
             PointID.WHEEL_CENTER_ON_GROUND: {
+                PointID.WHEEL_CENTER,
+                PointID.AXLE_INBOARD,
+                PointID.AXLE_OUTBOARD,
+            },
+            PointID.CONTACT_PATCH_CENTER: {
                 PointID.WHEEL_CENTER,
                 PointID.AXLE_INBOARD,
                 PointID.AXLE_OUTBOARD,
@@ -333,7 +344,7 @@ class DoubleWishboneProvider(SuspensionProvider):
             LinkVisualization(
                 points=[PointID.WHEEL_CENTER_ON_GROUND],
                 color="black",
-                label="Ground Contact",
+                label="Wheel Center on Ground",
                 linewidth=0.0,  # No line for single point
                 marker="o",
                 markersize=15.0,  # Large marker for visibility
