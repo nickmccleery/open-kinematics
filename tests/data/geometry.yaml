@@ -21,11 +21,11 @@ hard_points:
     inboard_front:
       x: 225
       y: 350
-      z: 425
+      z: 500
     inboard_rear:
       x: -275
       y: 350
-      z: 425
+      z: 500
     outboard:
       x: -25
       y: 750
@@ -35,11 +35,11 @@ hard_points:
     inner:
       x: -20
       y: 800
-      z: 313.6
+      z: 316.6
     outer:
       x: -20
       y: 950
-      z: 313.6
+      z: 313.535
   track_rod:
     inner:
       x: 50
