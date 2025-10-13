@@ -35,11 +35,11 @@ hard_points:
     inner:
       x: -20
       y: 800
-      z: 316.6
+      z: 308.426
     outer:
       x: -20
       y: 950
-      z: 313.535
+      z: 313.426
   track_rod:
     inner:
       x: 50
@@ -48,7 +48,7 @@ hard_points:
     outer:
       x: 150
       y: 800
-      z: 300
+      z: 275
 configuration:
   steered: true
   wheel:
