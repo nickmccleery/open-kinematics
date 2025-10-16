@@ -1,4 +1,4 @@
-# `open-kinematics`
+# open-kinematics
 
 > ⚠️   
 >
