@@ -2,6 +2,8 @@
 
 `open-kinematics` is a Python-based geometric constraint solver for simulating the kinematic behaviour of vehicle suspension systems.
 
+> ⚠️ Note that this system is both experimental and still under development. I do not recommend using it for anything important.
+
 It allows users to analyse suspension geometries by running parametric sweeps, then offering exports of solved system positions alongside visualisations of suspension state.
 
 The tool is built around a numerical solver that determines the unique positions of all suspension components for a given set of boundary conditions (e.g., a specific wheel height or steering rack position).
