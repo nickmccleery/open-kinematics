@@ -1,10 +1,9 @@
 # `open-kinematics`
 
-`open-kinematics` is a Python-based geometric constraint solver for simulating the kinematic behaviour of vehicle suspension systems.
+> ⚠️ 
+> **Note that this system is both experimental and still under development. I do not recommend using it for anything important.**
 
-> ⚠️ Note that this system is both experimental and still under development. I do not recommend using it for anything important.
-
-It allows users to analyse suspension geometries by running parametric sweeps, then offering exports of solved system positions alongside visualisations of suspension state.
+`open-kinematics` is a Python-based geometric constraint solver for simulating the kinematic behaviour of vehicle suspension systems. It allows users to analyse suspension geometries by running parametric sweeps, then offering exports of solved system positions alongside visualisations of suspension state.
 
 The tool is built around a numerical solver that determines the unique positions of all suspension components for a given set of boundary conditions (e.g., a specific wheel height or steering rack position).
 
@@ -111,9 +110,7 @@ kinematics sweep --geometry tests/data/geometry.yaml --sweep tests/data/sweep.ya
 This will produce a video like the one below, showing the suspension articulating through a range of bump, droop, and rack travel.
 
 <p align="center">
-  <video src="/images/anim.mp4" width="80%" controls>
-    Your browser does not support the video tag.
-  </video>
+  <img src="/images/anim.gif" alt="Kinematic Sweep Animation" width="80%">
   <br>
   <em>Animation of a full kinematic sweep.</em>
 </p>
