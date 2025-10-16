@@ -107,8 +107,9 @@ def create_animation(
             artists.extend(wheel_artists[view_name]["bands"])
         return artists
 
-    # Allow frame skipping for faster renders
-    frame_indices = range(0, len(position_states), 1)
+    # Play forward then reverse (ping-pong).
+    pingpong_states = position_states + position_states[-2:0:-1]
+    frame_indices = range(0, len(pingpong_states), 1)
 
     # Choose writer automatically if not provided
     out_suffix = output_path.suffix.lower()
@@ -139,12 +140,22 @@ def create_animation(
     try:
         with writer_inst.saving(fig, str(output_path), dpi):
             for frame in frame_indices:
-                update(frame)
+                positions = pingpong_states[frame]
+                # Update all artists for this frame
+                for view_name in axes.keys():
+                    visualizer.update_links(link_artists[view_name], positions)
+                    visualizer.update_wheel(
+                        wheel_artists[view_name], positions, num_bands=num_bands
+                    )
+                # Update global title
+                title_string = (
+                    f"Wheel Center Z: {positions[PointID.WHEEL_CENTER][2] - initial_positions[PointID.WHEEL_CENTER][2]:.1f} [mm]",
+                    f"Rack Displacement: {positions[PointID.TRACKROD_INBOARD][1] - initial_positions[PointID.TRACKROD_INBOARD][1]:.1f} [mm]",
+                )
+                title_artist.set_text("\n".join(title_string))
                 if show_live:
-                    # Draw immediately and let GUI process events
                     fig.canvas.draw()
                     fig.canvas.flush_events()
-
                 writer_inst.grab_frame()
     finally:
         if show_live:
