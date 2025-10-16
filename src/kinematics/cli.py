@@ -24,8 +24,8 @@ def sweep(
     Run a sweep from file and write results to Parquet or CSV format.
 
     Example:
-        kinematics --geometry=tests/data/geometry.yaml --sweep=tests/data/sweep.yaml --out=results.parquet
-        kinematics --geometry=tests/data/geometry.yaml --sweep=tests/data/sweep.yaml --out=results.csv --animation-out=anim.mp4
+        kinematics sweep --geometry=tests/data/geometry.yaml --sweep=tests/data/sweep.yaml --out=results.parquet
+        kinematics sweep --geometry=tests/data/geometry.yaml --sweep=tests/data/sweep.yaml --out=results.csv --animation-out=anim.mp4
     """
     loaded = load_geometry(geometry)
     sweep_config = parse_sweep_file(sweep)
