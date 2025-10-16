@@ -4,7 +4,7 @@ End-to-end integration tests for the CLI interface using direct CLI function cal
 Tests all combinations of:
 - Output formats: CSV and Parquet
 - With and without visualization
-- Using real test data files and golden reference files
+- Using real test data files and 'golden' reference files
 
 This version calls the CLI sweep() function directly instead of using subprocess,
 making debugging easier while still testing the same code path.
@@ -171,22 +171,22 @@ def normalize_csv_for_comparison(file_path: Path) -> str:
 
 def compare_files(actual_file: Path, expected_file: Path, file_format: str) -> bool:
     """
-    Compare actual output file with expected golden file.
+    Compare actual output file with expected reference file.
 
     Args:
         actual_file: Path to the generated file
-        expected_file: Path to the expected golden file
+        expected_file: Path to the expected reference file
         file_format: 'csv' or 'parquet'
 
     Returns:
         True if files match, False otherwise
     """
     if not actual_file.exists():
-        print(f"❌ Actual file does not exist: {actual_file}")
+        print(f"Actual file does not exist: {actual_file}")
         return False
 
     if not expected_file.exists():
-        print(f"❌ Expected golden file does not exist: {expected_file}")
+        print(f"Expected reference file does not exist: {expected_file}")
         return False
 
     if file_format == "csv":
@@ -240,29 +240,29 @@ def compare_files(actual_file: Path, expected_file: Path, file_format: str) -> b
         raise ValueError(f"Unsupported format: {file_format}")
 
 
-def validate_output_against_golden(output_file: Path, file_format: str) -> None:
+def validate_output_against_reference(output_file: Path, file_format: str) -> None:
     """
-    Validate output file against golden reference file.
+    Validate output file against reference file.
 
     Args:
         output_file: Path to the generated output file
         file_format: Expected format ('csv' or 'parquet')
     """
-    # Get path to golden file
-    golden_file = (
+    # Get path to reference file
+    reference_file = (
         Path(__file__).parent.parent / "data" / "e2e" / f"output.{file_format}"
     )
 
     assert output_file.exists(), f"Output file {output_file} was not created"
     assert output_file.stat().st_size > 0, f"Output file {output_file} is empty"
 
-    # Compare with golden file
-    matches = compare_files(output_file, golden_file, file_format)
+    # Compare with reference file
+    matches = compare_files(output_file, reference_file, file_format)
     assert matches, (
-        f"Output file {output_file} does not match golden file {golden_file}"
+        f"Output file {output_file} does not match reference file {reference_file}"
     )
 
-    print(f"✓ Output matches golden {file_format.upper()} file")
+    print(f"✓ Output matches reference {file_format.upper()} file")
 
 
 def validate_animation_file(animation_file: Path) -> None:
@@ -301,7 +301,7 @@ class TestCliDirectEndToEnd:
         assert success, f"CLI sweep failed: {output}"
         assert "wrote" in output.lower(), f"Unexpected output: {output}"
 
-        validate_output_against_golden(output_file, "csv")
+        validate_output_against_reference(output_file, "csv")
 
     def test_parquet_output_without_animation(
         self,
@@ -319,7 +319,7 @@ class TestCliDirectEndToEnd:
         assert success, f"CLI sweep failed: {output}"
         assert "wrote" in output.lower(), f"Unexpected output: {output}"
 
-        validate_output_against_golden(output_file, "parquet")
+        validate_output_against_reference(output_file, "parquet")
 
     def test_csv_output_with_animation(
         self,
@@ -340,7 +340,7 @@ class TestCliDirectEndToEnd:
         assert success, f"CLI sweep failed: {output}"
         assert "wrote" in output.lower(), f"Unexpected output: {output}"
 
-        validate_output_against_golden(output_file, "csv")
+        validate_output_against_reference(output_file, "csv")
         validate_animation_file(animation_file)
 
     def test_parquet_output_with_animation(
@@ -362,7 +362,7 @@ class TestCliDirectEndToEnd:
         assert success, f"CLI sweep failed: {output}"
         assert "wrote" in output.lower(), f"Unexpected output: {output}"
 
-        validate_output_against_golden(output_file, "parquet")
+        validate_output_against_reference(output_file, "parquet")
         validate_animation_file(animation_file)
 
     def test_gif_animation_output(
@@ -384,7 +384,7 @@ class TestCliDirectEndToEnd:
         assert success, f"CLI sweep failed: {output}"
         assert "wrote" in output.lower(), f"Unexpected output: {output}"
 
-        validate_output_against_golden(output_file, "csv")
+        validate_output_against_reference(output_file, "csv")
         validate_animation_file(animation_file)
 
     def test_invalid_geometry_file(
@@ -446,11 +446,11 @@ class TestCliDirectEndToEnd:
         assert csv_success, f"CSV command failed: {csv_message}"
         assert parquet_success, f"Parquet command failed: {parquet_message}"
 
-        # Both should match their respective golden files
-        validate_output_against_golden(csv_output, "csv")
-        validate_output_against_golden(parquet_output, "parquet")
+        # Both should match their respective reference files
+        validate_output_against_reference(csv_output, "csv")
+        validate_output_against_reference(parquet_output, "parquet")
 
-        print("✓ Both CSV and Parquet outputs match their golden files")
+        print("✓ Both CSV and Parquet outputs match their reference files")
 
 
 class TestUserExampleEquivalenceDirect:
@@ -476,7 +476,7 @@ class TestUserExampleEquivalenceDirect:
         assert success, f"User example command failed: {output}"
         assert "wrote" in output.lower(), f"Unexpected output: {output}"
 
-        # Validate against golden file - this ensures the output is correct
-        validate_output_against_golden(output_file, "csv")
+        # Validate against reference file - this ensures the output is correct
+        validate_output_against_reference(output_file, "csv")
 
         print("✓ User example command reproduced successfully via direct CLI call")
