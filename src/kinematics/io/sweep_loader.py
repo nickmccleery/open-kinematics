@@ -159,11 +159,11 @@ def direction_to_target_type(
         Either PointTargetAxis (if aligned with principal/standard basis axis) or
         PointTargetVector (for arbitrary directions).
     """
-    if np.allclose(unit_vec, [1.0, 0.0, 0.0]):
+    if np.allclose(unit_vec, WorldAxisSystem.X):
         return PointTargetAxis(Axis.X)
-    if np.allclose(unit_vec, [0.0, 1.0, 0.0]):
+    if np.allclose(unit_vec, WorldAxisSystem.Y):
         return PointTargetAxis(Axis.Y)
-    if np.allclose(unit_vec, [0.0, 0.0, 1.0]):
+    if np.allclose(unit_vec, WorldAxisSystem.Z):
         return PointTargetAxis(Axis.Z)
     return PointTargetVector(unit_vec)
 

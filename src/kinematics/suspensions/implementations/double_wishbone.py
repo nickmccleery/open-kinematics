@@ -34,7 +34,7 @@ from kinematics.suspensions.core.collections import (
 )
 from kinematics.suspensions.core.geometry import SuspensionGeometry
 from kinematics.suspensions.core.provider import SuspensionProvider
-from kinematics.types import Vec3, make_vec3
+from kinematics.types import Vec3, WorldAxisSystem, make_vec3
 from kinematics.vector_utils.geometric import (
     compute_point_point_distance,
     compute_vector_vector_angle,
@@ -288,7 +288,7 @@ class DoubleWishboneProvider(SuspensionProvider):
             PointOnLineConstraint(
                 point_id=PointID.TRACKROD_INBOARD,
                 line_point=initial_state.positions[PointID.TRACKROD_INBOARD],
-                line_direction=np.array([0.0, 1.0, 0.0], dtype=np.float64),
+                line_direction=WorldAxisSystem.Y,
             )
         )
 
