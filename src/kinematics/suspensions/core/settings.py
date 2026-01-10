@@ -7,7 +7,7 @@ wheel parameters, and static alignment settings.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from kinematics.constants import MM_PER_INCH
 
@@ -66,6 +66,27 @@ class WheelConfig:
 
 
 @dataclass
+class CamberShimConfig:
+    """
+    Configuration for a camber shim adjustment.
+
+    A camber shim sits between the top balljoint and remainder of the upright,
+    effectively rotating the upright about the lower ball joint.
+
+    Attributes:
+        shim_face_center: Coordinates (x, y, z) in mm of the shim face center point at design condition.
+        shim_normal: Unit vector (x, y, z) pointing outboard perpendicular to shim face.
+        design_thickness: Shim stack thickness in mm at design condition.
+        setup_thickness: Actual shim stack thickness in mm for this configuration.
+    """
+
+    shim_face_center: dict[str, float]
+    shim_normal: dict[str, float]
+    design_thickness: float
+    setup_thickness: float
+
+
+@dataclass
 class SuspensionConfig:
     """
     Complete configuration for a suspension system.
@@ -75,9 +96,21 @@ class SuspensionConfig:
         wheel: Wheel configuration parameters.
         cg_position: Center of gravity position coordinates (x, y, z) in mm (required for anti-dive/squat).
         wheelbase: Wheelbase distance in mm.
+        camber_shim: Optional camber shim configuration.
+        upright_mounted_points: List of point names that are mounted to the upright and should
+            move when camber shims are applied. Defaults to common upright-mounted points.
     """
 
     steered: bool
     wheel: WheelConfig
     cg_position: dict[str, float]
     wheelbase: float
+    camber_shim: CamberShimConfig | None = None
+    upright_mounted_points: list[str] = field(
+        default_factory=lambda: [
+            "axle_inboard",
+            "axle_outboard",
+            "pushrod_outboard",
+            "trackrod_outboard",
+        ]
+    )

@@ -62,3 +62,18 @@ configuration:
     y: 0
     z: 450
   wheelbase: 2500.0  # Wheelbase in mm.
+  camber_shim:
+    shim_face_center:
+      x: -25.0
+      y: 750.0
+      z: 500.0
+    shim_normal:
+      x: 0.0
+      y: 1.0
+      z: 0.0
+    design_thickness: 30.0
+    setup_thickness: 30.0  # Same as design = no shim effect.
+  upright_mounted_points:
+    - axle_inboard
+    - axle_outboard
+    - trackrod_outboard

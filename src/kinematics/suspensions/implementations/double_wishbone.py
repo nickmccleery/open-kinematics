@@ -34,6 +34,11 @@ from kinematics.suspensions.core.collections import (
 )
 from kinematics.suspensions.core.geometry import SuspensionGeometry
 from kinematics.suspensions.core.provider import SuspensionProvider
+from kinematics.suspensions.core.shims import (
+    compute_shim_offset,
+    compute_upright_rotation_from_shim,
+    rotate_point_about_axis,
+)
 from kinematics.types import Vec3, WorldAxisSystem, make_vec3
 from kinematics.vector_utils.geometric import (
     compute_point_point_distance,
@@ -108,7 +113,8 @@ class DoubleWishboneProvider(SuspensionProvider):
         Create initial suspension state from geometry hard points.
 
         Converts the hard point coordinates from the geometry into a SuspensionState
-        with both explicitly defined and derived points.
+        with both explicitly defined and derived points. If a camber shim is configured,
+        applies the geometric transformation to rotate the upright.
 
         Returns:
             Initial suspension state with all point positions.
@@ -158,12 +164,80 @@ class DoubleWishboneProvider(SuspensionProvider):
             [wa.outer["x"], wa.outer["y"], wa.outer["z"]]
         )
 
+        # Apply camber shim transformation if configured
+        if self.geometry.configuration.camber_shim is not None:
+            self._apply_camber_shim(positions)
+
         # Calculate derived points to create a complete initial state.
         derived_spec = self.derived_spec()
         derived_resolver = DerivedPointsManager(derived_spec)
         derived_resolver.update_in_place(positions)
 
         return SuspensionState(positions=positions, free_points=set(self.free_points()))
+
+    def _apply_camber_shim(self, positions: dict[PointID, np.ndarray]) -> None:
+        """
+        Apply camber shim transformation to upright-mounted points.
+
+        The shim splits the upright internally - ball joints stay fixed while
+        all other upright-mounted points (specified in configuration) rotate about
+        the lower ball joint.
+
+        Args:
+            positions: Dictionary of point positions to modify.
+        """
+        shim_config = self.geometry.configuration.camber_shim
+        if shim_config is None:
+            return
+
+        # Compute the shim offset vector
+        shim_offset = compute_shim_offset(shim_config)
+
+        # Get the shim face center at design condition
+        shim_face_center_design = make_vec3(
+            np.array(
+                [
+                    shim_config.shim_face_center["x"],
+                    shim_config.shim_face_center["y"],
+                    shim_config.shim_face_center["z"],
+                ]
+            )
+        )
+
+        # The lower ball joint is the pivot point (rotation center)
+        # Ball joints themselves do NOT move - they're on the fixed part of the upright
+        lower_ball_joint = make_vec3(positions[PointID.LOWER_WISHBONE_OUTBOARD])
+
+        # Compute the rotation axis and angle
+        rotation_axis, rotation_angle = compute_upright_rotation_from_shim(
+            lower_ball_joint,
+            shim_face_center_design,
+            shim_offset,
+        )
+
+        # Convert configured point names to PointID enums
+        # Map string names (snake_case) to PointID enum members (UPPER_CASE)
+        point_name_map = {
+            "axle_inboard": PointID.AXLE_INBOARD,
+            "axle_outboard": PointID.AXLE_OUTBOARD,
+            "pushrod_outboard": PointID.PUSHROD_OUTBOARD,
+            "trackrod_outboard": PointID.TRACKROD_OUTBOARD,
+        }
+
+        upright_point_names = self.geometry.configuration.upright_mounted_points
+        rotating_points = [
+            point_name_map[name]
+            for name in upright_point_names
+            if name in point_name_map and point_name_map[name] in positions
+        ]
+
+        # Apply rotation to all upright-mounted points
+        for point_id in rotating_points:
+            original_pos = make_vec3(positions[point_id])
+            rotated_pos = rotate_point_about_axis(
+                original_pos, lower_ball_joint, rotation_axis, rotation_angle
+            )
+            positions[point_id] = np.array(rotated_pos)
 
     def free_points(self) -> Sequence[PointID]:
         """
