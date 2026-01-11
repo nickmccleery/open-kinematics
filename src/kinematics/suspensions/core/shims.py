@@ -113,16 +113,16 @@ def compute_upright_rotation_from_shim(
         rotation_axis is a unit vector through the lower ball joint.
         rotation_angle_rad is the angle to rotate the upright.
     """
-    # The shim face must move to: shim_face_center_design + shim_offset
+    # The shim face must move to: shim_face_center_design + shim_offset.
     shim_face_target = make_vec3(shim_face_center_design + shim_offset)
 
-    # Vector from lower ball joint to design shim face center
+    # Vector from lower ball joint to design shim face centre.
     r_design = make_vec3(shim_face_center_design - lower_ball_joint)
 
-    # Vector from lower ball joint to target shim face center
+    # Vector from lower ball joint to target shim face centre.
     r_target = make_vec3(shim_face_target - lower_ball_joint)
 
-    # The rotation axis is perpendicular to both r_design and r_target
+    # The rotation axis is perpendicular to both r_design and r_target.
     # Note: r_target = r_design + shim_offset, so by cross product properties:
     #   r_design × r_target = r_design × (r_design + shim_offset)
     #                       = r_design × shim_offset
@@ -131,7 +131,7 @@ def compute_upright_rotation_from_shim(
     cross_magnitude = np.linalg.norm(cross)
 
     if cross_magnitude < EPSILON:
-        # Vectors are parallel - no rotation needed
+        # Vectors are parallel - no rotation needed.
         return make_vec3(np.array([0.0, 0.0, 1.0])), 0.0
 
     rotation_axis = make_vec3(cross / cross_magnitude)

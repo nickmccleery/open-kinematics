@@ -164,9 +164,9 @@ class DoubleWishboneProvider(SuspensionProvider):
             [wa.outer["x"], wa.outer["y"], wa.outer["z"]]
         )
 
-        # Apply camber shim transformation if configured
+        # Apply camber shim transformation if configured.
         if self.geometry.configuration.camber_shim is not None:
-            self._apply_camber_shim(positions)
+            self.apply_camber_shim(positions)
 
         # Calculate derived points to create a complete initial state.
         derived_spec = self.derived_spec()
@@ -175,7 +175,7 @@ class DoubleWishboneProvider(SuspensionProvider):
 
         return SuspensionState(positions=positions, free_points=set(self.free_points()))
 
-    def _apply_camber_shim(self, positions: dict[PointID, np.ndarray]) -> None:
+    def apply_camber_shim(self, positions: dict[PointID, np.ndarray]) -> None:
         """
         Apply camber shim transformation to upright-mounted points.
 
@@ -190,10 +190,10 @@ class DoubleWishboneProvider(SuspensionProvider):
         if shim_config is None:
             return
 
-        # Compute the shim offset vector
+        # Compute the shim offset vector.
         shim_offset = compute_shim_offset(shim_config)
 
-        # Get the shim face center at design condition
+        # Get the shim face centre at design condition.
         shim_face_center_design = make_vec3(
             np.array(
                 [
@@ -204,19 +204,19 @@ class DoubleWishboneProvider(SuspensionProvider):
             )
         )
 
-        # The lower ball joint is the pivot point (rotation center)
-        # Ball joints themselves do NOT move - they're on the fixed part of the upright
+        # The lower ball joint is the pivot point (rotation centre).
+        # Ball joints themselves do NOT move - they're on the fixed part of the upright.
         lower_ball_joint = make_vec3(positions[PointID.LOWER_WISHBONE_OUTBOARD])
 
-        # Compute the rotation axis and angle
+        # Compute the rotation axis and angle.
         rotation_axis, rotation_angle = compute_upright_rotation_from_shim(
             lower_ball_joint,
             shim_face_center_design,
             shim_offset,
         )
 
-        # Convert configured point names to PointID enums
-        # Map string names (snake_case) to PointID enum members (UPPER_CASE)
+        # Convert configured point names to PointID enums.
+        # Map string names (snake_case) to PointID enum members (UPPER_CASE).
         point_name_map = {
             "axle_inboard": PointID.AXLE_INBOARD,
             "axle_outboard": PointID.AXLE_OUTBOARD,
@@ -231,7 +231,7 @@ class DoubleWishboneProvider(SuspensionProvider):
             if name in point_name_map and point_name_map[name] in positions
         ]
 
-        # Apply rotation to all upright-mounted points
+        # Apply rotation to all upright-mounted points.
         for point_id in rotating_points:
             original_pos = make_vec3(positions[point_id])
             rotated_pos = rotate_point_about_axis(
