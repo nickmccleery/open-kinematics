@@ -10,7 +10,7 @@ import numpy as np
 
 from kinematics.enums import Axis, PointID
 from kinematics.io.geometry_loader import load_geometry
-from kinematics.suspensions.core.settings import CamberShimConfig
+from kinematics.suspensions.core.settings import CamberShimConfigOutboard
 from kinematics.suspensions.core.shims import (
     compute_shim_offset,
     compute_upright_rotation_from_shim,
@@ -21,7 +21,7 @@ from kinematics.types import make_vec3
 
 def test_compute_shim_offset_positive():
     """Test that increasing shim thickness creates outboard offset."""
-    shim_config = CamberShimConfig(
+    shim_config = CamberShimConfigOutboard(
         shim_face_center={"x": 0.0, "y": 350.0, "z": 500.0},
         shim_normal={"x": 0.0, "y": 1.0, "z": 0.0},  # Unit vector pointing outboard
         design_thickness=0.0,
@@ -38,7 +38,7 @@ def test_compute_shim_offset_positive():
 
 def test_compute_shim_offset_negative():
     """Test that removing shims creates inboard offset."""
-    shim_config = CamberShimConfig(
+    shim_config = CamberShimConfigOutboard(
         shim_face_center={"x": 0.0, "y": 350.0, "z": 500.0},
         shim_normal={"x": 0.0, "y": 1.0, "z": 0.0},
         design_thickness=10.0,
@@ -55,7 +55,7 @@ def test_compute_shim_offset_negative():
 
 def test_compute_shim_offset_zero():
     """Test that no shim change creates no offset."""
-    shim_config = CamberShimConfig(
+    shim_config = CamberShimConfigOutboard(
         shim_face_center={"x": 0.0, "y": 350.0, "z": 500.0},
         shim_normal={"x": 0.0, "y": 1.0, "z": 0.0},
         design_thickness=5.0,
@@ -141,7 +141,7 @@ def test_shim_application_changes_camber(double_wishbone_geometry_file):
     )
 
     # Apply a camber shim
-    shim_config = CamberShimConfig(
+    shim_config = CamberShimConfigOutboard(
         shim_face_center={"x": 0.0, "y": 350.0, "z": 500.0},
         shim_normal={"x": 0.0, "y": 1.0, "z": 0.0},
         design_thickness=0.0,
@@ -183,7 +183,7 @@ def test_shim_does_not_move_lower_ball_joint(double_wishbone_geometry_file):
     initial_lbj = initial_state.positions[PointID.LOWER_WISHBONE_OUTBOARD].copy()
 
     # Apply shim
-    shim_config = CamberShimConfig(
+    shim_config = CamberShimConfigOutboard(
         shim_face_center={"x": 0.0, "y": 350.0, "z": 500.0},
         shim_normal={"x": 0.0, "y": 1.0, "z": 0.0},
         design_thickness=0.0,
@@ -229,7 +229,7 @@ def test_shim_does_not_move_inboard_points(double_wishbone_geometry_file):
     }
 
     # Apply shim
-    shim_config = CamberShimConfig(
+    shim_config = CamberShimConfigOutboard(
         shim_face_center={"x": 0.0, "y": 350.0, "z": 500.0},
         shim_normal={"x": 0.0, "y": 1.0, "z": 0.0},
         design_thickness=0.0,
@@ -261,7 +261,7 @@ def test_shim_does_not_move_upper_ball_joint(double_wishbone_geometry_file):
     initial_ubj = initial_state.positions[PointID.UPPER_WISHBONE_OUTBOARD].copy()
 
     # Apply shim
-    shim_config = CamberShimConfig(
+    shim_config = CamberShimConfigOutboard(
         shim_face_center={"x": 0.0, "y": 350.0, "z": 500.0},
         shim_normal={"x": 0.0, "y": 1.0, "z": 0.0},
         design_thickness=0.0,
@@ -295,7 +295,7 @@ def test_shim_moves_axle_points(double_wishbone_geometry_file):
     initial_trackrod_out = initial_state.positions[PointID.TRACKROD_OUTBOARD].copy()
 
     # Apply shim
-    shim_config = CamberShimConfig(
+    shim_config = CamberShimConfigOutboard(
         shim_face_center={"x": 0.0, "y": 350.0, "z": 500.0},
         shim_normal={"x": 0.0, "y": 1.0, "z": 0.0},
         design_thickness=0.0,

@@ -9,12 +9,12 @@ from __future__ import annotations
 
 import numpy as np
 
-from kinematics.suspensions.core.settings import CamberShimConfig
+from kinematics.suspensions.core.settings import CamberShimConfigOutboard
 from kinematics.types import Vec3, make_vec3
 from kinematics.vector_utils.generic import normalize_vector
 
 
-def compute_shim_offset(shim_config: CamberShimConfig) -> Vec3:
+def compute_shim_offset(shim_config: CamberShimConfigOutboard) -> Vec3:
     """
     Compute the offset vector caused by shim thickness change.
 

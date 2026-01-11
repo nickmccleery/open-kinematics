@@ -8,7 +8,7 @@ demonstrating how camber shims rotate the upright about the lower ball joint.
 from pathlib import Path
 
 from kinematics.io.geometry_loader import load_geometry
-from kinematics.suspensions.core.settings import CamberShimConfig
+from kinematics.suspensions.core.settings import CamberShimConfigOutboard
 from kinematics.visualization.api import visualize_geometry
 
 # Shim configuration constants
@@ -32,7 +32,7 @@ def main():
     # The shim face center should be at/near the upper ball joint for maximum effect
     # This represents the mounting face of the upright-side bracket
     # Normal points outboard (positive Y)
-    shim_config = CamberShimConfig(
+    shim_config = CamberShimConfigOutboard(
         shim_face_center={
             "x": -25.0,  # Near upper ball joint X
             "y": 750.0,  # Near upper ball joint Y (outboard of inboards)
