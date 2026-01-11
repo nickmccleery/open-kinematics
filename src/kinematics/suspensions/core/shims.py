@@ -9,9 +9,11 @@ from __future__ import annotations
 
 import numpy as np
 
+from kinematics.constants import EPSILON
 from kinematics.suspensions.core.settings import CamberShimConfigOutboard
 from kinematics.types import Vec3, make_vec3
 from kinematics.vector_utils.generic import normalize_vector
+from kinematics.vector_utils.geometric import compute_vector_vector_angle
 
 
 def compute_shim_offset(shim_config: CamberShimConfigOutboard) -> Vec3:
@@ -112,13 +114,13 @@ def compute_upright_rotation_from_shim(
         rotation_angle_rad is the angle to rotate the upright.
     """
     # The shim face must move to: shim_face_center_design + shim_offset
-    shim_face_target = shim_face_center_design + shim_offset
+    shim_face_target = make_vec3(shim_face_center_design + shim_offset)
 
     # Vector from lower ball joint to design shim face center
-    r_design = shim_face_center_design - lower_ball_joint
+    r_design = make_vec3(shim_face_center_design - lower_ball_joint)
 
     # Vector from lower ball joint to target shim face center
-    r_target = shim_face_target - lower_ball_joint
+    r_target = make_vec3(shim_face_target - lower_ball_joint)
 
     # The rotation axis is perpendicular to both r_design and r_target
     # Note: r_target = r_design + shim_offset, so by cross product properties:
@@ -128,25 +130,13 @@ def compute_upright_rotation_from_shim(
     cross = np.cross(r_design, r_target)
     cross_magnitude = np.linalg.norm(cross)
 
-    if cross_magnitude < 1e-10:
+    if cross_magnitude < EPSILON:
         # Vectors are parallel - no rotation needed
         return make_vec3(np.array([0.0, 0.0, 1.0])), 0.0
 
     rotation_axis = make_vec3(cross / cross_magnitude)
 
-    # The rotation angle can be found from the dot product
-    # cos(θ) = (r_design · r_target) / (|r_design| * |r_target|)
-    dot_product = np.dot(r_design, r_target)
-    magnitude_design = np.linalg.norm(r_design)
-    magnitude_target = np.linalg.norm(r_target)
+    # Compute the rotation angle between the two radial vectors.
+    rotation_angle = compute_vector_vector_angle(r_design, r_target)
 
-    # Note: magnitudes should be equal since shim offset is typically small
-    # and perpendicular to the radial direction, but we use the general formula
-    cos_angle = dot_product / (magnitude_design * magnitude_target)
-
-    # Clamp to [-1, 1] to avoid numerical errors in arccos
-    cos_angle = np.clip(cos_angle, -1.0, 1.0)
-
-    rotation_angle = np.arccos(cos_angle)
-
-    return rotation_axis, float(rotation_angle)
+    return rotation_axis, rotation_angle
