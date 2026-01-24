@@ -33,6 +33,7 @@ class WheelVisualization:
 
 class SuspensionVisualizer:
     """Renders suspension geometry to matplotlib 3D axes."""
+
     def draw_links(
         self,
         ax,

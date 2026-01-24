@@ -12,6 +12,9 @@ from kinematics.enums import Axis, PointID
 from kinematics.suspensions.implementations.double_wishbone import (
     DoubleWishboneProvider,
 )
+from kinematics.suspensions.implementations.template_provider import (
+    TemplateSuspensionProvider,
+)
 from kinematics.visualization.plots import create_four_view_plot
 
 if TYPE_CHECKING:
@@ -113,7 +116,17 @@ def visualize_geometry(
             f"Original error: {e}"
         ) from e
 
-    if not isinstance(provider, DoubleWishboneProvider):
+    # Check for supported provider types.
+    is_double_wishbone = isinstance(provider, DoubleWishboneProvider)
+    is_template_dw = isinstance(
+        provider, TemplateSuspensionProvider
+    ) and provider.template.key in (
+        "double_wishbone",
+        "double_wishbone_front",
+        "double_wishbone_rear",
+    )
+
+    if not (is_double_wishbone or is_template_dw):
         raise NotImplementedError(
             "Geometry visualization only supported for DoubleWishbone suspensions."
         )
@@ -142,14 +155,18 @@ def visualize_geometry(
         )
         typer.echo("─" * 60)
 
-    # Create visualisation.
-    dw_provider = cast(DoubleWishboneProvider, provider)
-    wheel_cfg = dw_provider.geometry.configuration.wheel
+    # Get wheel configuration from the appropriate provider type.
+    if is_double_wishbone:
+        dw_provider = cast(DoubleWishboneProvider, provider)
+        wheel_cfg = dw_provider.geometry.configuration.wheel
+    else:
+        template_provider = cast(TemplateSuspensionProvider, provider)
+        wheel_cfg = template_provider.geometry.configuration.wheel
 
     # Create the four-view plot.
     create_four_view_plot(
         state=state,
-        provider=dw_provider,
+        provider=provider,
         output_path=output_path,
         wheel_diameter=wheel_cfg.tire.nominal_radius * 2,
         wheel_width=wheel_cfg.tire.section_width,
