@@ -257,8 +257,9 @@ class TestUprightRigidBody:
 
         upright = Upright.from_global_positions(hardpoints, attachments)
 
-        # Store original local offset
+        # Store original local offset and world position BEFORE modifying
         original_local_offset = upright.attachment_local_offsets["axle_inboard"].copy()
+        original_world_z = upright.get_world_position("axle_inboard")[2]
 
         # Simulate suspension bump: move all hardpoints up by 50mm
         new_hardpoints = {
@@ -284,8 +285,8 @@ class TestUprightRigidBody:
         # VERIFY: World position has moved
         new_world = upright.get_world_position("axle_inboard")
         # Axle should have moved up by ~50mm (exact value depends on geometry).
-        assert abs(new_world[2] - attachments.axle_inboard[2] - 50) < 10, (
-            "Attachment world position should move with hardpoints"  # noqa: E501
+        assert abs(new_world[2] - original_world_z - 50) < 10, (
+            "Attachment world position should move with hardpoints"
         )
 
 
