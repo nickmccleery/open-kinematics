@@ -28,6 +28,7 @@ def visualize_suspension_sweep(
     output_path: Path,
     wheel_diameter: float,
     wheel_width: float,
+    rim_diameter: float,
     fps: int = 20,
     show_live: bool = False,
 ) -> None:
@@ -43,6 +44,7 @@ def visualize_suspension_sweep(
         output_path: Path where the animation file will be saved.
         wheel_diameter: Wheel diameter in millimeters.
         wheel_width: Wheel width in millimeters.
+        rim_diameter: Rim diameter in millimeters.
         fps: Frames per second for the animation.
         show_live: Whether to show the animation during creation.
 
@@ -66,6 +68,7 @@ def visualize_suspension_sweep(
     wheel_config = WheelVisualization(
         diameter=wheel_diameter,
         width=wheel_width,
+        rim_diameter=rim_diameter,
     )
 
     # Get visualisation links from provider.
@@ -170,6 +173,7 @@ def visualize_geometry(
         output_path=output_path,
         wheel_diameter=wheel_cfg.tire.nominal_radius * 2,
         wheel_width=wheel_cfg.tire.section_width,
+        rim_diameter=wheel_cfg.tire.rim_diameter_mm,
         title="Suspension Geometry Visualization",
         dpi=150,
     )

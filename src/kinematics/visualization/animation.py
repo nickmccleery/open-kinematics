@@ -64,12 +64,9 @@ def create_animation(
     axes["iso"].legend(loc="upper left")
 
     # Use unified draw_wheel to create wheel artists.
-    num_bands = 36
     wheel_artists: dict[str, dict[str, list]] = {k: {} for k in axes.keys()}
     for view_name, ax in axes.items():
-        wheel_artists[view_name] = visualizer.draw_wheel(
-            ax, initial_positions, num_bands=num_bands
-        )
+        wheel_artists[view_name] = visualizer.draw_wheel(ax, initial_positions)
 
     # Layout.
     plt.subplots_adjust(
@@ -89,9 +86,7 @@ def create_animation(
 
         # Update wheel geometry.
         for view_name in axes.keys():
-            visualizer.update_wheel(
-                wheel_artists[view_name], positions, num_bands=num_bands
-            )
+            visualizer.update_wheel(wheel_artists[view_name], positions)
 
         # Update global title.
         wc_z = positions[PointID.WHEEL_CENTER][2]
@@ -148,9 +143,7 @@ def create_animation(
                 # Update all artists for this frame.
                 for view_name in axes.keys():
                     visualizer.update_links(link_artists[view_name], positions)
-                    visualizer.update_wheel(
-                        wheel_artists[view_name], positions, num_bands=num_bands
-                    )
+                    visualizer.update_wheel(wheel_artists[view_name], positions)
                 # Update global title.
                 wc_z = positions[PointID.WHEEL_CENTER][2]
                 wc_z_init = initial_positions[PointID.WHEEL_CENTER][2]

@@ -215,6 +215,7 @@ def create_four_view_plot(
     output_path: Path,
     wheel_diameter: float,
     wheel_width: float,
+    rim_diameter: float,
     title: str = "Suspension Geometry Visualization",
     dpi: int = 150,
 ) -> None:
@@ -227,6 +228,7 @@ def create_four_view_plot(
         output_path: Path where the plot image will be saved.
         wheel_diameter: Wheel diameter in millimeters.
         wheel_width: Wheel width in millimeters.
+        rim_diameter: Rim diameter in millimeters.
         title: Main title for the plot.
         dpi: DPI for the saved image.
     """
@@ -234,6 +236,7 @@ def create_four_view_plot(
     wheel_config = WheelVisualization(
         diameter=wheel_diameter,
         width=wheel_width,
+        rim_diameter=rim_diameter,
     )
 
     # Get visualization links from provider.
@@ -277,6 +280,7 @@ def create_single_view_plot(
     output_path: Path,
     wheel_diameter: float,
     wheel_width: float,
+    rim_diameter: float,
     view: str = "iso",
     title: str = "Suspension Geometry Visualization",
     dpi: int = 150,
@@ -290,6 +294,7 @@ def create_single_view_plot(
         output_path: Path where the plot image will be saved.
         wheel_diameter: Wheel diameter in millimeters.
         wheel_width: Wheel width in millimeters.
+        rim_diameter: Rim diameter in millimeters.
         view: View type ("front", "top", "side", "iso").
         title: Title for the plot.
         dpi: DPI for the saved image.
@@ -298,6 +303,7 @@ def create_single_view_plot(
     wheel_config = WheelVisualization(
         diameter=wheel_diameter,
         width=wheel_width,
+        rim_diameter=rim_diameter,
     )
 
     # Get visualization links from provider.

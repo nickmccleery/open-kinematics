@@ -68,6 +68,7 @@ def sweep(
                 output_path=animation_out,
                 wheel_diameter=wheel_cfg.tire.nominal_radius * 2,
                 wheel_width=wheel_cfg.tire.section_width,
+                rim_diameter=wheel_cfg.tire.rim_diameter_mm,
                 fps=20,
                 show_live=False,
             )
