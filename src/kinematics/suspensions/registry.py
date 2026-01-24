@@ -1,35 +1,26 @@
 """
 Suspension type registry.
+
+Provides the template registry mapping type keys to SuspensionTemplate instances.
 """
 
 from __future__ import annotations
 
-from typing import Tuple, Type
+from typing import TYPE_CHECKING
 
-from kinematics.suspensions.core.provider import SuspensionProvider
-from kinematics.suspensions.implementations.double_wishbone import (
-    DoubleWishboneGeometry,
-    DoubleWishboneProvider,
-)
-from kinematics.suspensions.implementations.macpherson import (
-    MacPhersonGeometry,
-    MacPhersonProvider,
-)
+from kinematics.suspensions.templates.library import build_template_registry
 
-# Registry type definitions.
-ModelCls = Type[object]
-ProviderCls = Type[SuspensionProvider]
-Registry = dict[str, Tuple[ModelCls, ProviderCls]]
+if TYPE_CHECKING:
+    from kinematics.suspensions.templates.base import SuspensionTemplate
+
+TemplateRegistry = dict[str, "SuspensionTemplate"]
 
 
-def build_registry() -> Registry:
+def get_template_registry() -> TemplateRegistry:
     """
-    Return the registry mapping suspension types to their classes.
+    Return the template registry mapping type keys to templates.
 
     Returns:
-        Dictionary mapping type strings to (ModelClass, ProviderClass) tuples.
+        Dictionary mapping lowercase type keys to SuspensionTemplate instances.
     """
-    return {
-        "DOUBLE_WISHBONE": (DoubleWishboneGeometry, DoubleWishboneProvider),
-        "MACPHERSON_STRUT": (MacPhersonGeometry, MacPhersonProvider),
-    }
+    return build_template_registry()

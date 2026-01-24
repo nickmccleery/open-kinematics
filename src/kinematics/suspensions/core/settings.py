@@ -73,13 +73,13 @@ class CamberShimConfigOutboard:
 
     This type of shim sits outboard of the top balljoint, effectively splitting the
     upright in two. Modification of camber shim serves to rotate the upright body
-    (and all upright-fixed features) about an axis perpendicular to the shim normal
+    (and all upright-fixed attachments) about an axis perpendicular to the shim normal
     and passing through the lower ball joint.
 
     Attributes:
-        shim_face_center: Coordinates (x, y, z) in mm of the shim face center point at
+        shim_face_center: Coordinates {x, y, z} in mm of the shim face center point at
             design condition.
-        shim_normal: Unit vector (x, y, z) pointing outboard perpendicular to shim face.
+        shim_normal: Unit vector {x, y, z} pointing outboard perpendicular to shim face.
         design_thickness: Shim stack thickness in mm at design condition.
         setup_thickness: Actual shim stack thickness in mm for this configuration.
     """
@@ -98,7 +98,7 @@ class SuspensionConfig:
     Attributes:
         steered: Whether this suspension corner is steered.
         wheel: Wheel configuration parameters.
-        cg_position: Center of gravity position coordinates (x, y, z) in mm
+        cg_position: Center of gravity position coordinates {x, y, z} in mm
             (required for anti-dive/squat).
         wheelbase: Wheelbase distance in mm.
         camber_shim: Optional camber shim configuration.
@@ -116,7 +116,7 @@ class SuspensionConfig:
         default_factory=lambda: [
             "axle_inboard",
             "axle_outboard",
-            "pushrod_outboard",  # This is probably atypical... usually wishbone mounted.
+            "pushrod_outboard",  # Atypical; usually wishbone-mounted.
             "trackrod_outboard",
         ]
     )

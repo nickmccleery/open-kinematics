@@ -86,6 +86,7 @@ class SuspensionProvider(ABC):
     def compute_side_view_instant_center(self, state: SuspensionState) -> "Vec3 | None":
         """
         Compute the side view instant center for this suspension type.
+
         Args:
             state: The solved SuspensionState to analyze.
 

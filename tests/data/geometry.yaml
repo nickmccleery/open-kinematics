@@ -1,78 +1,48 @@
-type: "DOUBLE_WISHBONE"
+type: double_wishbone
 name: "test"
 version: "0.0.1"
-units: "MILLIMETERS"
+units: MILLIMETERS
 
-hard_points:
-  lower_wishbone:
-    inboard_front:
-      x: 250
-      y: 400
-      z: 200
-    inboard_rear:
-      x: -250
-      y: 450
-      z: 200
-    outboard:
-      x: 0
-      y: 900
-      z: 200
-  upper_wishbone:
-    inboard_front:
-      x: 225
-      y: 350
-      z: 500
-    inboard_rear:
-      x: -275
-      y: 350
-      z: 500
-    outboard:
-      x: -25
-      y: 750
-      z: 500
-  wheel_axle:
-    # Axle outer point is the hub face.
-    inner:
-      x: -20
-      y: 800
-      z: 308.426
-    outer:
-      x: -20
-      y: 950
-      z: 313.426
-  track_rod:
-    inner:
-      x: 50
-      y: 200
-      z: 250
-    outer:
-      x: 150
-      y: 800
-      z: 275
-configuration:
+# Hardpoints: Wold Axis, Design Condition.
+hardpoints:
+  # Lower Wishbone.
+  lower_wishbone_inboard_front: {x: 250, y: 400, z: 200}
+  lower_wishbone_inboard_rear: {x: -250, y: 450, z: 200}
+  lower_wishbone_outboard: {x: 0, y: 900, z: 200}
+
+  # Upper Wishbone.
+  upper_wishbone_inboard_front: {x: 225, y: 350, z: 500}
+  upper_wishbone_inboard_rear: {x: -275, y: 350, z: 500}
+  upper_wishbone_outboard: {x: -25, y: 750, z: 500}
+
+  # Track Rod.
+  trackrod_inboard: {x: 50, y: 200, z: 250}
+  trackrod_outboard: {x: 150, y: 800, z: 275}
+
+  # Axle.
+  axle_inboard: {x: -20, y: 800, z: 308.426}
+  axle_outboard: {x: -20, y: 950, z: 313.426}
+
+# Configuration.
+config:
   steered: true
   wheel:
     offset: 0
     tire:
       aspect_ratio: 0.55
       section_width: 270
-      rim_diameter: 13 # SPECIFIED IN INCHES.
-  cg_position:
-    x: 1250
-    y: 0
-    z: 450
-  wheelbase: 2500.0  # Wheelbase in mm.
+      rim_diameter: 13  # Specified in inches.
+  cg_position: {x: 1250, y: 0, z: 450}
+  wheelbase: 2500.0
+
+  # Camber Shim Configuration.
   camber_shim:
-    shim_face_center:
-      x: -25.0
-      y: 750.0
-      z: 500.0
-    shim_normal:
-      x: 0.0
-      y: 1.0
-      z: 0.0
+    shim_face_center: {x: -25.0, y: 750.0, z: 500.0}
+    shim_normal: {x: 0.0, y: 1.0, z: 0.0}
     design_thickness: 30.0
-    setup_thickness: 30.0  # Same as design = no shim effect.
+    setup_thickness: 30.0  # Same as design = no shim effect
+
+  # Points that move with the upright when camber shim is applied.
   upright_mounted_points:
     - axle_inboard
     - axle_outboard

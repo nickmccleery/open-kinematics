@@ -86,8 +86,8 @@ class SolutionFrame:
     A single frame of solution data.
 
     Attributes:
-        positions (dict[str, tuple[float, float, float]]): Dictionary mapping point IDs to (x, y, z) coordinates.
-        solver_info (dict[str, Any]): Optional dictionary of solver diagnostic information.
+        positions: Dictionary mapping point IDs to (x, y, z) coordinates.
+        solver_info: Optional dictionary of solver diagnostic information.
     """
 
     positions: dict[str, tuple[float, float, float]]
@@ -258,24 +258,26 @@ class ParquetWriter(BaseResultsWriter):
 
             for frame_idx, val in enumerate(values):
                 if val is None:
-                    continue  # None is always acceptable
+                    continue  # None is always acceptable.
 
                 # Check for nested structures (lists, tuples, arrays).
                 if isinstance(val, (list, tuple, np.ndarray)):
                     raise ValueError(
-                        f"Column '{col}' at frame {frame_idx} contains nested data: {val!r}. "
-                        f"Expected scalar value (bool, int, float, or str). "
-                        f"This usually indicates corrupted position data - check that all "
-                        f"point coordinates are being flattened correctly (e.g., positions "
-                        f"should be stored as separate _x, _y, _z columns)."
+                        f"Column '{col}' at frame {frame_idx} contains nested "
+                        f"data: {val!r}. Expected scalar value (bool, int, float, "
+                        f"or str). This usually indicates corrupted position data "
+                        f"- check that all point coordinates are being flattened "
+                        f"correctly (e.g., positions should be stored as separate "
+                        f"_x, _y, _z columns)."
                     )
 
                 # Check for unexpected types.
                 if not isinstance(val, (bool, int, float, str)):
                     raise ValueError(
-                        f"Column '{col}' at frame {frame_idx} contains unexpected type "
-                        f"{type(val).__name__}: {val!r}. Expected bool, int, float, str, or None. "
-                        f"This indicates data corruption in the solver or state management."
+                        f"Column '{col}' at frame {frame_idx} contains unexpected "
+                        f"type {type(val).__name__}: {val!r}. Expected bool, int, "
+                        f"float, str, or None. This indicates data corruption in "
+                        f"the solver or state management."
                     )
 
         # Now proceed with type inference (existing code continues unchanged)
@@ -286,11 +288,11 @@ class ParquetWriter(BaseResultsWriter):
         for col in all_columns:
             values = column_data[col]
 
-            # Type inference heuristics
+            # Type inference heuristics.
             if all(isinstance(v, bool) or v is None for v in values):
                 arr = pa.array(values, type=pa.bool_())
             elif all(isinstance(v, int) or v is None for v in values):
-                # Use float64 for coordinate columns to avoid precision loss
+                # Use float64 for coordinate columns to avoid precision loss.
                 if col.endswith(("_x", "_y", "_z")):
                     arr = pa.array(
                         [None if v is None else float(v) for v in values],
@@ -321,10 +323,10 @@ class ParquetWriter(BaseResultsWriter):
 
         table = table.replace_schema_metadata(metadata_bytes)
 
-        # Ensure output directory exists
+        # Ensure output directory exists.
         self.output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Write to disk
+        # Write to disk.
         pq.write_table(table, self.output_path)
 
 
@@ -374,20 +376,22 @@ class CsvWriter(BaseResultsWriter):
                 val = frame.get(col)
 
                 if val is None:
-                    continue  # None is acceptable
+                    continue  # None is acceptable.
 
                 # Check for nested structures.
                 if isinstance(val, (list, tuple, np.ndarray)):
                     raise ValueError(
-                        f"Frame {frame_idx}, column '{col}' contains nested data: {val!r}. "
-                        f"Expected scalar value. Check position data flattening."
+                        f"Frame {frame_idx}, column '{col}' contains nested data: "
+                        f"{val!r}. Expected scalar value. Check position data "
+                        f"flattening."
                     )
 
                 # Check for unexpected types.
                 if not isinstance(val, (bool, int, float, str)):
                     raise ValueError(
-                        f"Frame {frame_idx}, column '{col}' contains unexpected type "
-                        f"{type(val).__name__}: {val!r}. Expected bool, int, float, str, or None."
+                        f"Frame {frame_idx}, column '{col}' contains unexpected "
+                        f"type {type(val).__name__}: {val!r}. Expected bool, int, "
+                        f"float, str, or None."
                     )
 
         # Ensure output directory exists.
@@ -440,5 +444,6 @@ def create_writer_for_path(
     else:
         supported_formats = ", ".join(f.value for f in SupportedFormat)
         raise ValueError(
-            f"Unsupported file extension: {suffix}. Supported formats: {supported_formats}"
+            f"Unsupported file extension: {suffix}. "
+            f"Supported formats: {supported_formats}"
         )

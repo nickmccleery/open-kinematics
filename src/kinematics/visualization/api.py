@@ -54,30 +54,31 @@ def visualize_suspension_sweep(
         )
     except ImportError as e:
         raise ImportError(
-            'Visualization dependencies not found. Install with: pip install "kinematics[viz]"\n'
+            "Visualization dependencies not found. "
+            'Install with: pip install "kinematics[viz]"\n'
             f"Original error: {e}"
         ) from e
 
-    # Configure wheel visualization
+    # Configure wheel visualisation.
     wheel_config = WheelVisualization(
         diameter=wheel_diameter,
         width=wheel_width,
     )
 
-    # Get visualization links from provider
+    # Get visualisation links from provider.
     visualization_links = provider.get_visualization_links()
 
-    # Create visualizer
+    # Create visualizer.
     visualizer = SuspensionVisualizer(visualization_links, wheel_config)
 
-    # Get initial positions for animation baseline
+    # Get initial positions for animation baseline.
     initial_state = provider.initial_state()
     initial_positions = initial_state.positions.copy()
 
-    # Extract position dictionaries from states
+    # Extract position dictionaries from states.
     position_states = [state.positions for state in solution_states]
 
-    # Create the animation
+    # Create the animation.
     create_animation(
         position_states,
         initial_positions,
@@ -98,8 +99,6 @@ def visualize_geometry(
     Args:
         provider: The suspension provider for the geometry.
         output_path: Path where the plot image will be saved.
-        ground_geometry: If True, temporarily adjusts all points vertically so the
-                         geometric contact point is at Z=0 for the visualization.
     """
     try:
         # Test for matplotlib availability; plotting is handled by plots module.
@@ -109,13 +108,14 @@ def visualize_geometry(
         plt.close()
     except ImportError as e:
         raise ImportError(
-            'Visualization dependencies not found. Install with: pip install "kinematics[viz]"\n'
+            "Visualization dependencies not found. "
+            'Install with: pip install "kinematics[viz]"\n'
             f"Original error: {e}"
         ) from e
 
     if not isinstance(provider, DoubleWishboneProvider):
         raise NotImplementedError(
-            "Geometry visualization is currently only supported for DoubleWishbone suspensions."
+            "Geometry visualization only supported for DoubleWishbone suspensions."
         )
 
     typer.secho(
@@ -128,7 +128,7 @@ def visualize_geometry(
     # Report the final status.
     if np.isclose(z_offset, 0.0, atol=1e-2):
         typer.secho(
-            f"Geometry Check: OK. Contact patch center is on the ground (Z = {z_offset:.3f} mm).",
+            f"Geometry Check: OK. Contact patch at ground (Z = {z_offset:.3f} mm).",
             fg=typer.colors.GREEN,
         )
     else:
@@ -142,11 +142,11 @@ def visualize_geometry(
         )
         typer.echo("─" * 60)
 
-    # Create visualization.
+    # Create visualisation.
     dw_provider = cast(DoubleWishboneProvider, provider)
     wheel_cfg = dw_provider.geometry.configuration.wheel
 
-    # Create the four-view plot
+    # Create the four-view plot.
     create_four_view_plot(
         state=state,
         provider=dw_provider,

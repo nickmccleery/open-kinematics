@@ -10,7 +10,7 @@ import numpy as np
 from kinematics.enums import PointID
 from kinematics.types import Vec3
 
-# Function signature for computing a derived point position
+# Function signature for computing a derived point position.
 PositionFn = Callable[[dict[PointID, Vec3]], np.ndarray]
 
 
@@ -47,7 +47,7 @@ class DerivedPointsSpec:
                        functions exist without dependency definitions or
                        dependency definitions exist without functions.
         """
-        # Check that all points in functions have dependencies defined
+        # Check that all points in functions have dependencies defined.
         function_points = set(self.functions.keys())
         dependency_points = set(self.dependencies.keys())
 
@@ -112,7 +112,7 @@ class DerivedPointsManager:
                 if self.detect_cycles_util(neighbor, visited, recursion_stack):
                     return True
             elif neighbor in recursion_stack:
-                return True  # Cycle detected
+                return True  # Cycle detected.
 
         recursion_stack.remove(node)
         return False
@@ -144,7 +144,7 @@ class DerivedPointsManager:
                 return
             visited.add(node)
 
-            # Recurse on dependencies that are also derived points
+            # Recurse on dependencies that are also derived points.
             for dep in self.dependency_graph.get(node, set()):
                 if dep in self.spec.functions:
                     dfs(dep)

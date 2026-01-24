@@ -24,9 +24,25 @@ def invalid_yaml_geometry_file(tmp_path: Path):
 @pytest.fixture
 def invalid_geometry_file(tmp_path: Path):
     data = {
-        "type": "DOUBLE_WISHBONE",
-        "invalid_attribute": "value",
-    }  # Valid type but invalid geometry
+        "type": "double_wishbone",
+        "hardpoints": {
+            # Missing most required hardpoints
+            "LOWER_WISHBONE_INBOARD_FRONT": [0, 0, 0],
+        },
+        "config": {
+            "steered": True,
+            "wheel": {
+                "offset": 0,
+                "tire": {
+                    "aspect_ratio": 0.55,
+                    "section_width": 270,
+                    "rim_diameter": 13,
+                },
+            },
+            "cg_position": {"x": 0, "y": 0, "z": 0},
+            "wheelbase": 2500.0,
+        },
+    }  # Valid type but missing required hardpoints
     file_path = tmp_path / "invalid_geometry.yaml"
     with open(file_path, "w") as f:
         yaml.dump(data, f)
@@ -51,7 +67,7 @@ def test_load_geometry_not_found(tmp_path: Path):
 
 
 def test_load_geometry_invalid(invalid_geometry_file):
-    with pytest.raises(ValueError, match="Error validating geometry"):
+    with pytest.raises(ValueError, match="Missing required hardpoints"):
         load_geometry(invalid_geometry_file)
 
 

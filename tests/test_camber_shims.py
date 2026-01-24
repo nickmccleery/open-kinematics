@@ -1,9 +1,8 @@
 """
 Tests for camber shim functionality.
 
-These tests verify that camber shims correctly rotate the upright about
-the lower ball joint, modifying the as-built geometry without changing
-the design hard points.
+These tests verify that camber shims correctly rotate the upright about the lower ball
+joint, modifying the as-built geometry without changing the design hard points.
 """
 
 import numpy as np
@@ -20,7 +19,9 @@ from kinematics.types import make_vec3
 
 
 def test_compute_shim_offset_positive():
-    """Test that increasing shim thickness creates outboard offset."""
+    """
+    Test that increasing shim thickness creates outboard offset.
+    """
     shim_config = CamberShimConfigOutboard(
         shim_face_center={"x": 0.0, "y": 350.0, "z": 500.0},
         shim_normal={"x": 0.0, "y": 1.0, "z": 0.0},  # Unit vector pointing outboard
@@ -37,7 +38,9 @@ def test_compute_shim_offset_positive():
 
 
 def test_compute_shim_offset_negative():
-    """Test that removing shims creates inboard offset."""
+    """
+    Test that removing shims creates inboard offset.
+    """
     shim_config = CamberShimConfigOutboard(
         shim_face_center={"x": 0.0, "y": 350.0, "z": 500.0},
         shim_normal={"x": 0.0, "y": 1.0, "z": 0.0},
@@ -54,7 +57,9 @@ def test_compute_shim_offset_negative():
 
 
 def test_compute_shim_offset_zero():
-    """Test that no shim change creates no offset."""
+    """
+    Test that no shim change creates no offset.
+    """
     shim_config = CamberShimConfigOutboard(
         shim_face_center={"x": 0.0, "y": 350.0, "z": 500.0},
         shim_normal={"x": 0.0, "y": 1.0, "z": 0.0},
@@ -71,7 +76,9 @@ def test_compute_shim_offset_zero():
 
 
 def test_rotate_point_about_axis_90_degrees():
-    """Test rotation of a point 90 degrees about Z axis."""
+    """
+    Test rotation of a point 90 degrees about Z axis.
+    """
     point = make_vec3(np.array([1.0, 0.0, 0.0]))
     pivot = make_vec3(np.array([0.0, 0.0, 0.0]))
     axis = make_vec3(np.array([0.0, 0.0, 1.0]))
@@ -86,7 +93,9 @@ def test_rotate_point_about_axis_90_degrees():
 
 
 def test_rotate_point_about_axis_with_offset_pivot():
-    """Test rotation about an axis that doesn't pass through origin."""
+    """
+    Test rotation about an axis that doesn't pass through origin.
+    """
     point = make_vec3(np.array([2.0, 0.0, 0.0]))
     pivot = make_vec3(np.array([1.0, 0.0, 0.0]))
     axis = make_vec3(np.array([0.0, 0.0, 1.0]))
@@ -101,7 +110,9 @@ def test_rotate_point_about_axis_with_offset_pivot():
 
 
 def test_compute_upright_rotation_simple_case():
-    """Test upright rotation calculation for a simple geometry."""
+    """
+    Test upright rotation calculation for a simple geometry.
+    """
     lower_ball_joint = make_vec3(np.array([0.0, 900.0, 200.0]))
     shim_face_center_design = make_vec3(np.array([0.0, 350.0, 500.0]))
 
@@ -285,7 +296,8 @@ def test_shim_moves_axle_points(double_wishbone_geometry_file):
     """
     Test that all upright-mounted points DO move when shims are applied.
 
-    This includes axle points and trackrod outboard (test geometry doesn't have pushrod).
+    This includes axle points and trackrod outboard (test geometry doesn't have
+    pushrod).
     """
     loaded = load_geometry(double_wishbone_geometry_file)
 

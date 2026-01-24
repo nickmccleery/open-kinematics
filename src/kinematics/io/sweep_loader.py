@@ -76,13 +76,13 @@ class TargetSpec:
     Specification for a single sweep target dimension.
 
     Attributes:
-        point (PointID): Point to be constrained.
-        direction (DirectionSpec): Direction specification for the constraint.
-        name (str | None): Optional human-readable name for this target.
-        mode (TargetPositionMode): Whether values are relative or absolute.
-        start (float | None): Starting value for linear interpolation.
-        stop (float | None): Ending value for linear interpolation.
-        values (Sequence[float] | None): Explicit list of values (alternative to start/stop).
+        point: Point to be constrained.
+        direction: Direction specification for the constraint.
+        name: Optional human-readable name for this target.
+        mode: Whether values are relative or absolute.
+        start: Starting value for linear interpolation.
+        stop: Ending value for linear interpolation.
+        values: Explicit list of values (alternative to start/stop).
     """
 
     point: PointID
@@ -100,10 +100,10 @@ class SweepFileSchema:
     Schema for sweep configuration files.
 
     Attributes:
-        version (int): Schema version (currently only 1 is supported).
-        steps (int | None): Number of steps for linear interpolation (used if targets
-            don't specify explicit values).
-        targets (list[TargetSpec]): List of target specifications for each sweep dimension.
+        version: Schema version (currently only 1 is supported).
+        steps: Number of steps for linear interpolation (if targets don't specify
+            explicit values).
+        targets: List of target specifications for each sweep dimension.
     """
 
     version: int
@@ -125,11 +125,11 @@ def expand_target_values(spec: TargetSpec, default_steps: int | None) -> list[fl
     Raises:
         ValueError: If values cannot be determined from the specification.
     """
-    # Explicit values take precedence
+    # Explicit values take precedence.
     if spec.values is not None:
         return [float(v) for v in spec.values]
 
-    # Otherwise require start/stop with step count
+    # Otherwise require start/stop with step count.
     if spec.start is None or spec.stop is None:
         raise ValueError(
             f"Target '{spec.name or spec.point.name}': "
@@ -209,17 +209,17 @@ def parse_sweep_file(path: Path) -> SweepConfig:
                     if isinstance(val, str):
                         low = val.strip().lower()
                         if low in ("relative", "abs", "absolute"):
-                            # Map common shorthands and values to enum NAMES
+                            # Map common shorthands and values to enum NAMES.
                             t["mode"] = (
                                 "ABSOLUTE" if low.startswith("abs") else "RELATIVE"
                             )
                         else:
-                            # If already provided as name in various casings
+                            # If already provided as name in various casings.
                             up = val.strip().upper()
                             if up in ("RELATIVE", "ABSOLUTE"):
                                 t["mode"] = up
 
-        # Parse with marshmallow schema
+        # Parse with marshmallow schema.
         Schema = class_schema(SweepFileSchema)
         file_spec = Schema().load(raw_data)
         assert isinstance(file_spec, SweepFileSchema)
@@ -227,13 +227,13 @@ def parse_sweep_file(path: Path) -> SweepConfig:
         if file_spec.version != 1:
             raise ValueError(f"Unsupported sweep version: {file_spec.version}")
 
-        # Expand each target into its value sequence
+        # Expand each target into its value sequence.
         target_sequences: list[list[float]] = []
         for target_spec in file_spec.targets:
             values = expand_target_values(target_spec, file_spec.steps)
             target_sequences.append(values)
 
-        # Verify all sequences have the same length
+        # Verify all sequences have the same length.
         lengths = {len(seq) for seq in target_sequences}
         if len(lengths) != 1:
             raise ValueError(
@@ -242,7 +242,7 @@ def parse_sweep_file(path: Path) -> SweepConfig:
 
         n_steps = next(iter(lengths))
 
-        # Build per-dimension target lists
+        # Build per-dimension target lists.
         sweep_dimensions: list[list[PointTarget]] = []
         for target_spec, values in zip(file_spec.targets, target_sequences):
             unit_vec = target_spec.direction.to_unit_vector()

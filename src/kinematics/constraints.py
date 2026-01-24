@@ -243,7 +243,7 @@ class ThreePointAngleConstraint(Constraint):
         Raises:
             ValueError: If either vector has zero length (degenerate geometry).
         """
-        # Vectors from vertex to other points
+        # Vectors from vertex to other points.
         v1 = positions[self.p1] - positions[self.p2]
         v2 = positions[self.p3] - positions[self.p2]
 
@@ -348,8 +348,7 @@ class VectorsPerpendicularConstraint(Constraint):
 
 
 class EqualDistanceConstraint(Constraint):
-    """
-    Constrains two distances to be equal: |p1-p2| = |p3-p4|.
+    """Constrains two distances to be equal: |p1-p2| = |p3-p4|.
 
     Useful for symmetric linkages, equal-length links, or maintaining geometric
     relationships in suspension systems.

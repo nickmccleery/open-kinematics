@@ -14,7 +14,8 @@ def calculate_geometric_anti_dive(
     wheelbase: float,
     tire_radius: float,
 ) -> float:
-    # TODO
+    """Calculate geometric anti-dive percentage (stub - not yet implemented)."""
+    # TODO: Implement anti-dive calculation.
     return 0.0
 
 
@@ -25,7 +26,8 @@ def calculate_geometric_anti_squat(
     wheelbase: float,
     tire_radius: float,
 ) -> float:
-    # TODO
+    """Calculate geometric anti-squat percentage (stub - not yet implemented)."""
+    # TODO: Implement anti-squat calculation.
     return calculate_geometric_anti_dive(
         state,
         svic,

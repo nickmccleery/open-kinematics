@@ -90,10 +90,12 @@ def configure_3d_axis(
     Args:
         ax: The 3D axis to configure.
         view_name: View type ("front", "top", "side", "iso").
-        x_mid, y_mid, z_mid: Center coordinates for the view.
+        x_mid: X center coordinate for the view.
+        y_mid: Y center coordinate for the view.
+        z_mid: Z center coordinate for the view.
         max_range: Range for consistent scaling.
     """
-    # Set view-specific properties
+    # Set view-specific properties.
     if view_name == "top":
         ax.view_init(elev=90, azim=0)
         ax.set_title("Top View [X-Y]")
@@ -114,7 +116,7 @@ def configure_3d_axis(
         ax.set_title("Isometric View")
         ax.set_proj_type("ortho")
 
-    # Set consistent axis limits and aspect ratio
+    # Set consistent axis limits and aspect ratio.
     ax.set_xlim3d([x_mid - max_range / 2, x_mid + max_range / 2])
     ax.set_ylim3d([y_mid - max_range / 2, y_mid + max_range / 2])
     ax.set_zlim3d([z_mid - max_range / 2, z_mid + max_range / 2])
@@ -162,7 +164,7 @@ def plot_suspension_on_axis(
         view_name: View name for label filtering.
         show_labels: Whether to show labels on this view.
     """
-    # Plot suspension links
+    # Plot suspension links.
     for link in visualizer.links:
         if len(link.points) > 1:
             pts = np.array([positions[pid] for pid in link.points])
@@ -178,7 +180,7 @@ def plot_suspension_on_axis(
                 label=link.label if show_labels else None,
             )
         else:
-            # Single point
+            # Single point.
             pt = positions[link.points[0]]
             ax.scatter(
                 pt[0],
@@ -190,10 +192,10 @@ def plot_suspension_on_axis(
                 label=link.label if show_labels else None,
             )
 
-    # Draw the wheel
+    # Draw the wheel.
     visualizer.draw_wheel(ax, positions)
 
-    # Add contact patch center if it exists
+    # Add contact patch center if it exists.
     if PointID.CONTACT_PATCH_CENTER in positions:
         contact_pt = positions[PointID.CONTACT_PATCH_CENTER]
         ax.scatter(
@@ -228,43 +230,43 @@ def create_four_view_plot(
         title: Main title for the plot.
         dpi: DPI for the saved image.
     """
-    # Configure wheel visualization
+    # Configure wheel visualization.
     wheel_config = WheelVisualization(
         diameter=wheel_diameter,
         width=wheel_width,
     )
 
-    # Get visualization links from provider
+    # Get visualization links from provider.
     visualization_links = provider.get_visualization_links()
 
-    # Create visualizer
+    # Create visualizer.
     visualizer = SuspensionVisualizer(visualization_links, wheel_config)
 
-    # Create figure with four subplots
+    # Create figure with four subplots.
     fig, axes = create_four_view_axes()
 
-    # Compute global bounds for consistent scaling
+    # Compute global bounds for consistent scaling.
     _, _, (x_mid, y_mid, z_mid, max_range) = compute_bounds_from_positions(
         state.positions
     )
 
-    # Configure each view and plot suspension
+    # Configure each view and plot suspension.
     for view_name, ax in axes.items():
         configure_3d_axis(ax, view_name, x_mid, y_mid, z_mid, max_range)
         plot_suspension_on_axis(
             ax, visualizer, state.positions, view_name, view_name == "iso"
         )
 
-    # Add legend only to isometric view
+    # Add legend only to isometric view.
     axes["iso"].legend(loc="upper left")
 
-    # Set main title and layout
+    # Set main title and layout.
     fig.suptitle(title, fontsize=16)
     plt.subplots_adjust(
         left=0.0, right=1, bottom=0.025, top=0.95, wspace=0.01, hspace=0.01
     )
 
-    # Save the plot
+    # Save the plot.
     plt.savefig(output_path, dpi=dpi, bbox_inches="tight")
     plt.close()
 
@@ -292,41 +294,41 @@ def create_single_view_plot(
         title: Title for the plot.
         dpi: DPI for the saved image.
     """
-    # Configure wheel visualization
+    # Configure wheel visualization.
     wheel_config = WheelVisualization(
         diameter=wheel_diameter,
         width=wheel_width,
     )
 
-    # Get visualization links from provider
+    # Get visualization links from provider.
     visualization_links = provider.get_visualization_links()
 
-    # Create visualizer
+    # Create visualizer.
     visualizer = SuspensionVisualizer(visualization_links, wheel_config)
 
-    # Create single plot
+    # Create single plot.
     fig = plt.figure(figsize=(12, 8))
     ax_raw = fig.add_subplot(111, projection="3d")
     ax = cast(Axes3D, ax_raw)
 
-    # Compute bounds and configure axis
+    # Compute bounds and configure axis.
     _, _, (x_mid, y_mid, z_mid, max_range) = compute_bounds_from_positions(
         state.positions
     )
 
-    # Set custom title for isometric view
+    # Set custom title for isometric view.
     if view == "iso":
         configure_3d_axis(ax, view, x_mid, y_mid, z_mid, max_range)
-        ax.set_title(title)  # Override default iso title
+        ax.set_title(title)  # Override default iso title.
     else:
         configure_3d_axis(ax, view, x_mid, y_mid, z_mid, max_range)
 
-    # Plot suspension
+    # Plot suspension.
     plot_suspension_on_axis(ax, visualizer, state.positions, view, show_labels=True)
 
     ax.legend()
 
-    # Save the plot
+    # Save the plot.
     plt.tight_layout()
     plt.savefig(output_path, dpi=dpi, bbox_inches="tight")
     plt.close()

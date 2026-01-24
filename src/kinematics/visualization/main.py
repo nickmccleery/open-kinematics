@@ -8,6 +8,8 @@ from kinematics.types import Vec3
 
 @dataclass
 class LinkVisualization:
+    """Configuration for visualizing a suspension link."""
+
     points: list[PointID]
     color: str
     label: str
@@ -19,6 +21,8 @@ class LinkVisualization:
 
 @dataclass
 class WheelVisualization:
+    """Configuration for visualizing the wheel."""
+
     diameter: float
     width: float
     num_points: int = 50
@@ -28,6 +32,7 @@ class WheelVisualization:
 
 
 class SuspensionVisualizer:
+    """Renders suspension geometry to matplotlib 3D axes."""
     def draw_links(
         self,
         ax,
@@ -77,6 +82,7 @@ class SuspensionVisualizer:
     ) -> tuple[np.ndarray, np.ndarray]:
         """
         Compute the endpoints for cross-tyre bands at true radial angles.
+
         Returns two arrays of shape (num_bands, 3): inboard and outboard endpoints.
         """
         thetas = np.linspace(0, 2 * np.pi, num_bands, endpoint=False)
@@ -108,7 +114,8 @@ class SuspensionVisualizer:
     ) -> dict:
         """
         Draws a 3D wheel representation and returns the matplotlib artists.
-        Returns a dict with keys: 'rims' (list of 3 lines), 'bands' (list of band lines).
+
+        Returns dict with 'rims' (list of 3 lines) and 'bands' (list of lines).
         """
         wheel_center = positions[PointID.WHEEL_CENTER]
         wheel_inboard = positions[PointID.WHEEL_INBOARD]
@@ -236,7 +243,7 @@ class SuspensionVisualizer:
                 np.cos(angle) * e2 + np.sin(angle) * e3
             )
 
-        # Update rim lines
+        # Update rim lines.
         artists["rims"][0].set_data(rim_points_center[:, 0], rim_points_center[:, 1])
         artists["rims"][0].set_3d_properties(rim_points_center[:, 2])
         artists["rims"][1].set_data(rim_points_inboard[:, 0], rim_points_inboard[:, 1])
@@ -246,7 +253,7 @@ class SuspensionVisualizer:
         )
         artists["rims"][2].set_3d_properties(rim_points_outboard[:, 2])
 
-        # Update band lines
+        # Update band lines.
         band_inboard, band_outboard = self.get_band_endpoints(
             wheel_inboard, wheel_outboard, e2, e3, num_bands, radius
         )
@@ -263,6 +270,7 @@ class SuspensionVisualizer:
     def get_band_indices(num_points: int, num_bands: int) -> np.ndarray:
         """
         Return indices for equally spaced cross-tire bands (not spokes).
+
         Ensures bands are radially spaced regardless of num_points.
         """
         step = max(1, num_points // num_bands)
@@ -271,6 +279,6 @@ class SuspensionVisualizer:
         if len(indices) > num_bands:
             indices = indices[:num_bands]
         elif len(indices) < num_bands:
-            # Pad by repeating last index if needed
+            # Pad by repeating last index if needed.
             indices = np.pad(indices, (0, num_bands - len(indices)), "edge")
         return indices

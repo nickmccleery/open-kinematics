@@ -26,12 +26,7 @@ from kinematics.points.derived.definitions import (
 )
 from kinematics.points.derived.manager import DerivedPointsManager, DerivedPointsSpec
 from kinematics.state import SuspensionState
-from kinematics.suspensions.core.collections import (
-    LowerWishbonePoints,
-    TrackRodPoints,
-    UpperWishbonePoints,
-    WheelAxlePoints,
-)
+from kinematics.suspensions.core.collections import ComponentsConfig
 from kinematics.suspensions.core.geometry import SuspensionGeometry
 from kinematics.suspensions.core.provider import SuspensionProvider
 from kinematics.suspensions.core.shims import (
@@ -40,6 +35,7 @@ from kinematics.suspensions.core.shims import (
     rotate_point_about_axis,
 )
 from kinematics.types import Vec3, WorldAxisSystem, make_vec3
+from kinematics.upright import Upright
 from kinematics.vector_utils.geometric import (
     compute_point_point_distance,
     compute_vector_vector_angle,
@@ -51,36 +47,52 @@ from kinematics.visualization.main import LinkVisualization
 
 
 @dataclass
-class DoubleWishboneHardPoints:
+class SuspensionHardpoints:
     """
-    Hard point collection for double wishbone suspension.
+    Hardpoint coordinates for double wishbone suspension.
+
+    Keys match PointID enum names directly (snake_case).
+    Hardpoints are the kinematic pivot points that define the suspension geometry.
+    All coordinates are {x, y, z} dicts.
 
     Attributes:
-        lower_wishbone: Points defining the lower wishbone geometry.
-        upper_wishbone: Points defining the upper wishbone geometry.
-        track_rod: Points defining the track rod geometry.
-        wheel_axle: Points defining the wheel axle geometry.
+        lower_wishbone_inboard_front: Front inboard lower wishbone pivot {x, y, z}
+        lower_wishbone_inboard_rear: Rear inboard lower wishbone pivot {x, y, z}
+        lower_wishbone_outboard: Lower ball joint {x, y, z}
+        upper_wishbone_inboard_front: Front inboard upper wishbone pivot {x, y, z}
+        upper_wishbone_inboard_rear: Rear inboard upper wishbone pivot {x, y, z}
+        upper_wishbone_outboard: Upper ball joint {x, y, z}
+        trackrod_inboard: Inner track rod pivot (rack end) {x, y, z}
+        trackrod_outboard: Outer track rod pivot (steering arm) {x, y, z}
     """
 
-    lower_wishbone: LowerWishbonePoints
-    upper_wishbone: UpperWishbonePoints
-    track_rod: TrackRodPoints
-    wheel_axle: WheelAxlePoints
+    lower_wishbone_inboard_front: dict[str, float]
+    lower_wishbone_inboard_rear: dict[str, float]
+    lower_wishbone_outboard: dict[str, float]
+    upper_wishbone_inboard_front: dict[str, float]
+    upper_wishbone_inboard_rear: dict[str, float]
+    upper_wishbone_outboard: dict[str, float]
+    trackrod_inboard: dict[str, float]
+    trackrod_outboard: dict[str, float]
 
 
-# Geometry model
+# Geometry model.
 @dataclass
 class DoubleWishboneGeometry(SuspensionGeometry):
     """
     Double wishbone suspension geometry definition.
 
-    Extends the base SuspensionGeometry with double wishbone specific hard points.
+    The geometry is defined by:
+    - hardpoints: Kinematic pivot points with flat PointID-matching keys
+    - components: Rigid body configurations (upright with mounts and attachments)
 
     Attributes:
-        hard_points: Collection of all hard point coordinates for the suspension.
+        hardpoints: Suspension hardpoint coordinates with PointID-matching keys
+        components: Rigid body component configurations
     """
 
-    hard_points: DoubleWishboneHardPoints
+    hardpoints: SuspensionHardpoints
+    components: ComponentsConfig
 
     def validate(self) -> bool:
         """
@@ -92,8 +104,66 @@ class DoubleWishboneGeometry(SuspensionGeometry):
         # ! TODO: Actually validate this geometry.
         return True
 
+    @staticmethod
+    def _to_array(coord: dict[str, float]) -> np.ndarray:
+        """
+        Convert {x, y, z} dict to numpy array.
+        """
+        return np.array([coord["x"], coord["y"], coord["z"]])
 
-# Provider implementation
+    def get_hardpoints_dict(self) -> dict[PointID, np.ndarray]:
+        """
+        Build a hardpoints dictionary mapping PointID to coordinates.
+
+        Returns:
+            Dictionary mapping PointID to numpy array coordinates.
+        """
+        hp = self.hardpoints
+        to_arr = self._to_array
+        return {
+            PointID.LOWER_WISHBONE_INBOARD_FRONT: to_arr(
+                hp.lower_wishbone_inboard_front
+            ),
+            PointID.LOWER_WISHBONE_INBOARD_REAR: to_arr(hp.lower_wishbone_inboard_rear),
+            PointID.LOWER_WISHBONE_OUTBOARD: to_arr(hp.lower_wishbone_outboard),
+            PointID.UPPER_WISHBONE_INBOARD_FRONT: to_arr(
+                hp.upper_wishbone_inboard_front
+            ),
+            PointID.UPPER_WISHBONE_INBOARD_REAR: to_arr(hp.upper_wishbone_inboard_rear),
+            PointID.UPPER_WISHBONE_OUTBOARD: to_arr(hp.upper_wishbone_outboard),
+            PointID.TRACKROD_INBOARD: to_arr(hp.trackrod_inboard),
+            PointID.TRACKROD_OUTBOARD: to_arr(hp.trackrod_outboard),
+        }
+
+    def get_axle_attachments(self) -> dict[str, np.ndarray]:
+        """
+        Get axle attachment coordinates from the upright component.
+
+        Returns:
+            Dictionary with 'axle_inboard' and 'axle_outboard' coordinates.
+        """
+        attachments = self.components.upright.attachments
+        return {
+            "axle_inboard": self._to_array(attachments.axle_inboard),
+            "axle_outboard": self._to_array(attachments.axle_outboard),
+        }
+
+    def get_upright_mount_ids(self) -> dict[str, PointID]:
+        """
+        Get the PointID references for upright mounts.
+
+        Returns:
+            Dictionary mapping mount roles to PointIDs.
+        """
+        mounts = self.components.upright.mounts
+        return {
+            "upper_ball_joint": PointID[mounts.upper_ball_joint.upper()],
+            "lower_ball_joint": PointID[mounts.lower_ball_joint.upper()],
+            "steering_pickup": PointID[mounts.steering_pickup.upper()],
+        }
+
+
+# Provider implementation.
 class DoubleWishboneProvider(SuspensionProvider):
     """
     Concrete implementation of SuspensionProvider for double wishbone geometry.
@@ -108,61 +178,53 @@ class DoubleWishboneProvider(SuspensionProvider):
         """
         self.geometry = geometry
 
+    def build_upright_from_geometry(self) -> Upright:
+        """
+        Build an Upright rigid body from the geometry definition.
+
+        Uses the geometry's helper methods to extract hardpoint and attachment data.
+
+        Returns:
+            Upright rigid body constructed from geometry, with LCS and local
+            offsets computed.
+        """
+        # Get hardpoints and attachments using geometry helper methods.
+        hardpoints = self.geometry.get_hardpoints_dict()
+        attachments = self.geometry.get_axle_attachments()
+        mount_ids = self.geometry.get_upright_mount_ids()
+
+        # Convert attachments to Vec3.
+        attachments_vec3 = {
+            "axle_inboard": make_vec3(attachments["axle_inboard"]),
+            "axle_outboard": make_vec3(attachments["axle_outboard"]),
+        }
+
+        # Convert hardpoints to Vec3.
+        hardpoints_vec3 = {pid: make_vec3(pos) for pid, pos in hardpoints.items()}
+
+        # Create upright from hardpoints and attachments.
+        return Upright.from_hardpoints_and_attachments(
+            mount_ids, hardpoints_vec3, attachments_vec3
+        )
+
     def initial_state(self) -> SuspensionState:
         """
-        Create initial suspension state from geometry hard points.
+        Create initial suspension state from geometry.
 
-        Converts the hard point coordinates from the geometry into a SuspensionState
-        with both explicitly defined and derived points. If a camber shim is configured,
-        applies the geometric transformation to rotate the upright.
+        Converts the geometry into a SuspensionState with both hardpoints
+        and derived points. If a camber shim is configured, applies the geometric
+        transformation to rotate the upright attachments.
 
         Returns:
             Initial suspension state with all point positions.
         """
-        positions = {}
-        hard_points = self.geometry.hard_points
+        # Build hardpoints from geometry.
+        positions = self.geometry.get_hardpoints_dict()
 
-        # Lower wishbone.
-        lwb = hard_points.lower_wishbone
-        positions[PointID.LOWER_WISHBONE_INBOARD_FRONT] = np.array(
-            [lwb.inboard_front["x"], lwb.inboard_front["y"], lwb.inboard_front["z"]]
-        )
-        positions[PointID.LOWER_WISHBONE_INBOARD_REAR] = np.array(
-            [lwb.inboard_rear["x"], lwb.inboard_rear["y"], lwb.inboard_rear["z"]]
-        )
-        positions[PointID.LOWER_WISHBONE_OUTBOARD] = np.array(
-            [lwb.outboard["x"], lwb.outboard["y"], lwb.outboard["z"]]
-        )
-
-        # Upper wishbone.
-        uwb = hard_points.upper_wishbone
-        positions[PointID.UPPER_WISHBONE_INBOARD_FRONT] = np.array(
-            [uwb.inboard_front["x"], uwb.inboard_front["y"], uwb.inboard_front["z"]]
-        )
-        positions[PointID.UPPER_WISHBONE_INBOARD_REAR] = np.array(
-            [uwb.inboard_rear["x"], uwb.inboard_rear["y"], uwb.inboard_rear["z"]]
-        )
-        positions[PointID.UPPER_WISHBONE_OUTBOARD] = np.array(
-            [uwb.outboard["x"], uwb.outboard["y"], uwb.outboard["z"]]
-        )
-
-        # Track rod.
-        tr = hard_points.track_rod
-        positions[PointID.TRACKROD_INBOARD] = np.array(
-            [tr.inner["x"], tr.inner["y"], tr.inner["z"]]
-        )
-        positions[PointID.TRACKROD_OUTBOARD] = np.array(
-            [tr.outer["x"], tr.outer["y"], tr.outer["z"]]
-        )
-
-        # Wheel axle
-        wa = hard_points.wheel_axle
-        positions[PointID.AXLE_INBOARD] = np.array(
-            [wa.inner["x"], wa.inner["y"], wa.inner["z"]]
-        )
-        positions[PointID.AXLE_OUTBOARD] = np.array(
-            [wa.outer["x"], wa.outer["y"], wa.outer["z"]]
-        )
+        # Add axle attachments.
+        axle_attachments = self.geometry.get_axle_attachments()
+        positions[PointID.AXLE_INBOARD] = axle_attachments["axle_inboard"]
+        positions[PointID.AXLE_OUTBOARD] = axle_attachments["axle_outboard"]
 
         # Apply camber shim transformation if configured.
         if self.geometry.configuration.camber_shim is not None:
@@ -177,35 +239,45 @@ class DoubleWishboneProvider(SuspensionProvider):
 
     def apply_camber_shim(self, positions: dict[PointID, np.ndarray]) -> None:
         """
-        Apply camber shim transformation to upright-mounted points.
+        Apply camber shim transformation using the Upright rigid body.
 
-        The shim splits the upright internally - ball joints stay fixed while
-        all other upright-mounted points (specified in configuration) rotate about
-        the lower ball joint.
+        CRITICAL: The shim rotates ONLY the attachments (axle, brakes), NOT the
+        hardpoints (ball joints). The shim sits between the structural upright
+        (hardpoints) and the hub/bearing assembly (attachments).
+
+        This method:
+        1. Builds an Upright rigid body from current positions
+        2. Computes shim rotation axis and angle
+        3. Applies rotation to attachments via upright.apply_camber_shim()
+        4. Updates positions dict with new attachment positions
 
         Args:
-            positions: Dictionary of point positions to modify.
+            positions: Dictionary of point positions to modify in-place
         """
         shim_config = self.geometry.configuration.camber_shim
         if shim_config is None:
             return
 
+        # Build the upright rigid body from current positions.
+        mount_ids = self.geometry.get_upright_mount_ids()
+        hardpoints = {pid: make_vec3(positions[pid]) for pid in mount_ids.values()}
+        attachments = {
+            "axle_inboard": make_vec3(positions[PointID.AXLE_INBOARD]),
+            "axle_outboard": make_vec3(positions[PointID.AXLE_OUTBOARD]),
+        }
+        upright = Upright.from_hardpoints_and_attachments(
+            mount_ids, hardpoints, attachments
+        )
+
         # Compute the shim offset vector.
         shim_offset = compute_shim_offset(shim_config)
 
-        # Get the shim face centre at design condition.
-        shim_face_center_design = make_vec3(
-            np.array(
-                [
-                    shim_config.shim_face_center["x"],
-                    shim_config.shim_face_center["y"],
-                    shim_config.shim_face_center["z"],
-                ]
-            )
-        )
+        # Get the shim face center at design condition.
+        sfc = shim_config.shim_face_center
+        shim_face_center_design = make_vec3([sfc["x"], sfc["y"], sfc["z"]])
 
-        # The lower ball joint is the pivot point (rotation centre).
-        # Ball joints themselves do NOT move - they're on the fixed part of the upright.
+        # The lower ball joint is the pivot point (rotation center).
+        # CRITICAL: Ball joints do NOT move - they're on the fixed part of the upright.
         lower_ball_joint = make_vec3(positions[PointID.LOWER_WISHBONE_OUTBOARD])
 
         # Compute the rotation axis and angle.
@@ -215,29 +287,33 @@ class DoubleWishboneProvider(SuspensionProvider):
             shim_offset,
         )
 
-        # Convert configured point names to PointID enums.
-        # Map string names (snake_case) to PointID enum members (UPPER_CASE).
-        point_name_map = {
-            "axle_inboard": PointID.AXLE_INBOARD,
-            "axle_outboard": PointID.AXLE_OUTBOARD,
-            "pushrod_outboard": PointID.PUSHROD_OUTBOARD,
-            "trackrod_outboard": PointID.TRACKROD_OUTBOARD,
-        }
+        # Apply shim to upright (rotates attachments only, not hardpoints)
+        upright.apply_camber_shim(lower_ball_joint, rotation_axis, rotation_angle)
 
-        upright_point_names = self.geometry.configuration.upright_mounted_points
-        rotating_points = [
-            point_name_map[name]
-            for name in upright_point_names
-            if name in point_name_map and point_name_map[name] in positions
-        ]
+        # Update positions with new attachment positions.
+        # The axle points have been rotated by the shim.
+        positions[PointID.AXLE_INBOARD] = np.array(
+            upright.get_world_position("axle_inboard")
+        )
+        positions[PointID.AXLE_OUTBOARD] = np.array(
+            upright.get_world_position("axle_outboard")
+        )
 
-        # Apply rotation to all upright-mounted points.
-        for point_id in rotating_points:
-            original_pos = make_vec3(positions[point_id])
-            rotated_pos = rotate_point_about_axis(
-                original_pos, lower_ball_joint, rotation_axis, rotation_angle
-            )
-            positions[point_id] = np.array(rotated_pos)
+        # If track rod is mounted to the upright (common configuration),
+        # it also needs to be rotated. Check the upright_mounted_points config.
+        if self.geometry.configuration.upright_mounted_points:
+            if (
+                "trackrod_outboard"
+                in self.geometry.configuration.upright_mounted_points
+            ):
+                # Track rod outer is mounted to upright - we need to rotate it.
+                # This requires adding it as an attachment to the upright.
+                # For now, use the old method for track rod to maintain compatibility.
+                trackrod_pos = make_vec3(positions[PointID.TRACKROD_OUTBOARD])
+                trackrod_rotated = rotate_point_about_axis(
+                    trackrod_pos, lower_ball_joint, rotation_axis, rotation_angle
+                )
+                positions[PointID.TRACKROD_OUTBOARD] = np.array(trackrod_rotated)
 
     def free_points(self) -> Sequence[PointID]:
         """
@@ -419,9 +495,9 @@ class DoubleWishboneProvider(SuspensionProvider):
                 points=[PointID.WHEEL_CENTER_ON_GROUND],
                 color="black",
                 label="Wheel Center on Ground",
-                linewidth=0.0,  # No line for single point
+                linewidth=0.0,  # No line for single point.
                 marker="o",
-                markersize=15.0,  # Large marker for visibility
+                markersize=15.0,  # Large marker for visibility.
             ),
         ]
 
@@ -459,7 +535,7 @@ class DoubleWishboneProvider(SuspensionProvider):
 
         if upper_plane is None or lower_plane is None:
             # A degenerate wishbone's points are collinear and cannot form a
-            # plane. This is a modeling error, not a kinematic state.
+            # plane. This is a modelling error, not a kinematic state.
             raise ValueError(
                 "Degenerate wishbone geometry. Cannot compute instant axis."
             )

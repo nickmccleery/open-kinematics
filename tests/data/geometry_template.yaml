@@ -1,0 +1,54 @@
+# Template-based double wishbone geometry
+type: double_wishbone
+name: "Template Format Test"
+version: "1.0.0"
+units: MILLIMETERS
+
+# Hardpoints (world axis system at design condition)
+hardpoints:
+  # Lower Wishbone
+  LOWER_WISHBONE_INBOARD_FRONT: [250, 400, 200]
+  LOWER_WISHBONE_INBOARD_REAR: [-250, 450, 200]
+  LOWER_WISHBONE_OUTBOARD: [0, 900, 200]
+
+  # Upper Wishbone
+  UPPER_WISHBONE_INBOARD_FRONT: [225, 350, 500]
+  UPPER_WISHBONE_INBOARD_REAR: [-275, 350, 500]
+  UPPER_WISHBONE_OUTBOARD: [-25, 750, 500]
+
+  # Track Rod (Steering)
+  TRACKROD_INBOARD: [50, 200, 250]
+  TRACKROD_OUTBOARD: [150, 800, 275]
+
+  # Axle/Spindle (attached to upright)
+  AXLE_INBOARD: [-20, 800, 308.426]
+  AXLE_OUTBOARD: [-20, 950, 313.426]
+
+# Configuration
+config:
+  steered: true
+  wheel:
+    offset: 0
+    tire:
+      aspect_ratio: 0.55
+      section_width: 270
+      rim_diameter: 13  # Specified in inches
+
+  cg_position: {x: 1250, y: 0, z: 450}
+  wheelbase: 2500.0
+
+  # Camber Shim Configuration
+  # The shim sits outboard of the upper ball joint, splitting the upright.
+  # shim_face_center: Position of shim face center at design condition
+  # shim_normal: Unit vector pointing outboard perpendicular to shim face
+  camber_shim:
+    shim_face_center: {x: -25.0, y: 750.0, z: 500.0}
+    shim_normal: {x: 0.0, y: 1.0, z: 0.0}
+    design_thickness: 30.0
+    setup_thickness: 30.0  # Same as design = no shim effect
+
+  # Points that move with the upright when shims are applied
+  upright_mounted_points:
+    - axle_inboard
+    - axle_outbound
+    - trackrod_outboard

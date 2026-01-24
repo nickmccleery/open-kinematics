@@ -58,8 +58,7 @@ class MetricsCalculator:
         Args:
             state: The solved suspension state to analyze.
             provider: The suspension provider for type-specific calculations.
-            cg_height: Center of gravity height above ground in mm.
-            tire_radius: Static loaded radius of the tire in mm.
+            geometry_config: Suspension configuration with vehicle parameters.
         """
         self.state = state
         self.provider = provider
@@ -106,16 +105,11 @@ class MetricsCalculator:
         if self.side_view_ic is None:
             return 0.0
 
+        cg = self.geometry_config.cg_position
         return calculate_geometric_anti_dive(
             self.state,
             self.side_view_ic,
-            make_vec3(
-                [
-                    self.geometry_config.cg_position["x"],
-                    self.geometry_config.cg_position["y"],
-                    self.geometry_config.cg_position["z"],
-                ]
-            ),
+            make_vec3([cg["x"], cg["y"], cg["z"]]),
             self.geometry_config.wheelbase,
             self.geometry_config.wheel.tire.nominal_radius,
         )
@@ -130,16 +124,11 @@ class MetricsCalculator:
         if self.side_view_ic is None:
             return 0.0
 
+        cg = self.geometry_config.cg_position
         return calculate_geometric_anti_squat(
             self.state,
             self.side_view_ic,
-            make_vec3(
-                [
-                    self.geometry_config.cg_position["x"],
-                    self.geometry_config.cg_position["y"],
-                    self.geometry_config.cg_position["z"],
-                ]
-            ),
+            make_vec3([cg["x"], cg["y"], cg["z"]]),
             self.geometry_config.wheelbase,
             self.geometry_config.wheel.tire.nominal_radius,
         )
@@ -196,7 +185,6 @@ def compute_all_metrics_from_geometry(
     Returns:
         A SuspensionMetrics dataclass containing all calculated values.
     """
-
     return compute_all_metrics(
         state=state,
         provider=provider,

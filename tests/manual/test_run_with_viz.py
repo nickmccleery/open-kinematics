@@ -68,9 +68,7 @@ def sweep_config_fixture(displacements):
 def test_run_solver(
     double_wishbone_geometry_file: Path, sweep_config_fixture, displacements
 ) -> None:
-    """
-    uv run pytest tests/manual/test_run_with_viz.py::test_run_solver -m "manual"
-    """
+    """Run solver with visualization (manual test)."""
     hub_displacements, _ = displacements
 
     loaded = load_geometry(double_wishbone_geometry_file)

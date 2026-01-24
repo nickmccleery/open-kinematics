@@ -203,7 +203,8 @@ def compare_files(actual_file: Path, expected_file: Path, file_format: str) -> b
             actual_lines = actual_content.split("\n")
             expected_lines = expected_content.split("\n")
             print(
-                f"Actual lines: {len(actual_lines)}, Expected lines: {len(expected_lines)}"
+                f"Actual lines: {len(actual_lines)}, "
+                f"Expected lines: {len(expected_lines)}"
             )
             if len(actual_lines) != len(expected_lines):
                 print("Different number of lines")
@@ -226,7 +227,8 @@ def compare_files(actual_file: Path, expected_file: Path, file_format: str) -> b
 
             if actual_rows != expected_rows:
                 print(
-                    f"❌ Parquet data differs: {len(actual_rows)} vs {len(expected_rows)} rows"
+                    f"❌ Parquet data differs: {len(actual_rows)} vs "
+                    f"{len(expected_rows)} rows"
                 )
                 return False
 
@@ -464,13 +466,10 @@ class TestUserExampleEquivalenceDirect:
         geometry_file: Path,
         sweep_file: Path,
     ) -> None:
-        """
-        Test that reproduces the exact user example via direct CLI function call:
-        uv run kinematics --geometry tests/data/geometry.yaml --sweep tests/data/sweep.yaml --out final_test.csv
-        """
+        """Test that reproduces the exact user example via direct CLI function call."""
         output_file = temp_dir / "final_test.csv"
 
-        # This should match the user's command exactly (except calling CLI function directly)
+        # This should match the user's command exactly (except calling directly)
         success, output = run_cli_sweep_direct(geometry_file, sweep_file, output_file)
 
         assert success, f"User example command failed: {output}"

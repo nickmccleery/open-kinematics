@@ -1,8 +1,8 @@
 """
 Camber shim geometry calculations.
 
-This module handles the geometric transformations required when camber shims
-are added or removed from a suspension system.
+This module handles the geometric transformations required when camber shims are added
+or removed from a suspension system.
 """
 
 from __future__ import annotations
@@ -29,15 +29,9 @@ def compute_shim_offset(shim_config: CamberShimConfigOutboard) -> Vec3:
     # Calculate thickness delta.
     delta_thickness = shim_config.setup_thickness - shim_config.design_thickness
 
-    # Get and normalise the shim normal vector.
-    normal = np.array(
-        [
-            shim_config.shim_normal["x"],
-            shim_config.shim_normal["y"],
-            shim_config.shim_normal["z"],
-        ],
-        dtype=np.float64,
-    )
+    # Get and normalize the shim normal vector.
+    sn = shim_config.shim_normal
+    normal = np.array([sn["x"], sn["y"], sn["z"]], dtype=np.float64)
     normal_unit = normalize_vector(normal)
 
     # Offset is along the normal direction.
@@ -64,7 +58,7 @@ def rotate_point_about_axis(
     # Translate point to origin (pivot at origin).
     p = point - pivot
 
-    # Rodrigues' rotation formula
+    # Rodrigues' rotation formula:
     # v_rot = v*cos(θ) + (k × v)*sin(θ) + k*(k·v)*(1 - cos(θ)).
     k = axis
     cos_angle = np.cos(angle_rad)
@@ -116,10 +110,10 @@ def compute_upright_rotation_from_shim(
     # The shim face must move to: shim_face_center_design + shim_offset.
     shim_face_target = make_vec3(shim_face_center_design + shim_offset)
 
-    # Vector from lower ball joint to design shim face centre.
+    # Vector from lower ball joint to design shim face center.
     r_design = make_vec3(shim_face_center_design - lower_ball_joint)
 
-    # Vector from lower ball joint to target shim face centre.
+    # Vector from lower ball joint to target shim face center.
     r_target = make_vec3(shim_face_target - lower_ball_joint)
 
     # The rotation axis is perpendicular to both r_design and r_target.

@@ -63,7 +63,7 @@ class MacPhersonHardPoints:
     wheel_axle: WheelAxlePoints
 
 
-# Geometry model
+# Geometry model.
 @dataclass
 class MacPhersonGeometry(SuspensionGeometry):
     """
@@ -88,7 +88,7 @@ class MacPhersonGeometry(SuspensionGeometry):
         return True
 
 
-# Provider implementation
+# Provider implementation.
 class MacPhersonProvider(SuspensionProvider):
     """
     Concrete implementation of SuspensionProvider for MacPherson strut geometry.
@@ -235,10 +235,9 @@ class MacPhersonProvider(SuspensionProvider):
 
     def compute_side_view_instant_center(self, state: SuspensionState) -> Vec3:
         # From Milliken & Milliken, p.633.
-        # Side view swing arm IC for a MacPherson strut:
-        # Intersection of:
-        #   (1) Line through the lower wishbone's inboard pivots (projected to side view).
-        #   (2) Line through the strut top mount, perpendicular to the strut axis (side view).
+        # Side view swing arm IC for MacPherson strut - intersection of:
+        #   (1) Line through the lower wishbone inboard pivots (side view).
+        #   (2) Line through strut top, perpendicular to strut axis (side view).
         #
         # Returns a 3D point on the vehicle centerline (Y=0).
 
@@ -323,8 +322,8 @@ class MacPhersonProvider(SuspensionProvider):
                 points=[PointID.WHEEL_CENTER_ON_GROUND],
                 color="black",
                 label="Wheel Center on Ground",
-                linewidth=0.0,  # No line for single point
+                linewidth=0.0,  # No line for single point.
                 marker="o",
-                markersize=15.0,  # Large marker for visibility
+                markersize=15.0,  # Large marker for visibility.
             ),
         ]

@@ -37,7 +37,7 @@ def calculate_camber(state: SuspensionState) -> float:
     wheel_up_proj_y = wheel_up_vector[Axis.Y]
     wheel_up_proj_z = wheel_up_vector[Axis.Z]
 
-    # Calculate angle with the global Z-axis
+    # Calculate angle with the global Z-axis.
     camber_rad = np.arctan2(wheel_up_proj_y, wheel_up_proj_z)
     return np.rad2deg(camber_rad)
 
@@ -68,7 +68,7 @@ def calculate_caster(state: SuspensionState) -> float:
     steering_axis_proj_x = steering_axis_vector[Axis.X]
     steering_axis_proj_z = steering_axis_vector[Axis.Z]
 
-    # Angle with the global Z-axis. Positive angle means rearward tilt (positive caster).
+    # Positive angle means rearward tilt (positive caster).
     caster_rad = np.arctan2(steering_axis_proj_x, steering_axis_proj_z)
     return np.rad2deg(caster_rad)
 
