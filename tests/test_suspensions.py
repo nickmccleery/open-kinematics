@@ -2,10 +2,11 @@
 Tests for the suspension system.
 
 Tests cover:
-- Suspension class attributes and validation
-- DoubleWishboneSuspension functionality
-- Validation utilities with helpful error messages
-- YAML loading with the unified format
+- Suspension base class
+- DoubleWishboneSuspension
+- Registry functions
+- Validation utilities
+- YAML loading
 """
 
 from pathlib import Path
@@ -23,10 +24,7 @@ from kinematics.suspensions.core.settings import (
     WheelConfig,
 )
 from kinematics.suspensions.double_wishbone import DoubleWishboneSuspension
-from kinematics.suspensions.registry import (
-    get_suspension_class,
-    list_supported_types,
-)
+from kinematics.suspensions.registry import get_suspension_class, list_supported_types
 from kinematics.suspensions.validation import (
     ValidationError,
     find_closest_matches,
@@ -34,7 +32,6 @@ from kinematics.suspensions.validation import (
     levenshtein_distance,
 )
 from kinematics.types import make_vec3
-
 
 # Test fixtures
 
