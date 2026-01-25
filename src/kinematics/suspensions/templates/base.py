@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-from kinematics.enums import PointID
+from kinematics.enums import PointID, ShimType
 
 
 @dataclass(frozen=True)
@@ -43,7 +43,7 @@ class SuspensionTemplate:
     - What hardpoints are required/optional
     - What rigid body components exist and their structure
     - Which component "owns" each point (for ownership semantics)
-    - Whether camber shim adjustment is supported
+    - What shim adjustments are supported
 
     The template key matches the YAML `type` field.
 
@@ -55,7 +55,7 @@ class SuspensionTemplate:
         ownership: Mapping from PointID to component name that owns it.
                   Note: Ball joint points like UPPER_WISHBONE_OUTBOARD are owned by the
                   upright even though their names suggest wishbone association.
-        shim_support: Whether this template supports camber shim adjustment
+        supported_shims: Set of ShimTypes this template supports
         aliases: Alternative type names that map to this template
     """
 
@@ -64,7 +64,7 @@ class SuspensionTemplate:
     optional_point_ids: frozenset[PointID] = field(default_factory=frozenset)
     components: tuple[ComponentSpec, ...] = field(default_factory=tuple)
     ownership: dict[PointID, str] = field(default_factory=dict)
-    shim_support: bool = False
+    supported_shims: frozenset[ShimType] = field(default_factory=frozenset)
     aliases: frozenset[str] = field(default_factory=frozenset)
 
     def __post_init__(self) -> None:

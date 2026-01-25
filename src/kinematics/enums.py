@@ -69,3 +69,11 @@ class Units(Enum):
     """
 
     MILLIMETERS = "millimeters"
+
+
+class ShimType(Enum):
+    """
+    Types of shim adjustments supported by suspension templates.
+    """
+
+    OUTBOARD_CAMBER = "outboard_camber"

@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from kinematics.enums import PointID
+from kinematics.enums import PointID, ShimType
 
 if TYPE_CHECKING:
     from .base import SuspensionTemplate
@@ -270,12 +270,13 @@ def _validate_dict_triplet(key: str, value: dict) -> list[ValidationError]:
 def validate_shim_config(
     shim_config: Any,
     template: SuspensionTemplate,
+    shim_type: ShimType = ShimType.OUTBOARD_CAMBER,
 ) -> list[ValidationError]:
     """
     Validate camber shim configuration.
 
     Checks:
-    - Required if template.shim_support is True (configurable)
+    - Required if template supports the specified shim type
     - shim_face_center has valid x, y, z
     - shim_normal has valid x, y, z
     - shim_normal is not near-zero
@@ -284,14 +285,15 @@ def validate_shim_config(
     Args:
         shim_config: The camber_shim configuration object or dict.
         template: Template for context.
+        shim_type: The type of shim being validated.
 
     Returns:
         List of ValidationError objects (empty if valid).
     """
     errors: list[ValidationError] = []
 
-    # If template doesn't support shims and config is provided, just skip validation.
-    if not template.shim_support:
+    # If template doesn't support this shim type, skip validation.
+    if shim_type not in template.supported_shims:
         return errors
 
     # If no shim config provided, that's OK - shims are optional.

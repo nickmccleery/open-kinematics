@@ -13,7 +13,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from kinematics.enums import PointID, Units
+from kinematics.enums import PointID, ShimType, Units
 from kinematics.io.geometry_loader import LoadedSuspension, load_geometry
 from kinematics.suspensions.core.settings import (
     CamberShimConfigOutboard,
@@ -228,7 +228,7 @@ class TestTemplateLibrary:
 
         # Check components
         assert template.get_upright_component() is not None
-        assert template.shim_support is True
+        assert ShimType.OUTBOARD_CAMBER in template.supported_shims
 
 
 # Test validation

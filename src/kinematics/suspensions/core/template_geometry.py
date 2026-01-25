@@ -47,7 +47,7 @@ class TemplateGeometry(SuspensionGeometry):
     template_key: str = ""
 
     # Internal cache for converted hardpoints.
-    _hardpoints_cache: dict[PointID, Vec3] | None = field(
+    hardpoints_cache: dict[PointID, Vec3] | None = field(
         default=None, repr=False, compare=False
     )
 
@@ -67,8 +67,8 @@ class TemplateGeometry(SuspensionGeometry):
         Raises:
             ValueError: If a hardpoint key cannot be mapped to a PointID.
         """
-        if self._hardpoints_cache is not None:
-            return self._hardpoints_cache
+        if self.hardpoints_cache is not None:
+            return self.hardpoints_cache
 
         result: dict[PointID, Vec3] = {}
 
@@ -82,7 +82,7 @@ class TemplateGeometry(SuspensionGeometry):
             coords = self._value_to_vec3(value)
             result[point_id] = coords
 
-        self._hardpoints_cache = result
+        self.hardpoints_cache = result
         return result
 
     def _key_to_point_id(
@@ -135,6 +135,7 @@ class TemplateGeometry(SuspensionGeometry):
         Returns:
             Dictionary mapping mount role names to PointIDs.
         """
+        # Upright will have its orientation/position determined by these points.
         return {
             "upper_ball_joint": PointID.UPPER_WISHBONE_OUTBOARD,
             "lower_ball_joint": PointID.LOWER_WISHBONE_OUTBOARD,

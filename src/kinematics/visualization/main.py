@@ -111,7 +111,7 @@ class SuspensionVisualizer:
         self,
         ax,
         positions: dict[PointID, Vec3],
-        num_bands: int = 36,
+        num_bands: int = 48,
     ) -> dict:
         """
         Draws a 3D wheel representation and returns the matplotlib artists.
