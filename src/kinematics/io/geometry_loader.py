@@ -10,11 +10,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, cast
 
+import numpy as np
 import yaml
 from marshmallow.exceptions import ValidationError as MarshmallowValidationError
 from marshmallow_dataclass import class_schema
 
-from kinematics.enums import PointID, Units
+from kinematics.enums import PointID, ShimType, Units
 from kinematics.suspensions.base import Suspension
 from kinematics.suspensions.core.settings import SuspensionConfig
 from kinematics.suspensions.registry import get_suspension_class, list_supported_types
@@ -205,7 +206,7 @@ def _validate_hardpoints(
             continue
 
         seen_point_ids.add(point_id)
-        errors.extend(_validate_triplet(key, value))
+        errors.extend(_validate_vec3(key, value))
 
     # Check for missing required.
     missing = suspension_class.REQUIRED_POINTS - seen_point_ids
@@ -220,8 +221,8 @@ def _validate_hardpoints(
     return errors
 
 
-def _validate_triplet(key: str, value: Any) -> list[ValidationError]:
-    """Validate that a value is a valid [x, y, z] triplet."""
+def _validate_vec3(key: str, value: Any) -> list[ValidationError]:
+    """Validate that a value is a valid [x, y, z] vec3."""
     errors: list[ValidationError] = []
 
     if isinstance(value, dict):
@@ -280,10 +281,6 @@ def _validate_shim_config(
     suspension_class: type[Suspension],
 ) -> list[ValidationError]:
     """Validate shim config against suspension class supported shims."""
-    from kinematics.enums import ShimType
-
-    import numpy as np
-
     errors: list[ValidationError] = []
 
     # If class doesn't support outboard camber shims, skip validation.
@@ -330,8 +327,10 @@ def _validate_shim_config(
     if errors:
         return errors
 
-    errors.extend(_validate_triplet("camber_shim.shim_face_center", config["shim_face_center"]))
-    errors.extend(_validate_triplet("camber_shim.shim_normal", config["shim_normal"]))
+    errors.extend(
+        _validate_vec3("camber_shim.shim_face_center", config["shim_face_center"])
+    )
+    errors.extend(_validate_vec3("camber_shim.shim_normal", config["shim_normal"]))
 
     if errors:
         return errors

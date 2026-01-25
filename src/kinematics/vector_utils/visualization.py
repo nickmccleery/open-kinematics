@@ -59,14 +59,14 @@ def plot_plane_from_points(
         points[:, 1],
         points[:, 2],
         c=["red", "green", "blue"],
-        s=[100, 100, 100],
+        s=100,
         alpha=0.8,
     )
 
     # Label the points.
-    ax.text(a[0], a[1], a[2], s="A", fontsize=12)
-    ax.text(b[0], b[1], b[2], s="B", fontsize=12)
-    ax.text(c[0], c[1], c[2], s="C", fontsize=12)
+    ax.text(a[0], a[1], a[2], "A", fontsize=12)  # type: ignore[call-arg]
+    ax.text(b[0], b[1], b[2], "B", fontsize=12)  # type: ignore[call-arg]
+    ax.text(c[0], c[1], c[2], "C", fontsize=12)  # type: ignore[call-arg]
 
     # Draw lines between points to show the triangle.
     triangle = np.array([a, b, c, a])  # Close the triangle.
@@ -90,11 +90,11 @@ def plot_plane_from_points(
             linewidth=3,
         )
 
-        ax.text(
+        ax.text(  # type: ignore[call-arg]
             centroid[0] + normal[0] * normal_scale * 1.1,
             centroid[1] + normal[1] * normal_scale * 1.1,
             centroid[2] + normal[2] * normal_scale * 1.1,
-            s="Normal",
+            "Normal",
             fontsize=10,
             color="purple",
         )
@@ -218,13 +218,13 @@ def plot_plane_intersection(
 
     ax.set_xlabel("X")
     ax.set_ylabel("Y")
-    ax.set_zlabel("Z")
+    ax.set_zlabel("Z")  # type: ignore[attr-defined]
     ax.set_title(title)
 
     plot_range = 5.0
     ax.set_xlim(-plot_range, plot_range)
     ax.set_ylim(-plot_range, plot_range)
-    ax.set_zlim(-plot_range, plot_range)
+    ax.set_zlim(-plot_range, plot_range)  # type: ignore[attr-defined]
 
     ax.legend()
     plt.tight_layout()
@@ -295,14 +295,14 @@ def plot_line_plane_intersection(
             intersection[1],
             intersection[2],
             c="red",
-            s=[100],
+            s=100,
             label="Intersection",
         )
         ax.text(
             intersection[0],
             intersection[1],
             intersection[2],
-            s=f"  ({intersection[0]:.1f}, {intersection[1]:.1f}, {intersection[2]:.1f})",  # noqa: E501
+            f"  ({intersection[0]:.1f}, {intersection[1]:.1f}, {intersection[2]:.1f})",  # type: ignore[call-arg]
             fontsize=10,
         )
 
@@ -326,13 +326,13 @@ def plot_line_plane_intersection(
         line_point[1],
         line_point[2],
         c="green",
-        s=[80],
+        s=80,
         label="Line Point",
     )
 
     ax.set_xlabel("X")
     ax.set_ylabel("Y")
-    ax.set_zlabel("Z")
+    ax.set_zlabel("Z")  # type: ignore[attr-defined]
     ax.set_title(title)
 
     # Set reasonable axis limits.
@@ -340,16 +340,16 @@ def plot_line_plane_intersection(
     if intersection is not None:
         all_points = np.vstack([all_points, intersection])
 
-    x_range = [all_points[:, 0].min() - 2, all_points[:, 0].max() + 2]
-    y_range = [
+    x_range = (all_points[:, 0].min() - 2, all_points[:, 0].max() + 2)
+    y_range = (
         min(all_points[:, 1].min() - 2, plane_y - 2),
         max(all_points[:, 1].max() + 2, plane_y + 2),
-    ]
-    z_range = [all_points[:, 2].min() - 2, all_points[:, 2].max() + 2]
+    )
+    z_range = (all_points[:, 2].min() - 2, all_points[:, 2].max() + 2)
 
     ax.set_xlim(x_range)
     ax.set_ylim(y_range)
-    ax.set_zlim(z_range)
+    ax.set_zlim(z_range)  # type: ignore[attr-defined]
 
     ax.legend()
     plt.tight_layout()

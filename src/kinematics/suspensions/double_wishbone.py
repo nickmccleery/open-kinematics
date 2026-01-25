@@ -1,8 +1,8 @@
 """
 Double wishbone suspension implementation.
 
-This module defines the DoubleWishboneSuspension class which combines topology definition,
-geometry storage, and kinematic behavior in a single unified class.
+This module defines the DoubleWishboneSuspension class which combines topology
+definition, geometry storage, and kinematic behavior in a single unified class.
 """
 
 from __future__ import annotations
@@ -90,7 +90,9 @@ class DoubleWishboneSuspension(Suspension):
         }
     )
 
-    SUPPORTED_SHIMS: ClassVar[frozenset[ShimType]] = frozenset({ShimType.OUTBOARD_CAMBER})
+    SUPPORTED_SHIMS: ClassVar[frozenset[ShimType]] = frozenset(
+        {ShimType.OUTBOARD_CAMBER}
+    )
 
     # Upright mount roles (for shim application).
     UPRIGHT_MOUNT_ROLES: ClassVar[dict[str, PointID]] = {
@@ -272,9 +274,7 @@ class DoubleWishboneSuspension(Suspension):
 
         return svic
 
-    def _compute_instant_axis(
-        self, state: SuspensionState
-    ) -> tuple[Vec3, Vec3] | None:
+    def _compute_instant_axis(self, state: SuspensionState) -> tuple[Vec3, Vec3] | None:
         """Compute 3D instant axis from wishbone planes intersection."""
         upper_front = state.positions[PointID.UPPER_WISHBONE_INBOARD_FRONT]
         upper_rear = state.positions[PointID.UPPER_WISHBONE_INBOARD_REAR]
@@ -354,8 +354,9 @@ class DoubleWishboneSuspension(Suspension):
         """
         Apply camber shim transformation to attachment positions.
 
-        The shim rotates ONLY attachments (axle points), NOT the hardpoints (ball joints).
-        The shim sits between the structural upright and the hub/bearing assembly.
+        The shim rotates ONLY attachments (axle points), NOT the hardpoints
+        (ball joints). The shim sits between the structural upright and the hub/bearing
+        assembly.
         """
         if self.config is None or self.config.camber_shim is None:
             return

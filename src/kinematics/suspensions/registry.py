@@ -14,12 +14,12 @@ if TYPE_CHECKING:
 SuspensionClass = type["Suspension"]
 
 # Registry populated by importing suspension modules.
-_SUSPENSION_REGISTRY: dict[str, SuspensionClass] = {}
+SUSPENSION_REGISTRY: dict[str, SuspensionClass] = {}
 
 
 def _ensure_registry_populated() -> None:
     """Import all suspension modules to populate registry."""
-    if not _SUSPENSION_REGISTRY:
+    if not SUSPENSION_REGISTRY:
         # Import triggers registration.
         from kinematics.suspensions.double_wishbone import DoubleWishboneSuspension
 
@@ -28,9 +28,9 @@ def _ensure_registry_populated() -> None:
 
 def _register_class(cls: SuspensionClass) -> None:
     """Register a suspension class by its TYPE_KEY and ALIASES."""
-    _SUSPENSION_REGISTRY[cls.TYPE_KEY] = cls
+    SUSPENSION_REGISTRY[cls.TYPE_KEY] = cls
     for alias in cls.ALIASES:
-        _SUSPENSION_REGISTRY[alias] = cls
+        SUSPENSION_REGISTRY[alias] = cls
 
 
 def get_suspension_class(type_key: str) -> SuspensionClass | None:
@@ -44,7 +44,7 @@ def get_suspension_class(type_key: str) -> SuspensionClass | None:
         The Suspension subclass, or None if not found.
     """
     _ensure_registry_populated()
-    return _SUSPENSION_REGISTRY.get(type_key.lower())
+    return SUSPENSION_REGISTRY.get(type_key.lower())
 
 
 def list_supported_types() -> list[str]:
@@ -55,7 +55,7 @@ def list_supported_types() -> list[str]:
         Sorted list of type keys (includes aliases).
     """
     _ensure_registry_populated()
-    return sorted(_SUSPENSION_REGISTRY.keys())
+    return sorted(SUSPENSION_REGISTRY.keys())
 
 
 __all__ = [
