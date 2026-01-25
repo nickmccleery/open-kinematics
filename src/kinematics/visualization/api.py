@@ -9,9 +9,6 @@ import numpy as np
 import typer
 
 from kinematics.enums import Axis, PointID
-from kinematics.suspensions.implementations.double_wishbone import (
-    DoubleWishboneProvider,
-)
 from kinematics.suspensions.implementations.template_provider import (
     TemplateSuspensionProvider,
 )
@@ -117,7 +114,6 @@ def visualize_geometry(
         ) from e
 
     # Check for supported provider types.
-    is_double_wishbone = isinstance(provider, DoubleWishboneProvider)
     is_template_dw = isinstance(
         provider, TemplateSuspensionProvider
     ) and provider.template.key in (
@@ -126,9 +122,9 @@ def visualize_geometry(
         "double_wishbone_rear",
     )
 
-    if not (is_double_wishbone or is_template_dw):
+    if not is_template_dw:
         raise NotImplementedError(
-            "Geometry visualization only supported for DoubleWishbone suspensions."
+            "Geometry visualization only supported for double wishbone templates."
         )
 
     typer.secho(
@@ -156,12 +152,8 @@ def visualize_geometry(
         typer.echo("─" * 60)
 
     # Get wheel configuration from the appropriate provider type.
-    if is_double_wishbone:
-        dw_provider = cast(DoubleWishboneProvider, provider)
-        wheel_cfg = dw_provider.geometry.configuration.wheel
-    else:
-        template_provider = cast(TemplateSuspensionProvider, provider)
-        wheel_cfg = template_provider.geometry.configuration.wheel
+    template_provider = cast(TemplateSuspensionProvider, provider)
+    wheel_cfg = template_provider.geometry.configuration.wheel
 
     # Create the four-view plot.
     create_four_view_plot(

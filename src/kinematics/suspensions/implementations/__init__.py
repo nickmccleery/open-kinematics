@@ -1,19 +1,11 @@
 """
-Concrete suspension implementations.
+Suspension provider implementations.
+
+TemplateSuspensionProvider is the canonical entrypoint for template-first workflows.
 """
 
-from kinematics.suspensions.implementations.double_wishbone import (
-    DoubleWishboneGeometry,
-    DoubleWishboneProvider,
-)
-from kinematics.suspensions.implementations.macpherson import (
-    MacPhersonGeometry,
-    MacPhersonProvider,
+from kinematics.suspensions.implementations.template_provider import (
+    TemplateSuspensionProvider,
 )
 
-__all__ = [
-    "DoubleWishboneGeometry",
-    "DoubleWishboneProvider",
-    "MacPhersonGeometry",
-    "MacPhersonProvider",
-]
+__all__ = ["TemplateSuspensionProvider"]

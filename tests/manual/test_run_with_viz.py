@@ -10,10 +10,6 @@ from kinematics.io.geometry_loader import load_geometry
 from kinematics.main import solve_sweep
 from kinematics.points.derived.manager import DerivedPointsManager
 from kinematics.solver import PointTarget
-from kinematics.suspensions.implementations.double_wishbone import (
-    DoubleWishboneGeometry,
-    DoubleWishboneProvider,
-)
 from kinematics.types import PointTargetAxis, SweepConfig
 from kinematics.visualization.animation import create_animation
 from kinematics.visualization.main import SuspensionVisualizer, WheelVisualization
@@ -72,8 +68,13 @@ def test_run_solver(
     hub_displacements, _ = displacements
 
     loaded = load_geometry(double_wishbone_geometry_file)
-    if not isinstance(loaded.geometry, DoubleWishboneGeometry):
-        raise ValueError("Invalid geometry type")
+    template_key = getattr(loaded.geometry, "template_key", "").lower()
+    if template_key not in (
+        "double_wishbone",
+        "double_wishbone_front",
+        "double_wishbone_rear",
+    ):
+        raise ValueError("Manual viz test only supports double wishbone templates")
 
     # Solve for all positions.
     position_states, _ = solve_sweep(loaded.provider, sweep_config_fixture)
@@ -81,7 +82,7 @@ def test_run_solver(
     print("Solve complete, verifying constraints...")
 
     # Get initial positions for comparison using the provider.
-    provider = DoubleWishboneProvider(loaded.geometry)
+    provider = loaded.provider
     derived_manager = DerivedPointsManager(provider.derived_spec())
 
     initial_state = provider.initial_state()
