@@ -3,24 +3,21 @@ Public API for visualization features with lazy imports for optional dependencie
 """
 
 from pathlib import Path
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 import numpy as np
 import typer
 
 from kinematics.enums import Axis, PointID
-from kinematics.suspensions.implementations.template_provider import (
-    TemplateSuspensionProvider,
-)
 from kinematics.visualization.plots import create_four_view_plot
 
 if TYPE_CHECKING:
     from kinematics.state import SuspensionState
-    from kinematics.suspensions.core.provider import SuspensionProvider
+    from kinematics.suspensions.base import Suspension
 
 
 def visualize_suspension_sweep(
-    provider: "SuspensionProvider",
+    suspension: "Suspension",
     solution_states: list["SuspensionState"],
     output_path: Path,
     wheel_diameter: float,
@@ -35,7 +32,7 @@ def visualize_suspension_sweep(
     Install with: pip install "kinematics[viz]"
 
     Args:
-        provider: The suspension provider used to generate the solutions.
+        suspension: The Suspension instance used to generate the solutions.
         solution_states: List of solved suspension states to animate.
         output_path: Path where the animation file will be saved.
         wheel_diameter: Wheel diameter in millimeters.
@@ -65,14 +62,14 @@ def visualize_suspension_sweep(
         width=wheel_width,
     )
 
-    # Get visualisation links from provider.
-    visualization_links = provider.get_visualization_links()
+    # Get visualisation links from suspension.
+    visualization_links = suspension.get_visualization_links()
 
     # Create visualizer.
     visualizer = SuspensionVisualizer(visualization_links, wheel_config)
 
     # Get initial positions for animation baseline.
-    initial_state = provider.initial_state()
+    initial_state = suspension.initial_state()
     initial_positions = initial_state.positions.copy()
 
     # Extract position dictionaries from states.
@@ -90,14 +87,14 @@ def visualize_suspension_sweep(
 
 
 def visualize_geometry(
-    provider: "SuspensionProvider",
+    suspension: "Suspension",
     output_path: Path,
 ) -> None:
     """
     Creates a debug plot for a single suspension state and checks ground tangency.
 
     Args:
-        provider: The suspension provider for the geometry.
+        suspension: The Suspension instance for the geometry.
         output_path: Path where the plot image will be saved.
     """
     try:
@@ -113,25 +110,23 @@ def visualize_geometry(
             f"Original error: {e}"
         ) from e
 
-    # Check for supported provider types.
-    is_template_dw = isinstance(
-        provider, TemplateSuspensionProvider
-    ) and provider.template.key in (
+    # Check for supported suspension types.
+    is_double_wishbone = suspension.TYPE_KEY in (
         "double_wishbone",
         "double_wishbone_front",
         "double_wishbone_rear",
     )
 
-    if not is_template_dw:
+    if not is_double_wishbone:
         raise NotImplementedError(
-            "Geometry visualization only supported for double wishbone templates."
+            "Geometry visualization only supported for double wishbone suspensions."
         )
 
     typer.secho(
         "Checking and visualizing suspension geometry...",
     )
 
-    state = provider.initial_state()
+    state = suspension.initial_state()
     z_offset = state.get(PointID.CONTACT_PATCH_CENTER)[Axis.Z]
 
     # Report the final status.
@@ -145,20 +140,22 @@ def visualize_geometry(
             "Geometry Check: WARNING. Contact patch center is not on the ground.",
             fg=typer.colors.RED,
         )
-        typer.echo("─" * 60)
+        typer.echo("-" * 60)
         typer.secho(
             f"The contact patch center currently located at Z = {z_offset:.3f}mm."
         )
-        typer.echo("─" * 60)
+        typer.echo("-" * 60)
 
-    # Get wheel configuration from the appropriate provider type.
-    template_provider = cast(TemplateSuspensionProvider, provider)
-    wheel_cfg = template_provider.geometry.configuration.wheel
+    # Get wheel configuration from the suspension.
+    if suspension.config is None:
+        raise ValueError("Suspension has no configuration")
+
+    wheel_cfg = suspension.config.wheel
 
     # Create the four-view plot.
     create_four_view_plot(
         state=state,
-        provider=provider,
+        suspension=suspension,
         output_path=output_path,
         wheel_diameter=wheel_cfg.tire.nominal_radius * 2,
         wheel_width=wheel_cfg.tire.section_width,

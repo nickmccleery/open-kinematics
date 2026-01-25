@@ -5,6 +5,7 @@ Generates side-by-side comparisons of stock vs. shimmed suspension geometry,
 demonstrating how camber shims rotate the upright about the lower ball joint.
 """
 
+import copy
 from pathlib import Path
 
 from kinematics.io.geometry_loader import load_geometry
@@ -19,12 +20,12 @@ SETUP_SHIM_THICKNESS = 1.0  # mm - as-built/setup shim stack thickness.
 def main():
     # Load the base geometry.
     geometry_path = Path("tests/data/geometry.yaml")
-    loaded = load_geometry(geometry_path)
+    suspension = load_geometry(geometry_path)
 
     # Visualise design configuration.
     print("\nGenerating design (baseline) visualisation...")
     design_output = Path("camber_shim_design.png")
-    visualize_geometry(loaded.provider, design_output)
+    visualize_geometry(suspension, design_output)
     print(f"Design visualisation saved to: {design_output}")
 
     # Create setup configuration with shim change.
@@ -47,18 +48,26 @@ def main():
         setup_thickness=SETUP_SHIM_THICKNESS,
     )
 
-    setup_geometry = loaded.geometry
-    setup_geometry.configuration.camber_shim = shim_config
+    if suspension.config is None:
+        raise ValueError("Suspension has no configuration")
 
-    # Re-initialise provider with setup geometry.
-    provider_class = type(loaded.provider)
-    setup_provider = provider_class(setup_geometry)
+    setup_config = copy.deepcopy(suspension.config)
+    setup_config.camber_shim = shim_config
+
+    suspension_class = type(suspension)
+    setup_suspension = suspension_class(
+        name=suspension.name,
+        version=suspension.version,
+        units=suspension.units,
+        hardpoints=suspension.hardpoints.copy(),
+        config=setup_config,
+    )
 
     # Visualise setup configuration.
     shim_delta = SETUP_SHIM_THICKNESS - DESIGN_SHIM_THICKNESS
     print(f"Generating setup ({shim_delta:+.1f}mm shim change) visualisation...")
     setup_output = Path("camber_shim_setup.png")
-    visualize_geometry(setup_provider, setup_output)
+    visualize_geometry(setup_suspension, setup_output)
     print(f"Setup visualisation saved to: {setup_output}")
 
 

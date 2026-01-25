@@ -3,8 +3,8 @@ from pathlib import Path
 import pytest
 import yaml
 
-from kinematics.io.geometry_loader import LoadedSuspension, load_geometry
-from kinematics.suspensions.core.geometry import SuspensionGeometry
+from kinematics.io.geometry_loader import load_geometry
+from kinematics.suspensions.base import Suspension
 
 
 @pytest.fixture
@@ -50,10 +50,12 @@ def invalid_geometry_file(tmp_path: Path):
 
 
 def test_load_geometry_valid(double_wishbone_geometry_file):
-    loaded = load_geometry(double_wishbone_geometry_file)
-    assert isinstance(loaded, LoadedSuspension)
-    assert isinstance(loaded.geometry, SuspensionGeometry)
-    assert loaded.provider is not None
+    suspension = load_geometry(double_wishbone_geometry_file)
+    assert isinstance(suspension, Suspension)
+    # Test that the suspension has required attributes and methods.
+    assert suspension.hardpoints is not None
+    assert suspension.config is not None
+    assert suspension.initial_state() is not None
 
 
 def test_load_geometry_empty(empty_geometry_file):

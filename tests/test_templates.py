@@ -1,11 +1,11 @@
 """
-Tests for the suspension template system.
+Tests for the suspension system.
 
 Tests cover:
-- Template validation with helpful error messages
-- Template geometry creation and conversion
-- Template provider functionality
-- YAML loading with the new format
+- Suspension class attributes and validation
+- DoubleWishboneSuspension functionality
+- Validation utilities with helpful error messages
+- YAML loading with the unified format
 """
 
 from pathlib import Path
@@ -14,54 +14,47 @@ import numpy as np
 import pytest
 
 from kinematics.enums import PointID, ShimType, Units
-from kinematics.io.geometry_loader import LoadedSuspension, load_geometry
+from kinematics.io.geometry_loader import load_geometry
+from kinematics.suspensions.base import Suspension
 from kinematics.suspensions.core.settings import (
     CamberShimConfigOutboard,
     SuspensionConfig,
     TireConfig,
     WheelConfig,
 )
-from kinematics.suspensions.core.template_geometry import (
-    TemplateGeometry,
-    create_template_geometry,
+from kinematics.suspensions.double_wishbone import DoubleWishboneSuspension
+from kinematics.suspensions.registry import (
+    get_suspension_class,
+    list_supported_types,
 )
-from kinematics.suspensions.implementations.template_provider import (
-    TemplateSuspensionProvider,
-)
-from kinematics.suspensions.templates.base import ComponentSpec, SuspensionTemplate
-from kinematics.suspensions.templates.library import (
-    DOUBLE_WISHBONE_TEMPLATE,
-    build_template_registry,
-    get_template,
-)
-from kinematics.suspensions.templates.validation import (
+from kinematics.suspensions.validation import (
     ValidationError,
     find_closest_matches,
     format_validation_errors,
     levenshtein_distance,
-    validate_hardpoints,
-    validate_shim_config,
 )
+from kinematics.types import make_vec3
+
 
 # Test fixtures
 
 
 @pytest.fixture
-def valid_hardpoints() -> dict[str, list[float]]:
+def valid_hardpoints() -> dict[PointID, np.ndarray]:
     """
     Valid hardpoints for double wishbone suspension.
     """
     return {
-        "LOWER_WISHBONE_INBOARD_FRONT": [250, 400, 200],
-        "LOWER_WISHBONE_INBOARD_REAR": [-250, 450, 200],
-        "LOWER_WISHBONE_OUTBOARD": [0, 900, 200],
-        "UPPER_WISHBONE_INBOARD_FRONT": [225, 350, 500],
-        "UPPER_WISHBONE_INBOARD_REAR": [-275, 350, 500],
-        "UPPER_WISHBONE_OUTBOARD": [-25, 750, 500],
-        "TRACKROD_INBOARD": [50, 200, 250],
-        "TRACKROD_OUTBOARD": [150, 800, 275],
-        "AXLE_INBOARD": [-20, 800, 308.426],
-        "AXLE_OUTBOARD": [-20, 950, 313.426],
+        PointID.LOWER_WISHBONE_INBOARD_FRONT: make_vec3([250, 400, 200]),
+        PointID.LOWER_WISHBONE_INBOARD_REAR: make_vec3([-250, 450, 200]),
+        PointID.LOWER_WISHBONE_OUTBOARD: make_vec3([0, 900, 200]),
+        PointID.UPPER_WISHBONE_INBOARD_FRONT: make_vec3([225, 350, 500]),
+        PointID.UPPER_WISHBONE_INBOARD_REAR: make_vec3([-275, 350, 500]),
+        PointID.UPPER_WISHBONE_OUTBOARD: make_vec3([-25, 750, 500]),
+        PointID.TRACKROD_INBOARD: make_vec3([50, 200, 250]),
+        PointID.TRACKROD_OUTBOARD: make_vec3([150, 800, 275]),
+        PointID.AXLE_INBOARD: make_vec3([-20, 800, 308.426]),
+        PointID.AXLE_OUTBOARD: make_vec3([-20, 950, 313.426]),
     }
 
 
@@ -91,147 +84,202 @@ def valid_config() -> SuspensionConfig:
     )
 
 
-# Test template base classes
+# Test Suspension base class
 
 
-class TestSuspensionTemplate:
+class TestSuspensionBase:
     """
-    Tests for SuspensionTemplate class.
+    Tests for Suspension base class.
     """
 
-    def test_template_creation(self):
+    def test_all_valid_points(self):
         """
-        Test basic template creation.
+        Test all_valid_points combines required and optional.
         """
-        template = SuspensionTemplate(
-            key="test_template",
-            required_point_ids=frozenset({PointID.LOWER_WISHBONE_OUTBOARD}),
-            optional_point_ids=frozenset({PointID.PUSHROD_OUTBOARD}),
-        )
-        assert template.key == "test_template"
-        assert PointID.LOWER_WISHBONE_OUTBOARD in template.required_point_ids
-
-    def test_template_rejects_overlap(self):
-        """
-        Test that template rejects overlapping required/optional sets.
-        """
-        with pytest.raises(ValueError, match="both required and optional"):
-            SuspensionTemplate(
-                key="bad_template",
-                required_point_ids=frozenset({PointID.LOWER_WISHBONE_OUTBOARD}),
-                optional_point_ids=frozenset({PointID.LOWER_WISHBONE_OUTBOARD}),
-            )
-
-    def test_all_valid_point_ids(self):
-        """
-        Test all_valid_point_ids combines required and optional.
-        """
-        template = SuspensionTemplate(
-            key="test",
-            required_point_ids=frozenset({PointID.LOWER_WISHBONE_OUTBOARD}),
-            optional_point_ids=frozenset({PointID.PUSHROD_OUTBOARD}),
-        )
-        valid = template.all_valid_point_ids
+        valid = DoubleWishboneSuspension.all_valid_points()
+        # Check required points are included
         assert PointID.LOWER_WISHBONE_OUTBOARD in valid
+        assert PointID.UPPER_WISHBONE_OUTBOARD in valid
+        # Check optional points are included
         assert PointID.PUSHROD_OUTBOARD in valid
 
-    def test_point_id_from_name(self):
+    def test_matches_type(self):
         """
-        Test converting name strings to PointID.
+        Test type matching with aliases.
         """
-        template = DOUBLE_WISHBONE_TEMPLATE
-        assert (
-            template.point_id_from_name("UPPER_WISHBONE_OUTBOARD")
-            == PointID.UPPER_WISHBONE_OUTBOARD
-        )
-        assert (
-            template.point_id_from_name("upper_wishbone_outboard")
-            == PointID.UPPER_WISHBONE_OUTBOARD
-        )
-        assert template.point_id_from_name("INVALID_POINT") is None
+        assert DoubleWishboneSuspension.matches_type("double_wishbone")
+        assert DoubleWishboneSuspension.matches_type("DOUBLE_WISHBONE")
+        assert DoubleWishboneSuspension.matches_type("double_wishbone_front")
+        assert not DoubleWishboneSuspension.matches_type("macpherson_strut")
 
 
-class TestComponentSpec:
+# Test DoubleWishboneSuspension
+
+
+class TestDoubleWishboneSuspension:
     """
-    Tests for ComponentSpec class.
+    Tests for DoubleWishboneSuspension class.
     """
 
-    def test_component_spec_creation(self):
+    def test_class_attributes(self):
         """
-        Test basic component spec creation.
+        Test class-level attributes are correctly defined.
         """
-        spec = ComponentSpec(
-            name="upright",
-            mount_roles={
-                "upper_ball_joint": PointID.UPPER_WISHBONE_OUTBOARD,
-                "lower_ball_joint": PointID.LOWER_WISHBONE_OUTBOARD,
-            },
-            attachment_point_ids=[PointID.AXLE_INBOARD, PointID.AXLE_OUTBOARD],
-        )
-        assert spec.name == "upright"
-        assert len(spec.mount_roles) == 2
-        assert len(spec.attachment_point_ids) == 2
-
-
-# Test template library
-
-
-class TestTemplateLibrary:
-    """
-    Tests for template library functions.
-    """
-
-    def test_build_template_registry(self):
-        """
-        Test building the template registry.
-        """
-        registry = build_template_registry()
-        assert "double_wishbone" in registry
-        assert "double_wishbone_front" in registry  # Alias
-
-    def test_get_template(self):
-        """
-        Test getting a template by key.
-        """
-        template = get_template("double_wishbone")
-        assert template is not None
-        assert template.key == "double_wishbone"
-
-        # Test case insensitivity
-        template2 = get_template("DOUBLE_WISHBONE")
-        assert template2 is not None
-        assert template2.key == "double_wishbone"
-
-    def test_get_template_not_found(self):
-        """
-        Test getting a non-existent template.
-        """
-        assert get_template("nonexistent") is None
-
-    def test_double_wishbone_template_completeness(self):
-        """
-        Test that double wishbone template has all required components.
-        """
-        template = DOUBLE_WISHBONE_TEMPLATE
+        assert DoubleWishboneSuspension.TYPE_KEY == "double_wishbone"
+        assert "double_wishbone_front" in DoubleWishboneSuspension.ALIASES
+        assert ShimType.OUTBOARD_CAMBER in DoubleWishboneSuspension.SUPPORTED_SHIMS
 
         # Check required points
-        assert PointID.LOWER_WISHBONE_INBOARD_FRONT in template.required_point_ids
-        assert PointID.LOWER_WISHBONE_INBOARD_REAR in template.required_point_ids
-        assert PointID.LOWER_WISHBONE_OUTBOARD in template.required_point_ids
-        assert PointID.UPPER_WISHBONE_INBOARD_FRONT in template.required_point_ids
-        assert PointID.UPPER_WISHBONE_INBOARD_REAR in template.required_point_ids
-        assert PointID.UPPER_WISHBONE_OUTBOARD in template.required_point_ids
-        assert PointID.TRACKROD_INBOARD in template.required_point_ids
-        assert PointID.TRACKROD_OUTBOARD in template.required_point_ids
-        assert PointID.AXLE_INBOARD in template.required_point_ids
-        assert PointID.AXLE_OUTBOARD in template.required_point_ids
+        required = DoubleWishboneSuspension.REQUIRED_POINTS
+        assert PointID.LOWER_WISHBONE_INBOARD_FRONT in required
+        assert PointID.LOWER_WISHBONE_INBOARD_REAR in required
+        assert PointID.LOWER_WISHBONE_OUTBOARD in required
+        assert PointID.UPPER_WISHBONE_INBOARD_FRONT in required
+        assert PointID.UPPER_WISHBONE_INBOARD_REAR in required
+        assert PointID.UPPER_WISHBONE_OUTBOARD in required
+        assert PointID.TRACKROD_INBOARD in required
+        assert PointID.TRACKROD_OUTBOARD in required
+        assert PointID.AXLE_INBOARD in required
+        assert PointID.AXLE_OUTBOARD in required
 
-        # Check components
-        assert template.get_upright_component() is not None
-        assert ShimType.OUTBOARD_CAMBER in template.supported_shims
+    def test_create_suspension(self, valid_hardpoints, valid_config):
+        """
+        Test creating a suspension instance.
+        """
+        suspension = DoubleWishboneSuspension(
+            name="test",
+            version="1.0.0",
+            units=Units.MILLIMETERS,
+            hardpoints=valid_hardpoints,
+            config=valid_config,
+        )
+        assert suspension.name == "test"
+        assert len(suspension.hardpoints) == 10
+
+    def test_rejects_missing_hardpoints(self, valid_hardpoints, valid_config):
+        """
+        Test that missing required hardpoints are rejected.
+        """
+        del valid_hardpoints[PointID.UPPER_WISHBONE_OUTBOARD]
+        with pytest.raises(ValueError, match="Missing required hardpoints"):
+            DoubleWishboneSuspension(
+                name="test",
+                units=Units.MILLIMETERS,
+                hardpoints=valid_hardpoints,
+                config=valid_config,
+            )
+
+    def test_initial_state(self, valid_hardpoints, valid_config):
+        """
+        Test generating initial state.
+        """
+        suspension = DoubleWishboneSuspension(
+            name="test",
+            units=Units.MILLIMETERS,
+            hardpoints=valid_hardpoints,
+            config=valid_config,
+        )
+        state = suspension.initial_state()
+        assert state is not None
+        assert PointID.UPPER_WISHBONE_OUTBOARD in state.positions
+        assert PointID.WHEEL_CENTER in state.positions  # Derived point
+
+    def test_free_points(self, valid_hardpoints, valid_config):
+        """
+        Test getting free points.
+        """
+        suspension = DoubleWishboneSuspension(
+            name="test",
+            units=Units.MILLIMETERS,
+            hardpoints=valid_hardpoints,
+            config=valid_config,
+        )
+        free = suspension.free_points()
+        assert PointID.UPPER_WISHBONE_OUTBOARD in free
+        assert PointID.LOWER_WISHBONE_OUTBOARD in free
+
+    def test_constraints(self, valid_hardpoints, valid_config):
+        """
+        Test building constraints.
+        """
+        suspension = DoubleWishboneSuspension(
+            name="test",
+            units=Units.MILLIMETERS,
+            hardpoints=valid_hardpoints,
+            config=valid_config,
+        )
+        constraints = suspension.constraints()
+        assert len(constraints) > 0
+
+    def test_derived_spec(self, valid_hardpoints, valid_config):
+        """
+        Test derived point specification.
+        """
+        suspension = DoubleWishboneSuspension(
+            name="test",
+            units=Units.MILLIMETERS,
+            hardpoints=valid_hardpoints,
+            config=valid_config,
+        )
+        spec = suspension.derived_spec()
+        assert PointID.WHEEL_CENTER in spec.functions
+        assert PointID.CONTACT_PATCH_CENTER in spec.functions
+
+    def test_visualization_links(self, valid_hardpoints, valid_config):
+        """
+        Test visualization link generation.
+        """
+        suspension = DoubleWishboneSuspension(
+            name="test",
+            units=Units.MILLIMETERS,
+            hardpoints=valid_hardpoints,
+            config=valid_config,
+        )
+        links = suspension.get_visualization_links()
+        assert len(links) > 0
+        # Check for expected link labels
+        labels = [link.label for link in links]
+        assert "Upper Wishbone" in labels
+        assert "Lower Wishbone" in labels
 
 
-# Test validation
+# Test registry
+
+
+class TestRegistry:
+    """
+    Tests for suspension registry functions.
+    """
+
+    def test_list_supported_types(self):
+        """
+        Test listing supported types.
+        """
+        types = list_supported_types()
+        assert "double_wishbone" in types
+        assert "double_wishbone_front" in types  # Alias
+
+    def test_get_suspension_class(self):
+        """
+        Test getting a suspension class by key.
+        """
+        cls = get_suspension_class("double_wishbone")
+        assert cls is not None
+        assert cls == DoubleWishboneSuspension
+
+        # Test case insensitivity
+        cls2 = get_suspension_class("DOUBLE_WISHBONE")
+        assert cls2 is not None
+        assert cls2 == DoubleWishboneSuspension
+
+    def test_get_suspension_class_not_found(self):
+        """
+        Test getting a non-existent suspension class.
+        """
+        assert get_suspension_class("nonexistent") is None
+
+
+# Test validation utilities
 
 
 class TestLevenshteinDistance:
@@ -291,107 +339,6 @@ class TestFindClosestMatches:
         assert len(matches) == 0
 
 
-class TestValidateHardpoints:
-    """
-    Tests for hardpoint validation.
-    """
-
-    def test_valid_hardpoints(self, valid_hardpoints):
-        """
-        Test validation passes with valid hardpoints.
-        """
-        errors = validate_hardpoints(valid_hardpoints, DOUBLE_WISHBONE_TEMPLATE)
-        assert len(errors) == 0
-
-    def test_missing_required_point(self, valid_hardpoints):
-        """
-        Test validation catches missing required points.
-        """
-        del valid_hardpoints["UPPER_WISHBONE_OUTBOARD"]
-        errors = validate_hardpoints(valid_hardpoints, DOUBLE_WISHBONE_TEMPLATE)
-        assert len(errors) == 1
-        assert "Missing required hardpoints" in errors[0].message
-        assert "UPPER_WISHBONE_OUTBOARD" in errors[0].message
-
-    def test_unknown_point_with_suggestion(self, valid_hardpoints):
-        """
-        Test validation suggests corrections for typos.
-        """
-        valid_hardpoints["UPPER_WISHBONE_OUTBAORD"] = valid_hardpoints.pop(
-            "UPPER_WISHBONE_OUTBOARD"
-        )
-        errors = validate_hardpoints(valid_hardpoints, DOUBLE_WISHBONE_TEMPLATE)
-
-        # Should have both unknown key error and missing required error
-        unknown_errors = [e for e in errors if "Unknown" in e.message]
-        assert len(unknown_errors) == 1
-        assert unknown_errors[0].suggestion is not None
-        assert "UPPER_WISHBONE_OUTBOARD" in unknown_errors[0].suggestion
-
-    def test_invalid_triplet_format(self, valid_hardpoints):
-        """
-        Test validation catches invalid coordinate format.
-        """
-        valid_hardpoints["UPPER_WISHBONE_OUTBOARD"] = [1, 2]  # Wrong length
-        errors = validate_hardpoints(valid_hardpoints, DOUBLE_WISHBONE_TEMPLATE)
-        assert any("exactly 3 coordinates" in e.message for e in errors)
-
-    def test_non_numeric_coordinates(self, valid_hardpoints):
-        """
-        Test validation catches non-numeric coordinates.
-        """
-        valid_hardpoints["UPPER_WISHBONE_OUTBOARD"] = [1, 2, "three"]
-        errors = validate_hardpoints(valid_hardpoints, DOUBLE_WISHBONE_TEMPLATE)
-        assert any("must be numeric" in e.message for e in errors)
-
-    def test_dict_format_coordinates(self, valid_hardpoints):
-        """
-        Test validation accepts dict format coordinates.
-        """
-        valid_hardpoints["UPPER_WISHBONE_OUTBOARD"] = {"x": 1, "y": 2, "z": 3}
-        errors = validate_hardpoints(valid_hardpoints, DOUBLE_WISHBONE_TEMPLATE)
-        assert len(errors) == 0
-
-
-class TestValidateShimConfig:
-    """
-    Tests for shim configuration validation.
-    """
-
-    def test_valid_shim_config(self):
-        """
-        Test validation passes with valid shim config.
-        """
-        config = CamberShimConfigOutboard(
-            shim_face_center={"x": 0, "y": 1, "z": 2},
-            shim_normal={"x": 0, "y": 1, "z": 0},
-            design_thickness=30.0,
-            setup_thickness=30.0,
-        )
-        errors = validate_shim_config(config, DOUBLE_WISHBONE_TEMPLATE)
-        assert len(errors) == 0
-
-    def test_none_shim_config_ok(self):
-        """
-        Test that None shim config is valid (shims are optional).
-        """
-        errors = validate_shim_config(None, DOUBLE_WISHBONE_TEMPLATE)
-        assert len(errors) == 0
-
-    def test_near_zero_normal_rejected(self):
-        """
-        Test that near-zero shim normal is rejected.
-        """
-        config = {
-            "shim_face_center": {"x": 0, "y": 0, "z": 0},
-            "shim_normal": {"x": 0, "y": 0, "z": 0},
-            "design_thickness": 30.0,
-            "setup_thickness": 30.0,
-        }
-        errors = validate_shim_config(config, DOUBLE_WISHBONE_TEMPLATE)
-        assert any("near-zero" in e.message for e in errors)
-
-
 class TestFormatValidationErrors:
     """
     Tests for error message formatting.
@@ -421,139 +368,6 @@ class TestFormatValidationErrors:
         assert "Did you mean X?" in formatted
 
 
-# Test template geometry
-
-
-class TestTemplateGeometry:
-    """
-    Tests for TemplateGeometry class.
-    """
-
-    def test_create_template_geometry(self, valid_hardpoints, valid_config):
-        """
-        Test creating template geometry.
-        """
-        geometry = TemplateGeometry(
-            name="test",
-            version="1.0.0",
-            units=Units.MILLIMETERS,
-            configuration=valid_config,
-            hardpoints=valid_hardpoints,
-            template_key="double_wishbone",
-        )
-        assert geometry.name == "test"
-        assert len(geometry.hardpoints) == 10
-
-    def test_get_hardpoints_dict(self, valid_hardpoints, valid_config):
-        """
-        Test converting hardpoints to hardpoints dict.
-        """
-        geometry = TemplateGeometry(
-            name="test",
-            version="1.0.0",
-            units=Units.MILLIMETERS,
-            configuration=valid_config,
-            hardpoints=valid_hardpoints,
-            template_key="double_wishbone",
-        )
-        hardpoints_dict = geometry.get_hardpoints_dict(DOUBLE_WISHBONE_TEMPLATE)
-
-        assert PointID.UPPER_WISHBONE_OUTBOARD in hardpoints_dict
-        assert hardpoints_dict[PointID.UPPER_WISHBONE_OUTBOARD].shape == (3,)
-        np.testing.assert_array_equal(
-            hardpoints_dict[PointID.UPPER_WISHBONE_OUTBOARD],
-            np.array([-25, 750, 500]),
-        )
-
-    def test_create_template_geometry_factory(self, valid_hardpoints, valid_config):
-        """
-        Test the factory function for creating geometry.
-        """
-        geometry = create_template_geometry(
-            template=DOUBLE_WISHBONE_TEMPLATE,
-            hardpoints=valid_hardpoints,
-            configuration=valid_config,
-            name="factory_test",
-        )
-        assert geometry.name == "factory_test"
-        assert geometry.template_key == "double_wishbone"
-
-
-# Test template provider
-
-
-class TestTemplateSuspensionProvider:
-    """
-    Tests for TemplateSuspensionProvider class.
-    """
-
-    @pytest.fixture
-    def provider(self, valid_hardpoints, valid_config) -> TemplateSuspensionProvider:
-        """
-        Create a template provider for testing.
-        """
-        geometry = TemplateGeometry(
-            name="test",
-            version="1.0.0",
-            units=Units.MILLIMETERS,
-            configuration=valid_config,
-            hardpoints=valid_hardpoints,
-            template_key="double_wishbone",
-        )
-        return TemplateSuspensionProvider(geometry, DOUBLE_WISHBONE_TEMPLATE)
-
-    def test_build_upright(self, provider):
-        """
-        Test building upright from template.
-        """
-        upright = provider.build_upright()
-        assert upright is not None
-        assert upright.mount_ids is not None
-
-    def test_initial_state(self, provider):
-        """
-        Test generating initial state.
-        """
-        state = provider.initial_state()
-        assert state is not None
-        assert PointID.UPPER_WISHBONE_OUTBOARD in state.positions
-        assert PointID.WHEEL_CENTER in state.positions  # Derived point
-
-    def test_free_points(self, provider):
-        """
-        Test getting free points.
-        """
-        free = provider.free_points()
-        assert PointID.UPPER_WISHBONE_OUTBOARD in free
-        assert PointID.LOWER_WISHBONE_OUTBOARD in free
-
-    def test_constraints(self, provider):
-        """
-        Test building constraints.
-        """
-        constraints = provider.constraints()
-        assert len(constraints) > 0
-
-    def test_derived_spec(self, provider):
-        """
-        Test derived point specification.
-        """
-        spec = provider.derived_spec()
-        assert PointID.WHEEL_CENTER in spec.functions
-        assert PointID.CONTACT_PATCH_CENTER in spec.functions
-
-    def test_visualization_links(self, provider):
-        """
-        Test visualization link generation.
-        """
-        links = provider.get_visualization_links()
-        assert len(links) > 0
-        # Check for expected link labels
-        labels = [link.label for link in links]
-        assert "Upper Wishbone" in labels
-        assert "Lower Wishbone" in labels
-
-
 # Test YAML loading
 
 
@@ -562,9 +376,9 @@ class TestYAMLLoading:
     Tests for loading geometry from YAML files.
     """
 
-    def test_load_template_format_yaml(self, tmp_path):
+    def test_load_yaml(self, tmp_path):
         """
-        Test loading YAML in new template format.
+        Test loading YAML geometry file.
         """
         yaml_content = """
 type: double_wishbone
@@ -600,9 +414,9 @@ config:
 
         result = load_geometry(yaml_file)
 
-        assert isinstance(result, LoadedSuspension)
-        assert isinstance(result.geometry, TemplateGeometry)
-        assert isinstance(result.provider, TemplateSuspensionProvider)
+        assert isinstance(result, Suspension)
+        assert isinstance(result, DoubleWishboneSuspension)
+        assert result.name == "Test"
 
     def test_load_with_camber_shim(self, tmp_path):
         """
@@ -645,8 +459,9 @@ config:
         yaml_file.write_text(yaml_content)
 
         result = load_geometry(yaml_file)
-        assert result.geometry.configuration.camber_shim is not None
-        assert result.geometry.configuration.camber_shim.setup_thickness == 35.0
+        assert result.config is not None
+        assert result.config.camber_shim is not None
+        assert result.config.camber_shim.setup_thickness == 35.0
 
     def test_load_rejects_unknown_type(self, tmp_path):
         """
@@ -712,28 +527,26 @@ config:
 
 class TestIntegration:
     """
-    Integration tests for the complete template system.
+    Integration tests for the complete suspension system.
     """
 
     def test_full_workflow(self, valid_hardpoints, valid_config):
         """
         Test complete workflow from hardpoints to solved state.
         """
-        # Create geometry
-        geometry = create_template_geometry(
-            template=DOUBLE_WISHBONE_TEMPLATE,
+        # Create suspension
+        suspension = DoubleWishboneSuspension(
+            name="test",
+            units=Units.MILLIMETERS,
             hardpoints=valid_hardpoints,
-            configuration=valid_config,
+            config=valid_config,
         )
 
-        # Create provider
-        provider = TemplateSuspensionProvider(geometry, DOUBLE_WISHBONE_TEMPLATE)
-
         # Get initial state
-        state = provider.initial_state()
+        state = suspension.initial_state()
 
         # Verify all required points present
-        for point_id in DOUBLE_WISHBONE_TEMPLATE.required_point_ids:
+        for point_id in DoubleWishboneSuspension.REQUIRED_POINTS:
             assert point_id in state.positions
 
         # Verify derived points calculated
@@ -741,7 +554,7 @@ class TestIntegration:
         assert PointID.CONTACT_PATCH_CENTER in state.positions
 
         # Verify constraints can be built
-        constraints = provider.constraints()
+        constraints = suspension.constraints()
         assert len(constraints) > 0
 
     def test_shim_application_workflow(self, valid_hardpoints, valid_config):
@@ -751,17 +564,16 @@ class TestIntegration:
         # Modify config to have shim effect
         valid_config.camber_shim.setup_thickness = 35.0  # 5mm more than design
 
-        geometry = create_template_geometry(
-            template=DOUBLE_WISHBONE_TEMPLATE,
+        suspension = DoubleWishboneSuspension(
+            name="test",
+            units=Units.MILLIMETERS,
             hardpoints=valid_hardpoints,
-            configuration=valid_config,
+            config=valid_config,
         )
-
-        provider = TemplateSuspensionProvider(geometry, DOUBLE_WISHBONE_TEMPLATE)
-        state = provider.initial_state()
+        state = suspension.initial_state()
 
         # Axle points should have moved due to shim
-        original_axle = np.array(valid_hardpoints["AXLE_OUTBOARD"])
+        original_axle = valid_hardpoints[PointID.AXLE_OUTBOARD]
         new_axle = state.positions[PointID.AXLE_OUTBOARD]
 
         # Should not be identical (shim rotates attachments)

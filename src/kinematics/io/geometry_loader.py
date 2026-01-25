@@ -1,58 +1,37 @@
 """
-YAML geometry loader with validation.
+YAML geometry loader.
 
-This module handles file I/O, schema parsing, and geometry validation for template-based
-suspension types.
+This module loads suspension geometry from YAML files and returns instantiated
+Suspension subclass instances directly.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any, cast
 
 import yaml
 from marshmallow.exceptions import ValidationError as MarshmallowValidationError
 from marshmallow_dataclass import class_schema
 
-from kinematics.enums import Units
-from kinematics.suspensions.core.provider import SuspensionProvider
+from kinematics.enums import PointID, Units
+from kinematics.suspensions.base import Suspension
 from kinematics.suspensions.core.settings import SuspensionConfig
-from kinematics.suspensions.core.template_geometry import TemplateGeometry
-from kinematics.suspensions.implementations.template_provider import (
-    TemplateSuspensionProvider,
-)
-from kinematics.suspensions.templates.library import build_template_registry
-from kinematics.suspensions.templates.validation import (
+from kinematics.suspensions.registry import get_suspension_class, list_supported_types
+from kinematics.suspensions.validation import (
+    ValidationError,
+    find_closest_matches,
     format_validation_errors,
-    validate_hardpoints,
-    validate_shim_config,
 )
-
-if TYPE_CHECKING:
-    from kinematics.suspensions.core.geometry import SuspensionGeometry
-    from kinematics.suspensions.templates.base import SuspensionTemplate
+from kinematics.types import make_vec3
 
 
-@dataclass
-class LoadedSuspension:
-    """
-    Result of loading a suspension geometry from a file.
-
-    Attributes:
-        geometry: The loaded and validated suspension geometry instance.
-        provider: Instantiated provider bound to this geometry.
-    """
-
-    geometry: SuspensionGeometry
-    provider: SuspensionProvider
-
-
-def load_geometry(file_path: Path) -> LoadedSuspension:
+def load_geometry(file_path: Path) -> Suspension:
     """
     Load suspension geometry from a YAML file.
 
-    Uses the template system for validation and provider creation.
+    Returns the appropriate Suspension subclass instance directly.
+
     The YAML format is:
 
         type: double_wishbone
@@ -80,11 +59,11 @@ def load_geometry(file_path: Path) -> LoadedSuspension:
         file_path: Path to the YAML geometry file.
 
     Returns:
-        LoadedSuspension dataclass containing the geometry and provider.
+        Instantiated Suspension subclass (e.g., DoubleWishboneSuspension).
 
     Raises:
         FileNotFoundError: If the file doesn't exist.
-        ValueError: If the file contents are invalid or geometry type is unsupported.
+        ValueError: If validation fails or type is unsupported.
         OSError: For general file handling errors.
     """
     if not file_path.exists():
@@ -100,20 +79,18 @@ def load_geometry(file_path: Path) -> LoadedSuspension:
         if "type" not in yaml_data:
             raise ValueError("Geometry type not specified in file")
 
-        geometry_type_key = yaml_data.pop("type")
-        template_registry = build_template_registry()
+        type_key = yaml_data.pop("type").lower()
 
-        # Normalize key to lowercase for template lookup.
-        template_key = geometry_type_key.lower()
-        if template_key not in template_registry:
-            available = sorted(template_registry.keys())
+        # Get the suspension class for this type.
+        suspension_class = get_suspension_class(type_key)
+        if suspension_class is None:
+            available = list_supported_types()
             raise ValueError(
-                f"Unsupported geometry type: '{geometry_type_key}'. "
+                f"Unsupported geometry type: '{type_key}'. "
                 f"Supported types: {', '.join(available)}"
             )
 
-        template = template_registry[template_key]
-        return _load_template_geometry(template_key, yaml_data, template)
+        return _load_suspension(yaml_data, suspension_class)
 
     except yaml.YAMLError as e:
         raise ValueError(f"Error parsing geometry file: {e}") from e
@@ -123,28 +100,26 @@ def load_geometry(file_path: Path) -> LoadedSuspension:
         raise OSError(f"Error reading geometry file: {e}") from e
 
 
-def _load_template_geometry(
-    type_key: str,
+def _load_suspension(
     yaml_data: dict[str, Any],
-    template: "SuspensionTemplate",
-) -> LoadedSuspension:
+    suspension_class: type[Suspension],
+) -> Suspension:
     """
-    Load geometry using the template system.
+    Load and instantiate a suspension from parsed YAML data.
 
     Args:
-        type_key: The geometry type key
-        yaml_data: Parsed YAML data (with 'type' already removed)
-        template: The template to use for validation
+        yaml_data: Parsed YAML data (with 'type' already removed).
+        suspension_class: The Suspension subclass to instantiate.
 
     Returns:
-        LoadedSuspension with template geometry and provider
+        Instantiated suspension.
 
     Raises:
-        ValueError: If validation fails
+        ValueError: If validation fails.
     """
     # Extract and validate hardpoints.
-    hardpoints = yaml_data.get("hardpoints", {})
-    errors = validate_hardpoints(hardpoints, template)
+    raw_hardpoints = yaml_data.get("hardpoints", {})
+    errors = _validate_hardpoints(raw_hardpoints, suspension_class)
     if errors:
         raise ValueError(format_validation_errors(errors))
 
@@ -152,12 +127,12 @@ def _load_template_geometry(
     config_data = yaml_data.get("config", yaml_data.get("configuration", {}))
     ConfigSchema = class_schema(SuspensionConfig)
     try:
-        config = ConfigSchema().load(config_data)
+        config = cast(SuspensionConfig, ConfigSchema().load(config_data))
     except MarshmallowValidationError as e:
         raise ValueError(f"Configuration validation error: {e}") from e
 
     # Validate shim config if present.
-    shim_errors = validate_shim_config(config.camber_shim, template)
+    shim_errors = _validate_shim_config(config.camber_shim, suspension_class)
     if shim_errors:
         raise ValueError(format_validation_errors(shim_errors))
 
@@ -168,20 +143,224 @@ def _load_template_geometry(
     except KeyError:
         raise ValueError(f"Unknown units: {units_str}")
 
-    # Create geometry.
-    geometry = TemplateGeometry(
+    # Convert hardpoints to dict[PointID, Vec3].
+    hardpoints: dict[PointID, Any] = {}
+    for key, value in raw_hardpoints.items():
+        point_id = PointID[key.upper()]
+        if isinstance(value, dict):
+            coords = make_vec3([value["x"], value["y"], value["z"]])
+        else:
+            coords = make_vec3(value)
+        hardpoints[point_id] = coords
+
+    # Instantiate and return the suspension.
+    return suspension_class(
         name=yaml_data.get("name", "unnamed"),
         version=yaml_data.get("version", "0.0.0"),
         units=units,
-        configuration=config,
         hardpoints=hardpoints,
-        template_key=type_key,
+        config=config,
     )
 
-    # Validate geometry against template.
-    geometry.validate(template)
 
-    # Create provider (geometry first for compatibility with re-instantiation).
-    provider = TemplateSuspensionProvider(geometry, template)
+def _validate_hardpoints(
+    hardpoints: dict[str, Any],
+    suspension_class: type[Suspension],
+) -> list[ValidationError]:
+    """
+    Validate hardpoints against a suspension class definition.
 
-    return LoadedSuspension(geometry=geometry, provider=provider)
+    Args:
+        hardpoints: Raw hardpoints dict from YAML.
+        suspension_class: The suspension class to validate against.
+
+    Returns:
+        List of validation errors (empty if valid).
+    """
+    errors: list[ValidationError] = []
+    valid_points = suspension_class.all_valid_points()
+    valid_names = {p.name for p in valid_points}
+
+    seen_point_ids: set[PointID] = set()
+
+    for key, value in hardpoints.items():
+        normalized_key = key.upper()
+
+        # Check if key is valid.
+        try:
+            point_id = PointID[normalized_key]
+            if point_id not in valid_points:
+                raise KeyError()
+        except KeyError:
+            suggestions = find_closest_matches(normalized_key, valid_names)
+            suggestion_text = (
+                f"Did you mean: {', '.join(suggestions)}?" if suggestions else None
+            )
+            errors.append(
+                ValidationError(
+                    message=f"Unknown hardpoint key '{key}'",
+                    suggestion=suggestion_text,
+                )
+            )
+            continue
+
+        seen_point_ids.add(point_id)
+        errors.extend(_validate_triplet(key, value))
+
+    # Check for missing required.
+    missing = suspension_class.REQUIRED_POINTS - seen_point_ids
+    if missing:
+        missing_names = sorted(p.name for p in missing)
+        errors.append(
+            ValidationError(
+                message=f"Missing required hardpoints: {', '.join(missing_names)}",
+            )
+        )
+
+    return errors
+
+
+def _validate_triplet(key: str, value: Any) -> list[ValidationError]:
+    """Validate that a value is a valid [x, y, z] triplet."""
+    errors: list[ValidationError] = []
+
+    if isinstance(value, dict):
+        # Dict format {x:, y:, z:}.
+        required_keys = {"x", "y", "z"}
+        provided_keys = set(value.keys())
+
+        missing = required_keys - provided_keys
+        if missing:
+            errors.append(
+                ValidationError(
+                    message=f"'{key}' missing keys: {', '.join(sorted(missing))}",
+                    suggestion="Dict format requires {x: val, y: val, z: val}",
+                )
+            )
+            return errors
+
+        for coord in ["x", "y", "z"]:
+            if coord in value and not isinstance(value[coord], (int, float)):
+                errors.append(
+                    ValidationError(
+                        message=f"'{key}' {coord} must be numeric",
+                    )
+                )
+    elif isinstance(value, (list, tuple)):
+        if len(value) != 3:
+            errors.append(
+                ValidationError(
+                    message=f"'{key}' needs 3 coordinates, got {len(value)}",
+                    suggestion="Provide [x, y, z] coordinates",
+                )
+            )
+            return errors
+
+        for i, v in enumerate(value):
+            if not isinstance(v, (int, float)):
+                coord_name = ["x", "y", "z"][i]
+                errors.append(
+                    ValidationError(
+                        message=f"'{key}' {coord_name} must be numeric",
+                    )
+                )
+    else:
+        errors.append(
+            ValidationError(
+                message=f"'{key}' must be [x, y, z], got {type(value).__name__}",
+                suggestion="Use format: [x, y, z] or {x: val, y: val, z: val}",
+            )
+        )
+
+    return errors
+
+
+def _validate_shim_config(
+    shim_config: Any,
+    suspension_class: type[Suspension],
+) -> list[ValidationError]:
+    """Validate shim config against suspension class supported shims."""
+    from kinematics.enums import ShimType
+
+    import numpy as np
+
+    errors: list[ValidationError] = []
+
+    # If class doesn't support outboard camber shims, skip validation.
+    if ShimType.OUTBOARD_CAMBER not in suspension_class.SUPPORTED_SHIMS:
+        return errors
+
+    # Shims are optional.
+    if shim_config is None:
+        return errors
+
+    # Convert dataclass to dict if needed.
+    if hasattr(shim_config, "__dataclass_fields__"):
+        config = {
+            "shim_face_center": shim_config.shim_face_center,
+            "shim_normal": shim_config.shim_normal,
+            "design_thickness": shim_config.design_thickness,
+            "setup_thickness": shim_config.setup_thickness,
+        }
+    elif isinstance(shim_config, dict):
+        config = shim_config
+    else:
+        errors.append(
+            ValidationError(
+                message="camber_shim must be a dict or CamberShimConfigOutboard",
+            )
+        )
+        return errors
+
+    # Validate required fields.
+    required_fields = [
+        "shim_face_center",
+        "shim_normal",
+        "design_thickness",
+        "setup_thickness",
+    ]
+    for field in required_fields:
+        if field not in config:
+            errors.append(
+                ValidationError(
+                    message=f"camber_shim missing required field: {field}",
+                )
+            )
+
+    if errors:
+        return errors
+
+    errors.extend(_validate_triplet("camber_shim.shim_face_center", config["shim_face_center"]))
+    errors.extend(_validate_triplet("camber_shim.shim_normal", config["shim_normal"]))
+
+    if errors:
+        return errors
+
+    # Validate shim_normal magnitude.
+    normal = config["shim_normal"]
+    if isinstance(normal, dict):
+        magnitude = np.sqrt(normal["x"] ** 2 + normal["y"] ** 2 + normal["z"] ** 2)
+    elif isinstance(normal, (list, tuple)):
+        magnitude = np.sqrt(normal[0] ** 2 + normal[1] ** 2 + normal[2] ** 2)
+    else:
+        magnitude = 0.0
+
+    if magnitude < 1e-6:
+        errors.append(
+            ValidationError(
+                message="shim_normal vector is near-zero",
+                suggestion="shim_normal must be non-zero (will be normalized)",
+            )
+        )
+
+    # Validate thicknesses.
+    for field in ["design_thickness", "setup_thickness"]:
+        value = config.get(field)
+        if value is not None and not isinstance(value, (int, float)):
+            errors.append(
+                ValidationError(
+                    message=f"camber_shim.{field} must be numeric",
+                )
+            )
+
+    return errors

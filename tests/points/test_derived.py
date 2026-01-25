@@ -247,7 +247,7 @@ def test_wheel_center_on_ground_custom_ground_plane():
 
 def test_wheel_center_on_ground_in_provider():
     """
-    Test that WHEEL_CENTER_ON_GROUND is computed through provider.
+    Test that WHEEL_CENTER_ON_GROUND is computed through suspension.
     """
     from pathlib import Path
 
@@ -258,8 +258,8 @@ def test_wheel_center_on_ground_in_provider():
     geometry_file = test_data_dir / "geometry.yaml"
 
     if geometry_file.exists():
-        loaded = load_geometry(geometry_file)
-        state = loaded.provider.initial_state()
+        suspension = load_geometry(geometry_file)
+        state = suspension.initial_state()
 
         # Verify the point exists
         assert PointID.WHEEL_CENTER_ON_GROUND in state.positions

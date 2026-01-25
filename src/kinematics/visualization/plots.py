@@ -15,7 +15,7 @@ from mpl_toolkits.mplot3d.axes3d import Axes3D
 
 from kinematics.enums import PointID
 from kinematics.state import SuspensionState
-from kinematics.suspensions.core.provider import SuspensionProvider
+from kinematics.suspensions.base import Suspension
 from kinematics.types import Vec3
 from kinematics.visualization.main import SuspensionVisualizer, WheelVisualization
 
@@ -211,7 +211,7 @@ def plot_suspension_on_axis(
 
 def create_four_view_plot(
     state: SuspensionState,
-    provider: SuspensionProvider,
+    suspension: Suspension,
     output_path: Path,
     wheel_diameter: float,
     wheel_width: float,
@@ -223,7 +223,7 @@ def create_four_view_plot(
 
     Args:
         state: The suspension state to visualize.
-        provider: The suspension provider for getting visualization links.
+        suspension: The Suspension instance for getting visualization links.
         output_path: Path where the plot image will be saved.
         wheel_diameter: Wheel diameter in millimeters.
         wheel_width: Wheel width in millimeters.
@@ -236,8 +236,8 @@ def create_four_view_plot(
         width=wheel_width,
     )
 
-    # Get visualization links from provider.
-    visualization_links = provider.get_visualization_links()
+    # Get visualization links from suspension.
+    visualization_links = suspension.get_visualization_links()
 
     # Create visualizer.
     visualizer = SuspensionVisualizer(visualization_links, wheel_config)
@@ -273,7 +273,7 @@ def create_four_view_plot(
 
 def create_single_view_plot(
     state: SuspensionState,
-    provider: SuspensionProvider,
+    suspension: Suspension,
     output_path: Path,
     wheel_diameter: float,
     wheel_width: float,
@@ -286,7 +286,7 @@ def create_single_view_plot(
 
     Args:
         state: The suspension state to visualize.
-        provider: The suspension provider for getting visualization links.
+        suspension: The Suspension instance for getting visualization links.
         output_path: Path where the plot image will be saved.
         wheel_diameter: Wheel diameter in millimeters.
         wheel_width: Wheel width in millimeters.
@@ -300,8 +300,8 @@ def create_single_view_plot(
         width=wheel_width,
     )
 
-    # Get visualization links from provider.
-    visualization_links = provider.get_visualization_links()
+    # Get visualization links from suspension.
+    visualization_links = suspension.get_visualization_links()
 
     # Create visualizer.
     visualizer = SuspensionVisualizer(visualization_links, wheel_config)

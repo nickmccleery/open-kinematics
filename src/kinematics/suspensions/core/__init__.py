@@ -1,8 +1,7 @@
 """
-Core suspension abstractions.
+Core suspension components.
 """
 
-from kinematics.suspensions.core.geometry import SuspensionGeometry
-from kinematics.suspensions.core.provider import SuspensionProvider
+from kinematics.suspensions.core.settings import SuspensionConfig
 
-__all__ = ["SuspensionGeometry", "SuspensionProvider"]
+__all__ = ["SuspensionConfig"]

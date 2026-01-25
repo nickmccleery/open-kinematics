@@ -67,30 +67,28 @@ def test_run_solver(
     """Run solver with visualization (manual test)."""
     hub_displacements, _ = displacements
 
-    loaded = load_geometry(double_wishbone_geometry_file)
-    template_key = getattr(loaded.geometry, "template_key", "").lower()
-    if template_key not in (
+    suspension = load_geometry(double_wishbone_geometry_file)
+    if suspension.TYPE_KEY not in (
         "double_wishbone",
         "double_wishbone_front",
         "double_wishbone_rear",
     ):
-        raise ValueError("Manual viz test only supports double wishbone templates")
+        raise ValueError("Manual viz test only supports double wishbone suspensions")
 
     # Solve for all positions.
-    position_states, _ = solve_sweep(loaded.provider, sweep_config_fixture)
+    position_states, _ = solve_sweep(suspension, sweep_config_fixture)
 
     print("Solve complete, verifying constraints...")
 
-    # Get initial positions for comparison using the provider.
-    provider = loaded.provider
-    derived_manager = DerivedPointsManager(provider.derived_spec())
+    # Get initial positions for comparison using the suspension.
+    derived_manager = DerivedPointsManager(suspension.derived_spec())
 
-    initial_state = provider.initial_state()
+    initial_state = suspension.initial_state()
     derived_manager.update_in_place(initial_state.positions)
     initial_positions = initial_state.positions.copy()
 
     # Get only the length constraints for verification
-    all_constraints = provider.constraints()
+    all_constraints = suspension.constraints()
 
     length_constraints = [
         c for c in all_constraints if isinstance(c, DistanceConstraint)
@@ -141,7 +139,7 @@ def test_run_solver(
         width=225,
     )
 
-    visualization_links = loaded.provider.get_visualization_links()
+    visualization_links = suspension.get_visualization_links()
     visualizer = SuspensionVisualizer(visualization_links, wheel_config)
     create_animation(
         position_states_animate,
