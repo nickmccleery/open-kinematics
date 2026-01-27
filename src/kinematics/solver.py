@@ -11,17 +11,17 @@ from typing import NamedTuple
 import numpy as np
 from scipy.optimize import least_squares
 
-from kinematics.constants import (
+from kinematics.constraints import Constraint
+from kinematics.core.constants import (
     SOLVE_TOLERANCE_GRAD,
     SOLVE_TOLERANCE_STEP,
     SOLVE_TOLERANCE_VALUE,
 )
-from kinematics.constraints import Constraint
+from kinematics.core.types import PointTarget, SweepConfig, TargetPositionMode
+from kinematics.core.vector_utils.generic import project_coordinate
 from kinematics.points.derived.manager import DerivedPointsManager
 from kinematics.state import SuspensionState
 from kinematics.targets import resolve_target
-from kinematics.types import PointTarget, SweepConfig, TargetPositionMode
-from kinematics.vector_utils.generic import project_coordinate
 
 # Levenberg-Marquardt: damped least squares that can deal with the system being
 # overdetermined (m > n), as may be the case with any redundant (but consistent)

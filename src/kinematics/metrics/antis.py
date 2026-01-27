@@ -3,8 +3,8 @@ This module contains functions for calculating "anti" geometry metrics like anti
 and anti-squat.
 """
 
+from kinematics.core.types import Vec3
 from kinematics.state import SuspensionState
-from kinematics.types import Vec3
 
 
 def calculate_geometric_anti_dive(

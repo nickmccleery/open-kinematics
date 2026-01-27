@@ -15,16 +15,16 @@ import yaml
 from marshmallow.exceptions import ValidationError as MarshmallowValidationError
 from marshmallow_dataclass import class_schema
 
-from kinematics.enums import PointID, ShimType, Units
+from kinematics.core.enums import PointID, ShimType, Units
+from kinematics.core.types import make_vec3
 from kinematics.suspensions.base import Suspension
-from kinematics.suspensions.core.settings import SuspensionConfig
+from kinematics.suspensions.config.settings import SuspensionConfig
 from kinematics.suspensions.registry import get_suspension_class, list_supported_types
 from kinematics.suspensions.validation import (
     ValidationError,
     find_closest_matches,
     format_validation_errors,
 )
-from kinematics.types import make_vec3
 
 
 def load_geometry(file_path: Path) -> Suspension:

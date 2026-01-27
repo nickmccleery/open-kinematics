@@ -7,11 +7,11 @@ geometries.
 
 from typing import List
 
+from kinematics.core.types import SweepConfig
 from kinematics.points.derived.manager import DerivedPointsManager
 from kinematics.solver import SolverInfo, solve_suspension_sweep
 from kinematics.state import SuspensionState
 from kinematics.suspensions.base import Suspension
-from kinematics.types import SweepConfig
 
 
 def solve_sweep(

@@ -13,8 +13,8 @@ import yaml
 from marshmallow.exceptions import ValidationError
 from marshmallow_dataclass import class_schema
 
-from kinematics.enums import Axis, PointID, TargetPositionMode
-from kinematics.types import (
+from kinematics.core.enums import Axis, PointID, TargetPositionMode
+from kinematics.core.types import (
     PointTarget,
     PointTargetAxis,
     PointTargetVector,

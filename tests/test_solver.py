@@ -1,13 +1,13 @@
 import numpy as np
 import pytest
 
-from kinematics.constants import TEST_TOLERANCE
+from kinematics.core.constants import TEST_TOLERANCE
 from kinematics.constraints import DistanceConstraint
-from kinematics.enums import Axis, PointID, TargetPositionMode
+from kinematics.core.enums import Axis, PointID, TargetPositionMode
 from kinematics.points.derived.manager import DerivedPointsManager, DerivedPointsSpec
 from kinematics.solver import PointTarget, SolverConfig, solve_suspension_sweep
 from kinematics.state import SuspensionState
-from kinematics.types import PointTargetAxis, SweepConfig
+from kinematics.core.types import PointTargetAxis, SweepConfig
 
 
 @pytest.fixture

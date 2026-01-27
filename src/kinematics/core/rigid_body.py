@@ -13,8 +13,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from kinematics.types import Vec3, make_vec3
-from kinematics.vector_utils.generic import normalize_vector
+from kinematics.core.types import Vec3, make_vec3
+from kinematics.core.vector_utils.generic import normalize_vector
 
 
 @dataclass

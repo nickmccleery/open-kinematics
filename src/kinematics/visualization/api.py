@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 import typer
 
-from kinematics.enums import Axis, PointID
+from kinematics.core.enums import Axis, PointID
 from kinematics.visualization.plots import create_four_view_plot
 
 if TYPE_CHECKING:

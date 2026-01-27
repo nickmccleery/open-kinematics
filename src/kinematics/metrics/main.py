@@ -4,14 +4,14 @@ from dataclasses import dataclass
 from functools import cached_property
 from typing import TYPE_CHECKING
 
+from kinematics.core.types import Vec3, make_vec3
 from kinematics.metrics.angles import calculate_camber, calculate_caster, calculate_toe
 from kinematics.metrics.antis import (
     calculate_geometric_anti_dive,
     calculate_geometric_anti_squat,
 )
 from kinematics.state import SuspensionState
-from kinematics.suspensions.core.settings import SuspensionConfig
-from kinematics.types import Vec3, make_vec3
+from kinematics.suspensions.config.settings import SuspensionConfig
 
 if TYPE_CHECKING:
     from kinematics.suspensions.base import Suspension

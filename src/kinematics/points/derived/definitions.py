@@ -8,10 +8,10 @@ avoid code duplication.
 
 import numpy as np
 
-from kinematics.constants import EPSILON
-from kinematics.enums import Axis, PointID
-from kinematics.types import Vec3, WorldAxisSystem, make_vec3
-from kinematics.vector_utils.generic import normalize_vector
+from kinematics.core.constants import EPSILON
+from kinematics.core.enums import Axis, PointID
+from kinematics.core.types import Vec3, WorldAxisSystem, make_vec3
+from kinematics.core.vector_utils.generic import normalize_vector
 
 
 def get_wheel_plane_down_vector(positions: dict[PointID, Vec3]) -> Vec3:

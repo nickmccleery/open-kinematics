@@ -10,7 +10,7 @@ from typing import Annotated, Final, Literal, NamedTuple, Union
 import numpy as np
 from numpy.typing import NDArray
 
-from kinematics.enums import Axis, PointID, TargetPositionMode
+from kinematics.core.enums import Axis, PointID, TargetPositionMode
 
 Vec3 = Annotated[NDArray[np.float64], Literal[3]]
 NAN_VEC3: Final[Vec3] = np.array([np.nan, np.nan, np.nan], dtype=np.float64)

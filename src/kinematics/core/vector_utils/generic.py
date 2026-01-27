@@ -11,7 +11,7 @@ from typing import NamedTuple, Optional, TypeVar
 import numpy as np
 from numpy.typing import NDArray
 
-from kinematics.constants import EPSILON
+from kinematics.core.constants import EPSILON
 
 FloatingT = TypeVar("FloatingT", bound=np.floating)
 

@@ -13,13 +13,22 @@ from typing import TYPE_CHECKING, ClassVar, Sequence
 
 import numpy as np
 
+from kinematics.components.upright import Upright
 from kinematics.constraints import (
     AngleConstraint,
     Constraint,
     DistanceConstraint,
     PointOnLineConstraint,
 )
-from kinematics.enums import PointID, ShimType, Units
+from kinematics.core.enums import PointID, ShimType, Units
+from kinematics.core.types import Vec3, WorldAxisSystem, make_vec3
+from kinematics.core.vector_utils.geometric import (
+    compute_point_point_distance,
+    compute_vector_vector_angle,
+    intersect_line_with_vertical_plane,
+    intersect_two_planes,
+    plane_from_three_points,
+)
 from kinematics.points.derived.definitions import (
     get_axle_midpoint,
     get_contact_patch_center,
@@ -31,20 +40,11 @@ from kinematics.points.derived.definitions import (
 from kinematics.points.derived.manager import DerivedPointsManager, DerivedPointsSpec
 from kinematics.state import SuspensionState
 from kinematics.suspensions.base import Suspension
-from kinematics.suspensions.core.settings import SuspensionConfig
-from kinematics.suspensions.core.shims import (
+from kinematics.suspensions.config.settings import SuspensionConfig
+from kinematics.suspensions.config.shims import (
     compute_shim_offset,
     compute_upright_rotation_from_shim,
     rotate_point_about_axis,
-)
-from kinematics.types import Vec3, WorldAxisSystem, make_vec3
-from kinematics.upright import Upright
-from kinematics.vector_utils.geometric import (
-    compute_point_point_distance,
-    compute_vector_vector_angle,
-    intersect_line_with_vertical_plane,
-    intersect_two_planes,
-    plane_from_three_points,
 )
 from kinematics.visualization.main import LinkVisualization
 

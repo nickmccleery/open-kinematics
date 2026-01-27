@@ -4,10 +4,10 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from kinematics.enums import PointID
-from kinematics.rigid_body import LocalCoordinateSystem, RigidBody
-from kinematics.types import Vec3, make_vec3
-from kinematics.vector_utils.generic import normalize_vector
+from kinematics.core.enums import PointID
+from kinematics.core.rigid_body import LocalCoordinateSystem, RigidBody
+from kinematics.core.types import Vec3, make_vec3
+from kinematics.core.vector_utils.generic import normalize_vector
 
 
 @dataclass
@@ -219,7 +219,7 @@ class Upright(RigidBody):
             rotation_axis: Normalized rotation axis vector.
             rotation_angle_rad: Rotation angle in radians.
         """
-        from kinematics.suspensions.core.shims import rotate_point_about_axis
+        from kinematics.suspensions.config.shims import rotate_point_about_axis
 
         # Ensure rotation axis is normalized.
         rotation_axis = normalize_vector(rotation_axis)

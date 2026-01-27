@@ -15,11 +15,11 @@ from typing import TYPE_CHECKING, ClassVar, Sequence
 import numpy as np
 
 from kinematics.constraints import Constraint
-from kinematics.enums import PointID, ShimType, Units
+from kinematics.core.enums import PointID, ShimType, Units
+from kinematics.core.types import Vec3
 from kinematics.points.derived.manager import DerivedPointsSpec
 from kinematics.state import SuspensionState
-from kinematics.suspensions.core.settings import SuspensionConfig
-from kinematics.types import Vec3
+from kinematics.suspensions.config.settings import SuspensionConfig
 
 if TYPE_CHECKING:
     from kinematics.visualization.main import LinkVisualization

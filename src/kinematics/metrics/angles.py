@@ -6,10 +6,10 @@ All functions operate on a solved SuspensionState and return angles in degrees.
 
 import numpy as np
 
-from kinematics.enums import Axis, PointID
+from kinematics.core.enums import Axis, PointID
+from kinematics.core.types import WorldAxisSystem
+from kinematics.core.vector_utils.generic import normalize_vector
 from kinematics.state import SuspensionState
-from kinematics.types import WorldAxisSystem
-from kinematics.vector_utils.generic import normalize_vector
 
 
 def calculate_camber(state: SuspensionState) -> float:

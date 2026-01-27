@@ -10,10 +10,10 @@ This module verifies:
 import numpy as np
 import pytest
 
-from kinematics.enums import PointID
-from kinematics.rigid_body import LocalCoordinateSystem
-from kinematics.types import make_vec3
-from kinematics.upright import Upright, UprightAttachments, UprightHardpoints
+from kinematics.core.enums import PointID
+from kinematics.core.rigid_body import LocalCoordinateSystem
+from kinematics.core.types import make_vec3
+from kinematics.components.upright import Upright, UprightAttachments, UprightHardpoints
 
 
 class TestLocalCoordinateSystem:

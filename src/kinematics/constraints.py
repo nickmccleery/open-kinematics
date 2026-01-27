@@ -11,10 +11,10 @@ from typing import Set
 
 import numpy as np
 
-from kinematics.constants import EPSILON
-from kinematics.enums import Axis, PointID
-from kinematics.types import Vec3, make_vec3
-from kinematics.vector_utils.geometric import (
+from kinematics.core.constants import EPSILON
+from kinematics.core.enums import Axis, PointID
+from kinematics.core.types import Vec3, make_vec3
+from kinematics.core.vector_utils.geometric import (
     compute_point_point_distance,
     compute_point_to_line_distance,
     compute_point_to_plane_distance,

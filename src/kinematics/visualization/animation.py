@@ -10,8 +10,8 @@ from pathlib import Path
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 
-from kinematics.enums import PointID
-from kinematics.types import Vec3
+from kinematics.core.enums import PointID
+from kinematics.core.types import Vec3
 from kinematics.visualization.main import SuspensionVisualizer
 from kinematics.visualization.plots import (
     compute_bounds_from_states,

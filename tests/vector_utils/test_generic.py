@@ -5,8 +5,8 @@ Tests for the generic vector utility functions.
 import numpy as np
 import pytest
 
-from kinematics.constants import EPSILON, TEST_TOLERANCE
-from kinematics.vector_utils.generic import (
+from kinematics.core.constants import EPSILON, TEST_TOLERANCE
+from kinematics.core.vector_utils.generic import (
     compute_2d_vector_vector_intersection,
     normalize_vector,
     project_coordinate,

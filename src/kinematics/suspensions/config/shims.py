@@ -9,11 +9,11 @@ from __future__ import annotations
 
 import numpy as np
 
-from kinematics.constants import EPSILON
-from kinematics.suspensions.core.settings import CamberShimConfigOutboard
-from kinematics.types import Vec3, make_vec3
-from kinematics.vector_utils.generic import normalize_vector
-from kinematics.vector_utils.geometric import compute_vector_vector_angle
+from kinematics.core.constants import EPSILON
+from kinematics.core.types import Vec3, make_vec3
+from kinematics.core.vector_utils.generic import normalize_vector
+from kinematics.core.vector_utils.geometric import compute_vector_vector_angle
+from kinematics.suspensions.config.settings import CamberShimConfigOutboard
 
 
 def compute_shim_offset(shim_config: CamberShimConfigOutboard) -> Vec3:

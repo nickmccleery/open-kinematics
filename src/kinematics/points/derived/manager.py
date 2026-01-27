@@ -7,8 +7,8 @@ from typing import Callable, Set
 
 import numpy as np
 
-from kinematics.enums import PointID
-from kinematics.types import Vec3
+from kinematics.core.enums import PointID
+from kinematics.core.types import Vec3
 
 # Function signature for computing a derived point position.
 PositionFn = Callable[[dict[PointID, Vec3]], np.ndarray]

@@ -13,10 +13,10 @@ import numpy as np
 from matplotlib.figure import Figure
 from mpl_toolkits.mplot3d.axes3d import Axes3D
 
-from kinematics.enums import PointID
+from kinematics.core.enums import PointID
+from kinematics.core.types import Vec3
 from kinematics.state import SuspensionState
 from kinematics.suspensions.base import Suspension
-from kinematics.types import Vec3
 from kinematics.visualization.main import SuspensionVisualizer, WheelVisualization
 
 

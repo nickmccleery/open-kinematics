@@ -9,8 +9,8 @@ from typing import List, Set
 
 import numpy as np
 
-from kinematics.enums import PointID
-from kinematics.types import Vec3
+from kinematics.core.enums import PointID
+from kinematics.core.types import Vec3
 
 
 @dataclass

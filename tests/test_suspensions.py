@@ -14,10 +14,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from kinematics.enums import PointID, ShimType, Units
+from kinematics.core.enums import PointID, ShimType, Units
 from kinematics.io.geometry_loader import load_geometry
 from kinematics.suspensions.base import Suspension
-from kinematics.suspensions.core.settings import (
+from kinematics.suspensions.config.settings import (
     CamberShimConfigOutboard,
     SuspensionConfig,
     TireConfig,
@@ -31,7 +31,7 @@ from kinematics.suspensions.validation import (
     format_validation_errors,
     levenshtein_distance,
 )
-from kinematics.types import make_vec3
+from kinematics.core.types import make_vec3
 
 # Test fixtures
 

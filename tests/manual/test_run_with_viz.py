@@ -3,14 +3,14 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from kinematics.constants import TEST_TOLERANCE
+from kinematics.core.constants import TEST_TOLERANCE
 from kinematics.constraints import DistanceConstraint
-from kinematics.enums import Axis, PointID, TargetPositionMode
+from kinematics.core.enums import Axis, PointID, TargetPositionMode
 from kinematics.io.geometry_loader import load_geometry
 from kinematics.main import solve_sweep
 from kinematics.points.derived.manager import DerivedPointsManager
 from kinematics.solver import PointTarget
-from kinematics.types import PointTargetAxis, SweepConfig
+from kinematics.core.types import PointTargetAxis, SweepConfig
 from kinematics.visualization.animation import create_animation
 from kinematics.visualization.main import SuspensionVisualizer, WheelVisualization
 

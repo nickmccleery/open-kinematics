@@ -1,6 +1,6 @@
 import numpy as np
 
-from kinematics.enums import PointID
+from kinematics.core.enums import PointID
 from kinematics.state import SuspensionState
 
 

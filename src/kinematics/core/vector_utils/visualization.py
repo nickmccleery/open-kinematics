@@ -6,7 +6,7 @@ from typing import Optional
 
 import numpy as np
 
-from kinematics.types import Vec3
+from kinematics.core.types import Vec3
 
 PLOTTING_ENABLED = False
 

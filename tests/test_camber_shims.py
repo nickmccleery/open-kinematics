@@ -9,16 +9,16 @@ import copy
 
 import numpy as np
 
-from kinematics.enums import Axis, PointID, Units
+from kinematics.core.enums import Axis, PointID, Units
 from kinematics.io.geometry_loader import load_geometry
-from kinematics.suspensions.core.settings import CamberShimConfigOutboard
-from kinematics.suspensions.core.shims import (
+from kinematics.suspensions.config.settings import CamberShimConfigOutboard
+from kinematics.suspensions.config.shims import (
     compute_shim_offset,
     compute_upright_rotation_from_shim,
     rotate_point_about_axis,
 )
 from kinematics.suspensions.double_wishbone import DoubleWishboneSuspension
-from kinematics.types import make_vec3
+from kinematics.core.types import make_vec3
 
 
 def test_compute_shim_offset_positive():

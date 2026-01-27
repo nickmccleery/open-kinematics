@@ -3,8 +3,8 @@ import math
 import numpy as np
 import pytest
 
-from kinematics.constants import TEST_TOLERANCE
-from kinematics.vector_utils.geometric import (
+from kinematics.core.constants import TEST_TOLERANCE
+from kinematics.core.vector_utils.geometric import (
     compute_point_point_distance,
     compute_point_point_midpoint,
     compute_point_to_line_distance,
@@ -17,7 +17,7 @@ from kinematics.vector_utils.geometric import (
     intersect_two_planes,
     plane_from_three_points,
 )
-from kinematics.vector_utils.visualization import (
+from kinematics.core.vector_utils.visualization import (
     plot_line_plane_intersection,
     plot_plane_from_points,
     plot_plane_intersection,

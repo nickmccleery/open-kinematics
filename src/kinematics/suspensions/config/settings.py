@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from kinematics.constants import MM_PER_INCH
+from kinematics.core.constants import MM_PER_INCH
 
 
 @dataclass
