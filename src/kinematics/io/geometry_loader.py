@@ -20,11 +20,6 @@ from kinematics.core.types import make_vec3
 from kinematics.suspensions.base import Suspension
 from kinematics.suspensions.config.settings import SuspensionConfig
 from kinematics.suspensions.registry import get_suspension_class, list_supported_types
-from kinematics.suspensions.validation import (
-    ValidationError,
-    find_closest_matches,
-    format_validation_errors,
-)
 
 
 def load_geometry(file_path: Path) -> Suspension:
@@ -122,7 +117,7 @@ def _load_suspension(
     raw_hardpoints = yaml_data.get("hardpoints", {})
     errors = _validate_hardpoints(raw_hardpoints, suspension_class)
     if errors:
-        raise ValueError(format_validation_errors(errors))
+        raise ValueError("Validation failed:\n  - " + "\n  - ".join(errors))
 
     # Load configuration using marshmallow.
     config_data = yaml_data.get("config", yaml_data.get("configuration", {}))
@@ -135,7 +130,7 @@ def _load_suspension(
     # Validate shim config if present.
     shim_errors = _validate_shim_config(config.camber_shim, suspension_class)
     if shim_errors:
-        raise ValueError(format_validation_errors(shim_errors))
+        raise ValueError("Validation failed:\n  - " + "\n  - ".join(shim_errors))
 
     # Parse units.
     units_str = yaml_data.get("units", "MILLIMETERS")
@@ -167,7 +162,7 @@ def _load_suspension(
 def _validate_hardpoints(
     hardpoints: dict[str, Any],
     suspension_class: type[Suspension],
-) -> list[ValidationError]:
+) -> list[str]:
     """
     Validate hardpoints against a suspension class definition.
 
@@ -176,12 +171,10 @@ def _validate_hardpoints(
         suspension_class: The suspension class to validate against.
 
     Returns:
-        List of validation errors (empty if valid).
+        List of error messages (empty if valid).
     """
-    errors: list[ValidationError] = []
+    errors: list[str] = []
     valid_points = suspension_class.all_valid_points()
-    valid_names = {p.name for p in valid_points}
-
     seen_point_ids: set[PointID] = set()
 
     for key, value in hardpoints.items():
@@ -193,16 +186,7 @@ def _validate_hardpoints(
             if point_id not in valid_points:
                 raise KeyError()
         except KeyError:
-            suggestions = find_closest_matches(normalized_key, valid_names)
-            suggestion_text = (
-                f"Did you mean: {', '.join(suggestions)}?" if suggestions else None
-            )
-            errors.append(
-                ValidationError(
-                    message=f"Unknown hardpoint key '{key}'",
-                    suggestion=suggestion_text,
-                )
-            )
+            errors.append(f"Unknown hardpoint key '{key}'")
             continue
 
         seen_point_ids.add(point_id)
@@ -212,18 +196,14 @@ def _validate_hardpoints(
     missing = suspension_class.REQUIRED_POINTS - seen_point_ids
     if missing:
         missing_names = sorted(p.name for p in missing)
-        errors.append(
-            ValidationError(
-                message=f"Missing required hardpoints: {', '.join(missing_names)}",
-            )
-        )
+        errors.append(f"Missing required hardpoints: {', '.join(missing_names)}")
 
     return errors
 
 
-def _validate_vec3(key: str, value: Any) -> list[ValidationError]:
+def _validate_vec3(key: str, value: Any) -> list[str]:
     """Validate that a value is a valid [x, y, z] vec3."""
-    errors: list[ValidationError] = []
+    errors: list[str] = []
 
     if isinstance(value, dict):
         # Dict format {x:, y:, z:}.
@@ -232,46 +212,23 @@ def _validate_vec3(key: str, value: Any) -> list[ValidationError]:
 
         missing = required_keys - provided_keys
         if missing:
-            errors.append(
-                ValidationError(
-                    message=f"'{key}' missing keys: {', '.join(sorted(missing))}",
-                    suggestion="Dict format requires {x: val, y: val, z: val}",
-                )
-            )
+            errors.append(f"'{key}' missing keys: {', '.join(sorted(missing))}")
             return errors
 
         for coord in ["x", "y", "z"]:
             if coord in value and not isinstance(value[coord], (int, float)):
-                errors.append(
-                    ValidationError(
-                        message=f"'{key}' {coord} must be numeric",
-                    )
-                )
+                errors.append(f"'{key}' {coord} must be numeric")
     elif isinstance(value, (list, tuple)):
         if len(value) != 3:
-            errors.append(
-                ValidationError(
-                    message=f"'{key}' needs 3 coordinates, got {len(value)}",
-                    suggestion="Provide [x, y, z] coordinates",
-                )
-            )
+            errors.append(f"'{key}' needs 3 coordinates, got {len(value)}")
             return errors
 
         for i, v in enumerate(value):
             if not isinstance(v, (int, float)):
                 coord_name = ["x", "y", "z"][i]
-                errors.append(
-                    ValidationError(
-                        message=f"'{key}' {coord_name} must be numeric",
-                    )
-                )
+                errors.append(f"'{key}' {coord_name} must be numeric")
     else:
-        errors.append(
-            ValidationError(
-                message=f"'{key}' must be [x, y, z], got {type(value).__name__}",
-                suggestion="Use format: [x, y, z] or {x: val, y: val, z: val}",
-            )
-        )
+        errors.append(f"'{key}' must be [x, y, z], got {type(value).__name__}")
 
     return errors
 
@@ -279,9 +236,9 @@ def _validate_vec3(key: str, value: Any) -> list[ValidationError]:
 def _validate_shim_config(
     shim_config: Any,
     suspension_class: type[Suspension],
-) -> list[ValidationError]:
+) -> list[str]:
     """Validate shim config against suspension class supported shims."""
-    errors: list[ValidationError] = []
+    errors: list[str] = []
 
     # If class doesn't support outboard camber shims, skip validation.
     if ShimType.OUTBOARD_CAMBER not in suspension_class.SUPPORTED_SHIMS:
@@ -302,11 +259,7 @@ def _validate_shim_config(
     elif isinstance(shim_config, dict):
         config = shim_config
     else:
-        errors.append(
-            ValidationError(
-                message="camber_shim must be a dict or CamberShimConfigOutboard",
-            )
-        )
+        errors.append("camber_shim must be a dict or CamberShimConfigOutboard")
         return errors
 
     # Validate required fields.
@@ -318,11 +271,7 @@ def _validate_shim_config(
     ]
     for field in required_fields:
         if field not in config:
-            errors.append(
-                ValidationError(
-                    message=f"camber_shim missing required field: {field}",
-                )
-            )
+            errors.append(f"camber_shim missing required field: {field}")
 
     if errors:
         return errors
@@ -345,21 +294,12 @@ def _validate_shim_config(
         magnitude = 0.0
 
     if magnitude < 1e-6:
-        errors.append(
-            ValidationError(
-                message="shim_normal vector is near-zero",
-                suggestion="shim_normal must be non-zero (will be normalized)",
-            )
-        )
+        errors.append("shim_normal vector is near-zero")
 
     # Validate thicknesses.
     for field in ["design_thickness", "setup_thickness"]:
         value = config.get(field)
         if value is not None and not isinstance(value, (int, float)):
-            errors.append(
-                ValidationError(
-                    message=f"camber_shim.{field} must be numeric",
-                )
-            )
+            errors.append(f"camber_shim.{field} must be numeric")
 
     return errors

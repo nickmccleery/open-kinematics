@@ -288,7 +288,7 @@ class Upright(RigidBody):
             mount_ids: Mapping of mount role to PointID
                        {"upper_ball_joint": PointID.UPPER_WISHBONE_OUTBOARD,
                         "lower_ball_joint": PointID.LOWER_WISHBONE_OUTBOARD,
-                        "steering_pickup": PointID.TRACKROD_OUTBOARD}
+                        "trackrod_outboard": PointID.TRACKROD_OUTBOARD}
             hardpoints: The central hardpoints registry mapping PointID to coordinates
             attachments: Attachment positions in global coordinates at design
                          {"axle_inboard": Vec3, "axle_outboard": Vec3}
@@ -301,7 +301,7 @@ class Upright(RigidBody):
             ValueError: If required mounts or attachments are missing
         """
         # Validate required mounts.
-        required_mounts = {"upper_ball_joint", "lower_ball_joint", "steering_pickup"}
+        required_mounts = {"upper_ball_joint", "lower_ball_joint", "trackrod_outboard"}
         missing_mounts = required_mounts - set(mount_ids.keys())
         if missing_mounts:
             raise ValueError(f"Missing required mounts: {missing_mounts}")
@@ -316,7 +316,7 @@ class Upright(RigidBody):
         upright_hardpoints = UprightHardpoints(
             upper_ball_joint=make_vec3(hardpoints[mount_ids["upper_ball_joint"]]),
             lower_ball_joint=make_vec3(hardpoints[mount_ids["lower_ball_joint"]]),
-            trackrod_outboard=make_vec3(hardpoints[mount_ids["steering_pickup"]]),
+            trackrod_outboard=make_vec3(hardpoints[mount_ids["trackrod_outboard"]]),
         )
 
         upright_attachments = UprightAttachments(
@@ -354,7 +354,7 @@ class Upright(RigidBody):
         new_hardpoints = {
             "upper_ball_joint": hardpoints[mount_ids["upper_ball_joint"]],
             "lower_ball_joint": hardpoints[mount_ids["lower_ball_joint"]],
-            "trackrod_outboard": hardpoints[mount_ids["steering_pickup"]],
+            "trackrod_outboard": hardpoints[mount_ids["trackrod_outboard"]],
         }
         self.update_from_hardpoints(new_hardpoints)
 

@@ -7,9 +7,9 @@ definition, geometry storage, and kinematic behavior in a single unified class.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from functools import partial
-from typing import TYPE_CHECKING, ClassVar, Sequence
+from typing import ClassVar, Sequence
 
 import numpy as np
 
@@ -20,7 +20,7 @@ from kinematics.constraints import (
     DistanceConstraint,
     PointOnLineConstraint,
 )
-from kinematics.core.enums import PointID, ShimType, Units
+from kinematics.core.enums import PointID, ShimType
 from kinematics.core.types import Vec3, WorldAxisSystem, make_vec3
 from kinematics.core.vector_utils.geometric import (
     compute_point_point_distance,
@@ -40,16 +40,12 @@ from kinematics.points.derived.definitions import (
 from kinematics.points.derived.manager import DerivedPointsManager, DerivedPointsSpec
 from kinematics.state import SuspensionState
 from kinematics.suspensions.base import Suspension
-from kinematics.suspensions.config.settings import SuspensionConfig
 from kinematics.suspensions.config.shims import (
     compute_shim_offset,
     compute_upright_rotation_from_shim,
     rotate_point_about_axis,
 )
 from kinematics.visualization.main import LinkVisualization
-
-if TYPE_CHECKING:
-    pass
 
 
 @dataclass
@@ -98,7 +94,7 @@ class DoubleWishboneSuspension(Suspension):
     UPRIGHT_MOUNT_ROLES: ClassVar[dict[str, PointID]] = {
         "upper_ball_joint": PointID.UPPER_WISHBONE_OUTBOARD,
         "lower_ball_joint": PointID.LOWER_WISHBONE_OUTBOARD,
-        "steering_pickup": PointID.TRACKROD_OUTBOARD,
+        "trackrod_outboard": PointID.TRACKROD_OUTBOARD,
     }
 
     # Free points that move during solving.
@@ -110,14 +106,6 @@ class DoubleWishboneSuspension(Suspension):
         PointID.TRACKROD_OUTBOARD,
         PointID.TRACKROD_INBOARD,
     )
-
-    name: str = "unnamed"
-    version: str = "0.0.0"
-    units: Units = Units.MILLIMETERS
-    hardpoints: dict[PointID, Vec3] = field(default_factory=dict)
-    config: SuspensionConfig | None = None
-
-    _initial_state: SuspensionState | None = field(default=None, repr=False)
 
     def free_points(self) -> Sequence[PointID]:
         """Points that move during solving."""

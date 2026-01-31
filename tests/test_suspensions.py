@@ -25,12 +25,6 @@ from kinematics.suspensions.config.settings import (
 )
 from kinematics.suspensions.double_wishbone import DoubleWishboneSuspension
 from kinematics.suspensions.registry import get_suspension_class, list_supported_types
-from kinematics.suspensions.validation import (
-    ValidationError,
-    find_closest_matches,
-    format_validation_errors,
-    levenshtein_distance,
-)
 from kinematics.core.types import make_vec3
 
 # Test fixtures
@@ -274,95 +268,6 @@ class TestRegistry:
         Test getting a non-existent suspension class.
         """
         assert get_suspension_class("nonexistent") is None
-
-
-# Test validation utilities
-
-
-class TestLevenshteinDistance:
-    """
-    Tests for Levenshtein distance calculation.
-    """
-
-    def test_identical_strings(self):
-        """
-        Test distance between identical strings is 0.
-        """
-        assert levenshtein_distance("hello", "hello") == 0
-
-    def test_empty_string(self):
-        """
-        Test distance with empty string.
-        """
-        assert levenshtein_distance("hello", "") == 5
-        assert levenshtein_distance("", "world") == 5
-
-    def test_single_character_difference(self):
-        """
-        Test single character differences.
-        """
-        assert levenshtein_distance("hello", "hallo") == 1  # Substitution
-        assert levenshtein_distance("hello", "helloo") == 1  # Insertion
-        assert levenshtein_distance("hello", "helo") == 1  # Deletion
-
-
-class TestFindClosestMatches:
-    """
-    Tests for finding closest matching keys.
-    """
-
-    def test_finds_exact_match(self):
-        """
-        Test finding exact matches.
-        """
-        valid = {"UPPER_WISHBONE_OUTBOARD", "LOWER_WISHBONE_OUTBOARD"}
-        matches = find_closest_matches("UPPER_WISHBONE_OUTBOARD", valid)
-        assert "UPPER_WISHBONE_OUTBOARD" in matches
-
-    def test_finds_typo_matches(self):
-        """
-        Test finding matches for typos.
-        """
-        valid = {"UPPER_WISHBONE_OUTBOARD", "LOWER_WISHBONE_OUTBOARD"}
-        matches = find_closest_matches("UPPER_WISHBONE_OUTBAORD", valid)  # Typo
-        assert "UPPER_WISHBONE_OUTBOARD" in matches
-
-    def test_respects_max_distance(self):
-        """
-        Test that max_distance is respected.
-        """
-        valid = {"ABCDEF"}
-        matches = find_closest_matches("XYZ", valid, max_distance=2)
-        assert len(matches) == 0
-
-
-class TestFormatValidationErrors:
-    """
-    Tests for error message formatting.
-    """
-
-    def test_format_empty_errors(self):
-        """
-        Test formatting empty error list.
-        """
-        assert format_validation_errors([]) == ""
-
-    def test_format_single_error(self):
-        """
-        Test formatting single error.
-        """
-        errors = [ValidationError("Test error")]
-        formatted = format_validation_errors(errors)
-        assert "Validation failed" in formatted
-        assert "Test error" in formatted
-
-    def test_format_error_with_suggestion(self):
-        """
-        Test formatting error with suggestion.
-        """
-        errors = [ValidationError("Unknown key", suggestion="Did you mean X?")]
-        formatted = format_validation_errors(errors)
-        assert "Did you mean X?" in formatted
 
 
 # Test YAML loading

@@ -374,7 +374,7 @@ class TestHardpointsArchitecture:
         return {
             "upper_ball_joint": PointID.UPPER_WISHBONE_OUTBOARD,
             "lower_ball_joint": PointID.LOWER_WISHBONE_OUTBOARD,
-            "steering_pickup": PointID.TRACKROD_OUTBOARD,
+            "trackrod_outboard": PointID.TRACKROD_OUTBOARD,
         }
 
     @pytest.fixture
@@ -404,7 +404,7 @@ class TestHardpointsArchitecture:
         assert upright.mount_ids is not None
         assert upright.mount_ids["upper_ball_joint"] == PointID.UPPER_WISHBONE_OUTBOARD
         assert upright.mount_ids["lower_ball_joint"] == PointID.LOWER_WISHBONE_OUTBOARD
-        assert upright.mount_ids["steering_pickup"] == PointID.TRACKROD_OUTBOARD
+        assert upright.mount_ids["trackrod_outboard"] == PointID.TRACKROD_OUTBOARD
 
         # Verify hardpoints match registry values
         np.testing.assert_allclose(
@@ -457,7 +457,7 @@ class TestHardpointsArchitecture:
         """
         incomplete_mount_ids = {
             "upper_ball_joint": PointID.UPPER_WISHBONE_OUTBOARD,
-            # Missing lower_ball_joint and steering_pickup
+            # Missing lower_ball_joint and trackrod_outboard
         }
 
         with pytest.raises(ValueError, match="Missing required mounts"):
