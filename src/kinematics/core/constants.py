@@ -9,5 +9,5 @@ SOLVE_TOLERANCE_GRAD = 1e-7
 # Tolerance for tests; has headroom over solve tolerances.
 TEST_TOLERANCE = 1e-3
 
-# Because rims are still spec'd in FREEDOM UNITS.
+# Because rims are still spec'd in freedom units.
 MM_PER_INCH = 25.4

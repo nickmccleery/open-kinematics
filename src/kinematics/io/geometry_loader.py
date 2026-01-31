@@ -86,7 +86,7 @@ def load_geometry(file_path: Path) -> Suspension:
                 f"Supported types: {', '.join(available)}"
             )
 
-        return _load_suspension(yaml_data, suspension_class)
+        return load_suspension(yaml_data, suspension_class)
 
     except yaml.YAMLError as e:
         raise ValueError(f"Error parsing geometry file: {e}") from e
@@ -96,7 +96,7 @@ def load_geometry(file_path: Path) -> Suspension:
         raise OSError(f"Error reading geometry file: {e}") from e
 
 
-def _load_suspension(
+def load_suspension(
     yaml_data: dict[str, Any],
     suspension_class: type[Suspension],
 ) -> Suspension:
@@ -115,7 +115,7 @@ def _load_suspension(
     """
     # Extract and validate hardpoints.
     raw_hardpoints = yaml_data.get("hardpoints", {})
-    errors = _validate_hardpoints(raw_hardpoints, suspension_class)
+    errors = validate_hardpoints(raw_hardpoints, suspension_class)
     if errors:
         raise ValueError("Validation failed:\n  - " + "\n  - ".join(errors))
 
@@ -159,7 +159,7 @@ def _load_suspension(
     )
 
 
-def _validate_hardpoints(
+def validate_hardpoints(
     hardpoints: dict[str, Any],
     suspension_class: type[Suspension],
 ) -> list[str]:

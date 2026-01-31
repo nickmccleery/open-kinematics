@@ -116,11 +116,11 @@ class DoubleWishboneSuspension(Suspension):
         if self._initial_state is not None:
             return self._initial_state
 
-        positions = self._get_hardpoints_as_arrays()
+        positions = self.get_hardpoints_as_arrays()
 
         # Apply camber shim if configured.
         if self.config is not None and self.config.camber_shim is not None:
-            self._apply_camber_shim(positions)
+            self.apply_camber_shim(positions)
 
         # Compute derived points.
         derived_spec = self.derived_spec()
@@ -242,7 +242,7 @@ class DoubleWishboneSuspension(Suspension):
     def compute_side_view_instant_center(self, state: SuspensionState) -> Vec3 | None:
         """Compute side view instant center from wishbone planes."""
         try:
-            instant_axis = self._compute_instant_axis(state)
+            instant_axis = self.compute_instant_axis(state)
         except ValueError:
             raise
 
@@ -262,7 +262,7 @@ class DoubleWishboneSuspension(Suspension):
 
         return svic
 
-    def _compute_instant_axis(self, state: SuspensionState) -> tuple[Vec3, Vec3] | None:
+    def compute_instant_axis(self, state: SuspensionState) -> tuple[Vec3, Vec3] | None:
         """Compute 3D instant axis from wishbone planes intersection."""
         upper_front = state.positions[PointID.UPPER_WISHBONE_INBOARD_FRONT]
         upper_rear = state.positions[PointID.UPPER_WISHBONE_INBOARD_REAR]
@@ -338,11 +338,11 @@ class DoubleWishboneSuspension(Suspension):
             ),
         ]
 
-    def _apply_camber_shim(self, positions: dict[PointID, np.ndarray]) -> None:
+    def apply_camber_shim(self, positions: dict[PointID, np.ndarray]) -> None:
         """
         Apply camber shim transformation to attachment positions.
 
-        The shim rotates ONLY attachments (axle points), NOT the hardpoints
+        The shim rotates only attachments (axle points), not the hardpoints
         (ball joints). The shim sits between the structural upright and the hub/bearing
         assembly.
         """

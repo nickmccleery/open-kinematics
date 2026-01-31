@@ -55,7 +55,7 @@ class Suspension(ABC):
 
     def __post_init__(self) -> None:
         """Validate instance after creation."""
-        self._validate_hardpoints()
+        self.validate_hardpoints()
 
     @classmethod
     def all_valid_points(cls) -> frozenset[PointID]:
@@ -131,7 +131,7 @@ class Suspension(ABC):
         """
         ...
 
-    def _validate_hardpoints(self) -> None:
+    def validate_hardpoints(self) -> None:
         """Validate that required hardpoints are present."""
         present = set(self.hardpoints.keys())
         missing = self.REQUIRED_POINTS - present
@@ -139,6 +139,6 @@ class Suspension(ABC):
             missing_names = sorted(p.name for p in missing)
             raise ValueError(f"Missing required hardpoints: {', '.join(missing_names)}")
 
-    def _get_hardpoints_as_arrays(self) -> dict[PointID, np.ndarray]:
+    def get_hardpoints_as_arrays(self) -> dict[PointID, np.ndarray]:
         """Convert hardpoints to numpy arrays."""
         return {pid: np.array(pos) for pid, pos in self.hardpoints.items()}
