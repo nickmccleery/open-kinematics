@@ -4,18 +4,17 @@ from dataclasses import dataclass
 from functools import cached_property
 from typing import TYPE_CHECKING
 
+from kinematics.core.types import Vec3
 from kinematics.metrics.angles import calculate_camber, calculate_caster, calculate_toe
 from kinematics.metrics.antis import (
     calculate_geometric_anti_dive,
     calculate_geometric_anti_squat,
 )
 from kinematics.state import SuspensionState
-from kinematics.suspensions.core.settings import SuspensionConfig
-from kinematics.types import Vec3, make_vec3
+from kinematics.suspensions.config.settings import SuspensionConfig
 
 if TYPE_CHECKING:
-    from kinematics.suspensions.core.geometry import SuspensionGeometry
-    from kinematics.suspensions.core.provider import SuspensionProvider
+    from kinematics.suspensions.base import Suspension
 
 
 @dataclass(frozen=True)
@@ -42,14 +41,14 @@ class MetricsCalculator:
     """
     Computes and caches a full set of kinematic metrics for a single SuspensionState.
 
-    This class uses a provider to access suspension-specific calculations (like SVIC)
+    This class uses a suspension to access suspension-specific calculations (like SVIC)
     and implements caching to avoid redundant computations of expensive metrics.
     """
 
     def __init__(
         self,
         state: SuspensionState,
-        provider: "SuspensionProvider",
+        suspension: "Suspension",
         geometry_config: "SuspensionConfig",
     ):
         """
@@ -57,12 +56,11 @@ class MetricsCalculator:
 
         Args:
             state: The solved suspension state to analyze.
-            provider: The suspension provider for type-specific calculations.
-            cg_height: Center of gravity height above ground in mm.
-            tire_radius: Static loaded radius of the tire in mm.
+            suspension: The suspension for type-specific calculations.
+            geometry_config: Suspension configuration with vehicle parameters.
         """
         self.state = state
-        self.provider = provider
+        self.suspension = suspension
         self.geometry_config = geometry_config
 
     @cached_property
@@ -70,10 +68,10 @@ class MetricsCalculator:
         """
         Compute and cache the side view instant center.
 
-        This uses the suspension provider's type-specific SVIC calculation. Returns None
+        This uses the suspension's type-specific SVIC calculation. Returns None
         if SVIC cannot be computed (e.g., parallel links).
         """
-        return self.provider.compute_side_view_instant_center(self.state)
+        return self.suspension.compute_side_view_instant_center(self.state)
 
     @property
     def camber(self) -> float:
@@ -109,13 +107,7 @@ class MetricsCalculator:
         return calculate_geometric_anti_dive(
             self.state,
             self.side_view_ic,
-            make_vec3(
-                [
-                    self.geometry_config.cg_position["x"],
-                    self.geometry_config.cg_position["y"],
-                    self.geometry_config.cg_position["z"],
-                ]
-            ),
+            self.geometry_config.cg_position,
             self.geometry_config.wheelbase,
             self.geometry_config.wheel.tire.nominal_radius,
         )
@@ -133,13 +125,7 @@ class MetricsCalculator:
         return calculate_geometric_anti_squat(
             self.state,
             self.side_view_ic,
-            make_vec3(
-                [
-                    self.geometry_config.cg_position["x"],
-                    self.geometry_config.cg_position["y"],
-                    self.geometry_config.cg_position["z"],
-                ]
-            ),
+            self.geometry_config.cg_position,
             self.geometry_config.wheelbase,
             self.geometry_config.wheel.tire.nominal_radius,
         )
@@ -147,7 +133,7 @@ class MetricsCalculator:
 
 def compute_all_metrics(
     state: SuspensionState,
-    provider: "SuspensionProvider",
+    suspension: "Suspension",
     geometry_config: "SuspensionConfig",
 ) -> SuspensionMetrics:
     """
@@ -159,13 +145,13 @@ def compute_all_metrics(
 
     Args:
         state: The solved SuspensionState to analyze.
-        provider: The suspension provider for type-specific calculations.
+        suspension: The suspension for type-specific calculations.
         geometry_config: The suspension geometry configuration.
 
     Returns:
         A SuspensionMetrics dataclass containing all calculated values.
     """
-    calc = MetricsCalculator(state, provider, geometry_config)
+    calc = MetricsCalculator(state, suspension, geometry_config)
 
     return SuspensionMetrics(
         camber=calc.camber,
@@ -176,29 +162,29 @@ def compute_all_metrics(
     )
 
 
-def compute_all_metrics_from_geometry(
+def compute_all_metrics_from_suspension(
     state: SuspensionState,
-    geometry: "SuspensionGeometry",
-    provider: "SuspensionProvider",
+    suspension: "Suspension",
 ) -> SuspensionMetrics:
     """
-    Compute metrics using parameters from the suspension geometry configuration.
+    Compute metrics using parameters from the suspension configuration.
 
-    This convenience function extracts tire radius and CG height from the geometry
+    This convenience function extracts tire radius and CG height from the suspension
     configuration, then delegates to compute_all_metrics(). It's useful when all
     vehicle parameters are already defined in the geometry file.
 
     Args:
         state: The solved SuspensionState to analyze.
-        geometry: The suspension geometry containing wheel/tire configuration.
-        provider: The suspension provider for type-specific calculations.
+        suspension: The suspension containing wheel/tire configuration.
 
     Returns:
         A SuspensionMetrics dataclass containing all calculated values.
     """
+    if suspension.config is None:
+        raise ValueError("Suspension has no configuration")
 
     return compute_all_metrics(
         state=state,
-        provider=provider,
-        geometry_config=geometry.configuration,
+        suspension=suspension,
+        geometry_config=suspension.config,
     )

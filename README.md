@@ -18,7 +18,7 @@ The tool is built around a numerical solver that determines the unique positions
 
 - **Geometric Constraint Solver**: Uses a numerical approach (Levenberg-Marquardt) to solve for the kinematic state of the system based on geometric constraints.
 - **Parametric Sweeps**: Simulate suspension motion by sweeping through a range of inputs, such as vertical wheel travel and steering rack displacement.
-- **Extensible Suspension Models**: Define different suspension geometries (e.g., Double Wishbone, MacPherson Strut) using simple YAML configuration files.
+- **Template-Based Suspension Models**: Define suspension geometries using templates (currently double wishbone only) with simple YAML configuration files.
 - **Derived Points System**: A dependency-aware system for calculating the position of non-kinematic points (like wheel centers) based on the solved positions of core hard points.
 - **Data Export**: Save simulation results in wide-format CSV or Apache Parquet files for further analysis.
 - **Visualization**: Generate static plots of the design condition and create MP4/GIF animations of sweep motions.

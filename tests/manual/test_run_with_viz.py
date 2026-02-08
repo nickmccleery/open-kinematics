@@ -3,20 +3,14 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from kinematics.constants import TEST_TOLERANCE
 from kinematics.constraints import DistanceConstraint
-from kinematics.enums import Axis, PointID, TargetPositionMode
+from kinematics.core.constants import TEST_TOLERANCE
+from kinematics.core.enums import Axis, PointID, TargetPositionMode
+from kinematics.core.types import PointTargetAxis, SweepConfig
 from kinematics.io.geometry_loader import load_geometry
 from kinematics.main import solve_sweep
 from kinematics.points.derived.manager import DerivedPointsManager
 from kinematics.solver import PointTarget
-from kinematics.suspensions.implementations.double_wishbone import (
-    DoubleWishboneGeometry,
-    DoubleWishboneProvider,
-)
-from kinematics.types import PointTargetAxis, SweepConfig
-from kinematics.visualization.animation import create_animation
-from kinematics.visualization.main import SuspensionVisualizer, WheelVisualization
 
 
 @pytest.fixture
@@ -68,30 +62,31 @@ def sweep_config_fixture(displacements):
 def test_run_solver(
     double_wishbone_geometry_file: Path, sweep_config_fixture, displacements
 ) -> None:
-    """
-    uv run pytest tests/manual/test_run_with_viz.py::test_run_solver -m "manual"
-    """
+    """Run solver with visualization (manual test)."""
     hub_displacements, _ = displacements
 
-    loaded = load_geometry(double_wishbone_geometry_file)
-    if not isinstance(loaded.geometry, DoubleWishboneGeometry):
-        raise ValueError("Invalid geometry type")
+    suspension = load_geometry(double_wishbone_geometry_file)
+    if suspension.TYPE_KEY not in (
+        "double_wishbone",
+        "double_wishbone_front",
+        "double_wishbone_rear",
+    ):
+        raise ValueError("Manual viz test only supports double wishbone suspensions")
 
     # Solve for all positions.
-    position_states, _ = solve_sweep(loaded.provider, sweep_config_fixture)
+    position_states, _ = solve_sweep(suspension, sweep_config_fixture)
 
     print("Solve complete, verifying constraints...")
 
-    # Get initial positions for comparison using the provider.
-    provider = DoubleWishboneProvider(loaded.geometry)
-    derived_manager = DerivedPointsManager(provider.derived_spec())
+    # Get initial positions for comparison using the suspension.
+    derived_manager = DerivedPointsManager(suspension.derived_spec())
 
-    initial_state = provider.initial_state()
+    initial_state = suspension.initial_state()
     derived_manager.update_in_place(initial_state.positions)
     initial_positions = initial_state.positions.copy()
 
     # Get only the length constraints for verification
-    all_constraints = provider.constraints()
+    all_constraints = suspension.constraints()
 
     length_constraints = [
         c for c in all_constraints if isinstance(c, DistanceConstraint)
@@ -124,6 +119,10 @@ def test_run_solver(
 
     print("Creating animation...")
 
+    # Defer visualization imports to avoid collection errors when matplotlib is missing.
+    from kinematics.visualization.animation import create_animation
+    from kinematics.visualization.main import SuspensionVisualizer, WheelVisualization
+
     # Extract positions from SuspensionState objects for animation
     position_states_positions = [state.positions for state in position_states]
     position_states_animate = (
@@ -142,7 +141,7 @@ def test_run_solver(
         width=225,
     )
 
-    visualization_links = loaded.provider.get_visualization_links()
+    visualization_links = suspension.get_visualization_links()
     visualizer = SuspensionVisualizer(visualization_links, wheel_config)
     create_animation(
         position_states_animate,

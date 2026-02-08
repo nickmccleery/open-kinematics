@@ -1,9 +1,9 @@
 import numpy as np
 import pytest
 
-from kinematics.enums import Axis
+from kinematics.core.enums import Axis
 from kinematics.targets import resolve_target
-from kinematics.types import PointTargetAxis, PointTargetVector, WorldAxisSystem
+from kinematics.core.types import PointTargetAxis, PointTargetVector, WorldAxisSystem
 
 
 def test_resolve_axis_targets_returns_unit_axes():

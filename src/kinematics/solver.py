@@ -11,19 +11,19 @@ from typing import NamedTuple
 import numpy as np
 from scipy.optimize import least_squares
 
-from kinematics.constants import (
+from kinematics.constraints import Constraint
+from kinematics.core.constants import (
     SOLVE_TOLERANCE_GRAD,
     SOLVE_TOLERANCE_STEP,
     SOLVE_TOLERANCE_VALUE,
 )
-from kinematics.constraints import Constraint
+from kinematics.core.types import PointTarget, SweepConfig, TargetPositionMode
+from kinematics.core.vector_utils.generic import project_coordinate
 from kinematics.points.derived.manager import DerivedPointsManager
 from kinematics.state import SuspensionState
 from kinematics.targets import resolve_target
-from kinematics.types import PointTarget, SweepConfig, TargetPositionMode
-from kinematics.vector_utils.generic import project_coordinate
 
-# Levenberg-Marquardt; damped least squares that can deal with the system being
+# Levenberg-Marquardt: damped least squares that can deal with the system being
 # overdetermined (m > n), as may be the case with any redundant (but consistent)
 # constraints.
 SOLVE_METHOD = "lm"
@@ -73,8 +73,8 @@ class ResidualComputer:
     Attributes:
         constraints: Geometric constraints to evaluate.
         derived_manager: Manager for computing derived points in-place.
-        state_buffer: Suspension state object that is mutated during computation.
-        residuals_buffer: Pre-allocated array for residual computation (reused across calls).
+        state_buffer: Suspension state that is mutated during computation.
+        residuals_buffer: Pre-allocated array for residuals (reused across calls).
     """
 
     def __init__(
@@ -132,7 +132,7 @@ class ResidualComputer:
         for i, constraint in enumerate(self.constraints):
             self.residuals_buffer[i] = constraint.residual(self.state_buffer.positions)
 
-        # Fill target residuals section: residuals[n_constraints:n_constraints+n_targets].
+        # Fill target residuals: residuals[n_constraints:n_constraints+n_targets].
         offset = self.n_constraints
         for i, target in enumerate(step_targets):
             direction = resolve_target(target.direction)
@@ -140,8 +140,8 @@ class ResidualComputer:
             current_coordinate = project_coordinate(current_pos, direction)
             self.residuals_buffer[offset + i] = current_coordinate - target.value
 
-        # Return (copy of) view of the used portion. Note that we must return a copy here
-        # because Scipy's least squares keeps references to the evaluated arrays,
+        # Return (copy of) view of the used portion. Note that we must return a copy
+        # here because Scipy's least squares keeps references to the evaluated arrays,
         # so subsequent calls would overwrite previous values.
         n_residuals = self.n_constraints + len(step_targets)
         residuals = self.residuals_buffer[:n_residuals]
@@ -174,7 +174,7 @@ def convert_targets_to_absolute(
             continue
 
         # Convert a relative displacement to an absolute scalar coordinate along the
-        # target direction: project the initial position onto the (unit) direction to
+        # target direction. Project the initial position onto the (unit) direction to
         # get the initial coordinate, then add the displacement.
         direction = resolve_target(target.direction)
         initial_pos = initial_state.positions[target.point_id]
@@ -209,11 +209,11 @@ def solve_suspension_sweep(
     allocations.
 
     Args:
-        initial_state (SuspensionState): The initial suspension state to start the sweep from.
-        constraints (list[Constraint]): List of geometric constraints to satisfy.
-        sweep_config (SweepConfig): Configuration for the sweep, including number of steps and target sweeps.
-        derived_manager (DerivedPointsManager): Manager to compute derived points in-place.
-        solver_config (SolverConfig): Configuration parameters for the solver.
+        initial_state: The initial suspension state to start the sweep from.
+        constraints: List of geometric constraints to satisfy.
+        sweep_config: Configuration for the sweep, including step count and targets.
+        derived_manager: Manager to compute derived points in-place.
+        solver_config: Configuration parameters for the solver.
 
     Returns:
         Tuple of (solved_states, solver_stats) where:
@@ -235,7 +235,7 @@ def solve_suspension_sweep(
     # Working state reused across the sweep; mutated in-place for performance.
     working_state = initial_state.copy()
 
-    # For each step in our sweep, we will keep a copy of the solved state; this is
+    # For each step in our sweep, we will keep a copy of the solved state. This is
     # our result dataset.
     solution_states: list[SuspensionState] = []
     solver_stats: list[SolverInfo] = []
@@ -280,14 +280,14 @@ def solve_suspension_sweep(
                 f"\nMessage: {result.message}"
             )
 
-        # We now have to synchronize working_state with the accepted solution.
-        # The solver evaluates residuals at many candidate positions during the solve,
-        # mutating working_state each time. When it terminates, working_state may be left
-        # at a position from gradient estimation (e.g., x* + epsilon) rather than
-        # the actual solution x*. We must explicitly restore it to result.x to
-        # ensure the stored state matches the returned solution.
+        # Synchronize working_state with the accepted solution. The solver
+        # evaluates residuals at many candidate positions during the solve,
+        # mutating working_state each time. When it terminates, working_state
+        # may be left at a position from gradient estimation (e.g., x* + epsilon)
+        # rather than the actual solution x*. We must explicitly restore it to
+        # result.x to ensure the stored state matches the returned solution.
         #
-        # This synchronization is necessary because we reuse working_state across all
+        # This synchronisation is necessary because we reuse working_state across all
         # residual evaluations for performance (avoiding dict allocations on each call).
         # The tradeoff is this explicit sync requirement.
         working_state.update_from_array(result.x)

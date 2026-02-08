@@ -1,27 +1,29 @@
 """
 Tests for camber shim functionality.
 
-These tests verify that camber shims correctly rotate the upright about
-the lower ball joint, modifying the as-built geometry without changing
-the design hard points.
+These tests verify that camber shims correctly rotate the upright about the lower ball
+joint, modifying the as-built geometry without changing the design hard points.
 """
 
 import numpy as np
 
-from kinematics.enums import Axis, PointID
+from kinematics.core.enums import Axis, PointID
+from kinematics.core.types import make_vec3
 from kinematics.io.geometry_loader import load_geometry
-from kinematics.suspensions.core.settings import CamberShimConfigOutboard
-from kinematics.suspensions.core.shims import (
+from kinematics.suspensions.config.settings import CamberShimConfig
+from kinematics.suspensions.config.shims import (
     compute_shim_offset,
     compute_upright_rotation_from_shim,
     rotate_point_about_axis,
 )
-from kinematics.types import make_vec3
+from kinematics.suspensions.double_wishbone import DoubleWishboneSuspension
 
 
 def test_compute_shim_offset_positive():
-    """Test that increasing shim thickness creates outboard offset."""
-    shim_config = CamberShimConfigOutboard(
+    """
+    Test that increasing shim thickness creates outboard offset.
+    """
+    shim_config = CamberShimConfig(
         shim_face_center={"x": 0.0, "y": 350.0, "z": 500.0},
         shim_normal={"x": 0.0, "y": 1.0, "z": 0.0},  # Unit vector pointing outboard
         design_thickness=0.0,
@@ -37,8 +39,10 @@ def test_compute_shim_offset_positive():
 
 
 def test_compute_shim_offset_negative():
-    """Test that removing shims creates inboard offset."""
-    shim_config = CamberShimConfigOutboard(
+    """
+    Test that removing shims creates inboard offset.
+    """
+    shim_config = CamberShimConfig(
         shim_face_center={"x": 0.0, "y": 350.0, "z": 500.0},
         shim_normal={"x": 0.0, "y": 1.0, "z": 0.0},
         design_thickness=10.0,
@@ -54,8 +58,10 @@ def test_compute_shim_offset_negative():
 
 
 def test_compute_shim_offset_zero():
-    """Test that no shim change creates no offset."""
-    shim_config = CamberShimConfigOutboard(
+    """
+    Test that no shim change creates no offset.
+    """
+    shim_config = CamberShimConfig(
         shim_face_center={"x": 0.0, "y": 350.0, "z": 500.0},
         shim_normal={"x": 0.0, "y": 1.0, "z": 0.0},
         design_thickness=5.0,
@@ -71,7 +77,9 @@ def test_compute_shim_offset_zero():
 
 
 def test_rotate_point_about_axis_90_degrees():
-    """Test rotation of a point 90 degrees about Z axis."""
+    """
+    Test rotation of a point 90 degrees about Z axis.
+    """
     point = make_vec3(np.array([1.0, 0.0, 0.0]))
     pivot = make_vec3(np.array([0.0, 0.0, 0.0]))
     axis = make_vec3(np.array([0.0, 0.0, 1.0]))
@@ -86,7 +94,9 @@ def test_rotate_point_about_axis_90_degrees():
 
 
 def test_rotate_point_about_axis_with_offset_pivot():
-    """Test rotation about an axis that doesn't pass through origin."""
+    """
+    Test rotation about an axis that doesn't pass through origin.
+    """
     point = make_vec3(np.array([2.0, 0.0, 0.0]))
     pivot = make_vec3(np.array([1.0, 0.0, 0.0]))
     axis = make_vec3(np.array([0.0, 0.0, 1.0]))
@@ -101,7 +111,9 @@ def test_rotate_point_about_axis_with_offset_pivot():
 
 
 def test_compute_upright_rotation_simple_case():
-    """Test upright rotation calculation for a simple geometry."""
+    """
+    Test upright rotation calculation for a simple geometry.
+    """
     lower_ball_joint = make_vec3(np.array([0.0, 900.0, 200.0]))
     shim_face_center_design = make_vec3(np.array([0.0, 350.0, 500.0]))
 
@@ -127,10 +139,10 @@ def test_shim_application_changes_camber(double_wishbone_geometry_file):
     Test that applying a camber shim rotates the upright and changes camber angle.
     """
     # Load base geometry
-    loaded = load_geometry(double_wishbone_geometry_file)
+    suspension = load_geometry(double_wishbone_geometry_file)
 
-    # Get initial camber (no shim)
-    initial_state = loaded.provider.initial_state()
+    # Get initial camber (no shim effect - design == setup)
+    initial_state = suspension.initial_state()
     initial_axle_in = initial_state.positions[PointID.AXLE_INBOARD]
     initial_axle_out = initial_state.positions[PointID.AXLE_OUTBOARD]
 
@@ -140,19 +152,27 @@ def test_shim_application_changes_camber(double_wishbone_geometry_file):
         initial_axle_vector[Axis.Y], initial_axle_vector[Axis.Z]
     )
 
-    # Apply a camber shim
-    shim_config = CamberShimConfigOutboard(
+    # Create a new suspension with a camber shim applied
+    shim_config = CamberShimConfig(
         shim_face_center={"x": 0.0, "y": 350.0, "z": 500.0},
         shim_normal={"x": 0.0, "y": 1.0, "z": 0.0},
         design_thickness=0.0,
         setup_thickness=10.0,
     )
-    loaded.geometry.configuration.camber_shim = shim_config
 
-    # Re-initialize provider
-    provider_class = type(loaded.provider)
-    shimmed_provider = provider_class(loaded.geometry)
-    shimmed_state = shimmed_provider.initial_state()
+    # Create new config with the shim
+    assert suspension.config is not None
+    new_config = suspension.config.model_copy(update={"camber_shim": shim_config})
+
+    # Create new suspension with shimmed config
+    shimmed_suspension = DoubleWishboneSuspension(
+        name=suspension.name,
+        version=suspension.version,
+        units=suspension.units,
+        hardpoints=suspension.hardpoints.copy(),
+        config=new_config,
+    )
+    shimmed_state = shimmed_suspension.initial_state()
 
     # Get shimmed camber
     shimmed_axle_in = shimmed_state.positions[PointID.AXLE_INBOARD]
@@ -176,24 +196,31 @@ def test_shim_does_not_move_lower_ball_joint(double_wishbone_geometry_file):
     """
     Test that the lower ball joint (pivot point) doesn't move when shims are applied.
     """
-    loaded = load_geometry(double_wishbone_geometry_file)
+    suspension = load_geometry(double_wishbone_geometry_file)
 
     # Get initial lower ball joint position
-    initial_state = loaded.provider.initial_state()
+    initial_state = suspension.initial_state()
     initial_lbj = initial_state.positions[PointID.LOWER_WISHBONE_OUTBOARD].copy()
 
     # Apply shim
-    shim_config = CamberShimConfigOutboard(
+    shim_config = CamberShimConfig(
         shim_face_center={"x": 0.0, "y": 350.0, "z": 500.0},
         shim_normal={"x": 0.0, "y": 1.0, "z": 0.0},
         design_thickness=0.0,
         setup_thickness=10.0,
     )
-    loaded.geometry.configuration.camber_shim = shim_config
 
-    provider_class = type(loaded.provider)
-    shimmed_provider = provider_class(loaded.geometry)
-    shimmed_state = shimmed_provider.initial_state()
+    assert suspension.config is not None
+    new_config = suspension.config.model_copy(update={"camber_shim": shim_config})
+
+    shimmed_suspension = DoubleWishboneSuspension(
+        name=suspension.name,
+        version=suspension.version,
+        units=suspension.units,
+        hardpoints=suspension.hardpoints.copy(),
+        config=new_config,
+    )
+    shimmed_state = shimmed_suspension.initial_state()
 
     shimmed_lbj = shimmed_state.positions[PointID.LOWER_WISHBONE_OUTBOARD]
 
@@ -207,9 +234,9 @@ def test_shim_does_not_move_inboard_points(double_wishbone_geometry_file):
     """
     Test that chassis-mounted inboard points don't move when shims are applied.
     """
-    loaded = load_geometry(double_wishbone_geometry_file)
+    suspension = load_geometry(double_wishbone_geometry_file)
 
-    initial_state = loaded.provider.initial_state()
+    initial_state = suspension.initial_state()
     initial_points = {
         PointID.LOWER_WISHBONE_INBOARD_FRONT: initial_state.positions[
             PointID.LOWER_WISHBONE_INBOARD_FRONT
@@ -229,17 +256,24 @@ def test_shim_does_not_move_inboard_points(double_wishbone_geometry_file):
     }
 
     # Apply shim
-    shim_config = CamberShimConfigOutboard(
+    shim_config = CamberShimConfig(
         shim_face_center={"x": 0.0, "y": 350.0, "z": 500.0},
         shim_normal={"x": 0.0, "y": 1.0, "z": 0.0},
         design_thickness=0.0,
         setup_thickness=10.0,
     )
-    loaded.geometry.configuration.camber_shim = shim_config
 
-    provider_class = type(loaded.provider)
-    shimmed_provider = provider_class(loaded.geometry)
-    shimmed_state = shimmed_provider.initial_state()
+    assert suspension.config is not None
+    new_config = suspension.config.model_copy(update={"camber_shim": shim_config})
+
+    shimmed_suspension = DoubleWishboneSuspension(
+        name=suspension.name,
+        version=suspension.version,
+        units=suspension.units,
+        hardpoints=suspension.hardpoints.copy(),
+        config=new_config,
+    )
+    shimmed_state = shimmed_suspension.initial_state()
 
     # All inboard points should remain unchanged
     for point_id, initial_pos in initial_points.items():
@@ -255,23 +289,30 @@ def test_shim_does_not_move_upper_ball_joint(double_wishbone_geometry_file):
 
     The shim is internal to the upright, so ball joints stay fixed.
     """
-    loaded = load_geometry(double_wishbone_geometry_file)
+    suspension = load_geometry(double_wishbone_geometry_file)
 
-    initial_state = loaded.provider.initial_state()
+    initial_state = suspension.initial_state()
     initial_ubj = initial_state.positions[PointID.UPPER_WISHBONE_OUTBOARD].copy()
 
     # Apply shim
-    shim_config = CamberShimConfigOutboard(
+    shim_config = CamberShimConfig(
         shim_face_center={"x": 0.0, "y": 350.0, "z": 500.0},
         shim_normal={"x": 0.0, "y": 1.0, "z": 0.0},
         design_thickness=0.0,
         setup_thickness=10.0,
     )
-    loaded.geometry.configuration.camber_shim = shim_config
 
-    provider_class = type(loaded.provider)
-    shimmed_provider = provider_class(loaded.geometry)
-    shimmed_state = shimmed_provider.initial_state()
+    assert suspension.config is not None
+    new_config = suspension.config.model_copy(update={"camber_shim": shim_config})
+
+    shimmed_suspension = DoubleWishboneSuspension(
+        name=suspension.name,
+        version=suspension.version,
+        units=suspension.units,
+        hardpoints=suspension.hardpoints.copy(),
+        config=new_config,
+    )
+    shimmed_state = shimmed_suspension.initial_state()
 
     shimmed_ubj = shimmed_state.positions[PointID.UPPER_WISHBONE_OUTBOARD]
 
@@ -285,27 +326,35 @@ def test_shim_moves_axle_points(double_wishbone_geometry_file):
     """
     Test that all upright-mounted points DO move when shims are applied.
 
-    This includes axle points and trackrod outboard (test geometry doesn't have pushrod).
+    This includes axle points and trackrod outboard (test geometry doesn't have
+    pushrod).
     """
-    loaded = load_geometry(double_wishbone_geometry_file)
+    suspension = load_geometry(double_wishbone_geometry_file)
 
-    initial_state = loaded.provider.initial_state()
+    initial_state = suspension.initial_state()
     initial_axle_in = initial_state.positions[PointID.AXLE_INBOARD].copy()
     initial_axle_out = initial_state.positions[PointID.AXLE_OUTBOARD].copy()
     initial_trackrod_out = initial_state.positions[PointID.TRACKROD_OUTBOARD].copy()
 
     # Apply shim
-    shim_config = CamberShimConfigOutboard(
+    shim_config = CamberShimConfig(
         shim_face_center={"x": 0.0, "y": 350.0, "z": 500.0},
         shim_normal={"x": 0.0, "y": 1.0, "z": 0.0},
         design_thickness=0.0,
         setup_thickness=10.0,
     )
-    loaded.geometry.configuration.camber_shim = shim_config
 
-    provider_class = type(loaded.provider)
-    shimmed_provider = provider_class(loaded.geometry)
-    shimmed_state = shimmed_provider.initial_state()
+    assert suspension.config is not None
+    new_config = suspension.config.model_copy(update={"camber_shim": shim_config})
+
+    shimmed_suspension = DoubleWishboneSuspension(
+        name=suspension.name,
+        version=suspension.version,
+        units=suspension.units,
+        hardpoints=suspension.hardpoints.copy(),
+        config=new_config,
+    )
+    shimmed_state = shimmed_suspension.initial_state()
 
     shimmed_axle_in = shimmed_state.positions[PointID.AXLE_INBOARD]
     shimmed_axle_out = shimmed_state.positions[PointID.AXLE_OUTBOARD]
@@ -333,15 +382,16 @@ def test_backward_compatibility_no_shim(double_wishbone_geometry_file):
     """
     Test that when design_thickness == setup_thickness, there's no effect.
     """
-    loaded = load_geometry(double_wishbone_geometry_file)
+    suspension = load_geometry(double_wishbone_geometry_file)
 
-    # Geometry has shim config, but design == as_built (no delta)
-    assert loaded.geometry.configuration.camber_shim is not None
-    shim = loaded.geometry.configuration.camber_shim
+    # Geometry has shim config, but design == setup (no delta)
+    assert suspension.config is not None
+    assert suspension.config.camber_shim is not None
+    shim = suspension.config.camber_shim
     assert shim.design_thickness == shim.setup_thickness
 
     # Should initialize without error
-    state = loaded.provider.initial_state()
+    state = suspension.initial_state()
 
     # Should have all expected points
     assert PointID.UPPER_WISHBONE_OUTBOARD in state.positions

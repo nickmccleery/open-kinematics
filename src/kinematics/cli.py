@@ -2,7 +2,7 @@ from pathlib import Path
 
 import typer
 
-from kinematics.enums import PointID
+from kinematics.core.enums import PointID
 from kinematics.io.geometry_loader import load_geometry
 from kinematics.io.results_writer import SolutionFrame, create_writer_for_path
 from kinematics.io.sweep_loader import parse_sweep_file
@@ -24,13 +24,13 @@ def sweep(
     Run a sweep from file and write results to Parquet or CSV format.
 
     Example:
-        kinematics sweep --geometry=tests/data/geometry.yaml --sweep=tests/data/sweep.yaml --out=results.parquet
-        kinematics sweep --geometry=tests/data/geometry.yaml --sweep=tests/data/sweep.yaml --out=results.csv --animation-out=anim.mp4
+        kinematics sweep --geometry=geo.yaml --sweep=sweep.yaml --out=out.parquet
+        kinematics sweep --geometry=geo.yaml --sweep=sweep.yaml --out=out.csv
     """
-    loaded = load_geometry(geometry)
+    suspension = load_geometry(geometry)
     sweep_config = parse_sweep_file(sweep)
 
-    solution_states, solver_stats = solve_sweep(loaded.provider, sweep_config)
+    solution_states, solver_stats = solve_sweep(suspension, sweep_config)
 
     # Write out in wide format.
     writer = create_writer_for_path(
@@ -58,12 +58,16 @@ def sweep(
         try:
             from kinematics.visualization.api import visualize_suspension_sweep
 
-            # Get wheel parameters from geometry configuration.
-            wheel_cfg = loaded.geometry.configuration.wheel
+            # Get wheel parameters from suspension configuration.
+            if suspension.config is None:
+                typer.echo("Error: No config in suspension", err=True)
+                raise typer.Exit(1)
+
+            wheel_cfg = suspension.config.wheel
 
             # Create animation.
             visualize_suspension_sweep(
-                provider=loaded.provider,
+                suspension=suspension,
                 solution_states=solution_states,
                 output_path=animation_out,
                 wheel_diameter=wheel_cfg.tire.nominal_radius * 2,
@@ -112,10 +116,10 @@ def visualize(
         )
         raise typer.Exit(1)
 
-    loaded = load_geometry(geometry)
+    suspension = load_geometry(geometry)
 
     visualize_geometry(
-        provider=loaded.provider,
+        suspension=suspension,
         output_path=output,
     )
 

@@ -5,9 +5,9 @@ description = "Kinematics solver for suspension systems."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "marshmallow-dataclass>=8.7.1",
     "numpy>=2.2.0",
     "pyarrow>=21.0.0",
+    "pydantic>=2.0",
     "python-dotenv>=1.0.1",
     "pyyaml>=6.0.2",
     "scipy>=1.14.1",
@@ -26,7 +26,7 @@ cli = ["typer>=0.12"]
 
 [dependency-groups]
 dev = [
-    "docformatter>=1.7.7",
+    "codespell>=2.3.0",
     "pytest>=8.3.4",
     "pytest-cov>=7.0.0",
     "ruff>=0.13.3",
@@ -39,16 +39,38 @@ dev = [
 addopts = "-m 'not manual'"
 markers = ["manual: marks tests as manual (deselected by default)"]
 
-# Documentation formatter settings.
+# Ruff linter and formatter settings.
 # --------------------------------------------------------------------------------------
-[tool.docformatter]
-recursive = true
-wrap-summaries = 88
-wrap-descriptions = 88
-pre-summary-newline = true
-close-quotes-on-newline = true
-blank = false
-make-summary-multi-line = true
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E", # pycodestyle errors
+    "W", # pycodestyle warnings
+    "F", # Pyflakes
+    "I", # isort
+    "D", # pydocstyle
+]
+ignore = [
+    "D100", # Missing docstring in public module
+    "D102", # Missing docstring in public method (too noisy for property implementations)
+    "D104", # Missing docstring in public package
+    "D105", # Missing docstring in magic method
+    "D107", # Missing docstring in __init__
+    "D200", # One-line docstring should fit on one line with quotes
+    "D203", # 1 blank line required before class docstring (conflicts with D211)
+    "D205", # Blank line required between summary and description (too noisy for wrapped summaries)
+    "D212", # Multi-line docstring summary should start at the first line (we want D213)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["D103"]  # Test functions don't need docstrings
+"visualize_*.py" = ["D103"]  # Script functions don't need docstrings
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
 
 # Test coverage settings.
 # --------------------------------------------------------------------------------------
@@ -73,6 +95,15 @@ exclude_lines = [
     "if TYPE_CHECKING:",
 ]
 
+# Codespell settings for spell checking.
+# --------------------------------------------------------------------------------------
+[tool.codespell]
+skip = ".git,*.pyc,*.pyo,__pycache__,*.egg-info,.venv,venv,.mypy_cache,.ruff_cache"
+# Ignore words that are valid in our domain (e.g., technical terms, variable names).
+ignore-words-list = "nd"
+# Use custom dictionary for British -> American English conversions.
+builtin = "clear,rare,informal,usage"
+dictionary = ".codespell-british.txt,-"
 
 [build-system]
 requires = ["hatchling"]

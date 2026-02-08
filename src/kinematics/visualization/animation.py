@@ -10,8 +10,8 @@ from pathlib import Path
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 
-from kinematics.enums import PointID
-from kinematics.types import Vec3
+from kinematics.core.enums import PointID
+from kinematics.core.types import Vec3
 from kinematics.visualization.main import SuspensionVisualizer
 from kinematics.visualization.plots import (
     compute_bounds_from_states,
@@ -45,25 +45,25 @@ def create_animation(
         dpi: DPI for the output animation.
         show_live: Whether to show the animation live during creation.
     """
-    # Create figure with four subplots using common function
+    # Create figure with four subplots using common function.
     fig, axes = create_four_view_axes()
 
-    # Compute global bounds for all states
+    # Compute global bounds for all states.
     _, _, (x_mid, y_mid, z_mid, max_range) = compute_bounds_from_states(position_states)
 
-    # Configure axes once using common function
+    # Configure axes once using common function.
     for view_name, ax in axes.items():
         configure_3d_axis(ax, view_name, x_mid, y_mid, z_mid, max_range)
 
-    # Use unified draw_links to create link artists
+    # Use unified draw_links to create link artists.
     link_artists: dict[str, list] = {k: [] for k in axes.keys()}
     for view_name, ax in axes.items():
         link_artists[view_name] = visualizer.draw_links(ax, initial_positions)
 
-    # Add legend once on iso view
+    # Add legend once on iso view.
     axes["iso"].legend(loc="upper left")
 
-    # Use unified draw_wheel to create wheel artists
+    # Use unified draw_wheel to create wheel artists.
     num_bands = 36
     wheel_artists: dict[str, dict[str, list]] = {k: {} for k in axes.keys()}
     for view_name, ax in axes.items():
@@ -71,7 +71,7 @@ def create_animation(
             ax, initial_positions, num_bands=num_bands
         )
 
-    # Layout
+    # Layout.
     plt.subplots_adjust(
         left=0.0, right=1, bottom=0.025, top=0.95, wspace=0.01, hspace=0.01
     )
@@ -83,20 +83,24 @@ def create_animation(
     def update(frame: int):
         positions = position_states[frame]
 
-        # Update links
+        # Update links.
         for view_name in axes.keys():
             visualizer.update_links(link_artists[view_name], positions)
 
-        # Update wheel geometry
+        # Update wheel geometry.
         for view_name in axes.keys():
             visualizer.update_wheel(
                 wheel_artists[view_name], positions, num_bands=num_bands
             )
 
-        # Update global title
+        # Update global title.
+        wc_z = positions[PointID.WHEEL_CENTER][2]
+        wc_z_init = initial_positions[PointID.WHEEL_CENTER][2]
+        tr_y = positions[PointID.TRACKROD_INBOARD][1]
+        tr_y_init = initial_positions[PointID.TRACKROD_INBOARD][1]
         title_string = (
-            f"Wheel Center Z: {positions[PointID.WHEEL_CENTER][2] - initial_positions[PointID.WHEEL_CENTER][2]:.1f} [mm]",
-            f"Rack Displacement: {positions[PointID.TRACKROD_INBOARD][1] - initial_positions[PointID.TRACKROD_INBOARD][1]:.1f} [mm]",
+            f"Wheel Center Z: {wc_z - wc_z_init:.1f} [mm]",
+            f"Rack Displacement: {tr_y - tr_y_init:.1f} [mm]",
         )
         title_artist.set_text("\n".join(title_string))
 
@@ -111,7 +115,7 @@ def create_animation(
     pingpong_states = position_states + position_states[-2:0:-1]
     frame_indices = range(0, len(pingpong_states), 1)
 
-    # Choose writer automatically if not provided
+    # Choose writer automatically if not provided.
     out_suffix = output_path.suffix.lower()
     chosen_writer: str
     if writer is not None:
@@ -129,7 +133,7 @@ def create_animation(
             Writer = animation.writers[chosen_writer]
             writer_inst = Writer(fps=fps)
     except Exception:
-        # Fallback to pillow
+        # Fallback to pillow.
         Writer = animation.writers["pillow"]
         writer_inst = Writer(fps=fps)
 
@@ -141,16 +145,20 @@ def create_animation(
         with writer_inst.saving(fig, str(output_path), dpi):
             for frame in frame_indices:
                 positions = pingpong_states[frame]
-                # Update all artists for this frame
+                # Update all artists for this frame.
                 for view_name in axes.keys():
                     visualizer.update_links(link_artists[view_name], positions)
                     visualizer.update_wheel(
                         wheel_artists[view_name], positions, num_bands=num_bands
                     )
-                # Update global title
+                # Update global title.
+                wc_z = positions[PointID.WHEEL_CENTER][2]
+                wc_z_init = initial_positions[PointID.WHEEL_CENTER][2]
+                tr_y = positions[PointID.TRACKROD_INBOARD][1]
+                tr_y_init = initial_positions[PointID.TRACKROD_INBOARD][1]
                 title_string = (
-                    f"Wheel Center Z: {positions[PointID.WHEEL_CENTER][2] - initial_positions[PointID.WHEEL_CENTER][2]:.1f} [mm]",
-                    f"Rack Displacement: {positions[PointID.TRACKROD_INBOARD][1] - initial_positions[PointID.TRACKROD_INBOARD][1]:.1f} [mm]",
+                    f"Wheel Center Z: {wc_z - wc_z_init:.1f} [mm]",
+                    f"Rack Displacement: {tr_y - tr_y_init:.1f} [mm]",
                 )
                 title_artist.set_text("\n".join(title_string))
                 if show_live:

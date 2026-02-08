@@ -1,9 +1,10 @@
+# Template-based double wishbone geometry.
 type: double_wishbone
-name: "test"
-version: "0.0.1"
+name: "Template Format Test"
+version: "1.0.0"
 units: MILLIMETERS
 
-# Hardpoints: Wold Axis, Design Condition.
+# Hardpoints: World Axis, Design Condition.
 hardpoints:
   # Lower Wishbone.
   lower_wishbone_inboard_front: {x: 250, y: 400, z: 200}

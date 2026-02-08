@@ -11,10 +11,10 @@ from typing import Set
 
 import numpy as np
 
-from kinematics.constants import EPSILON
-from kinematics.enums import Axis, PointID
-from kinematics.types import Vec3, make_vec3
-from kinematics.vector_utils.geometric import (
+from kinematics.core.constants import EPSILON
+from kinematics.core.enums import Axis, PointID
+from kinematics.core.types import Vec3, make_vec3
+from kinematics.core.vector_utils.geometric import (
     compute_point_point_distance,
     compute_point_to_line_distance,
     compute_point_to_plane_distance,
@@ -243,7 +243,7 @@ class ThreePointAngleConstraint(Constraint):
         Raises:
             ValueError: If either vector has zero length (degenerate geometry).
         """
-        # Vectors from vertex to other points
+        # Vectors from vertex to other points.
         v1 = positions[self.p1] - positions[self.p2]
         v2 = positions[self.p3] - positions[self.p2]
 
@@ -348,8 +348,7 @@ class VectorsPerpendicularConstraint(Constraint):
 
 
 class EqualDistanceConstraint(Constraint):
-    """
-    Constrains two distances to be equal: |p1-p2| = |p3-p4|.
+    """Constrains two distances to be equal: |p1-p2| = |p3-p4|.
 
     Useful for symmetric linkages, equal-length links, or maintaining geometric
     relationships in suspension systems.

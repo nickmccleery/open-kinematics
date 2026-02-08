@@ -1,10 +1,10 @@
 import numpy as np
 
-from kinematics.enums import Axis, PointID, TargetPositionMode
+from kinematics.core.enums import Axis, PointID, TargetPositionMode
 from kinematics.points.derived.manager import DerivedPointsManager, DerivedPointsSpec
 from kinematics.solver import convert_targets_to_absolute, solve_suspension_sweep
 from kinematics.state import SuspensionState
-from kinematics.types import PointTarget, PointTargetAxis, SweepConfig
+from kinematics.core.types import PointTarget, PointTargetAxis, SweepConfig
 
 
 def test_resolve_targets_to_absolute():

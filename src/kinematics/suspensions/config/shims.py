@@ -1,22 +1,23 @@
 """
 Camber shim geometry calculations.
 
-This module handles the geometric transformations required when camber shims
-are added or removed from a suspension system.
+This module handles the geometric transformations required when camber shims are added
+or removed from a suspension system.
 """
 
 from __future__ import annotations
 
 import numpy as np
 
-from kinematics.constants import EPSILON
-from kinematics.suspensions.core.settings import CamberShimConfigOutboard
-from kinematics.types import Vec3, make_vec3
-from kinematics.vector_utils.generic import normalize_vector
-from kinematics.vector_utils.geometric import compute_vector_vector_angle
+from kinematics.core.constants import EPSILON
+from kinematics.core.types import Vec3, make_vec3
+from kinematics.core.vector_utils.generic import normalize_vector
+from kinematics.core.vector_utils.geometric import compute_vector_vector_angle
+from kinematics.io.validation import Vec3Like, coerce_vec3
+from kinematics.suspensions.config.settings import CamberShimConfig
 
 
-def compute_shim_offset(shim_config: CamberShimConfigOutboard) -> Vec3:
+def compute_shim_offset(shim_config: CamberShimConfig) -> Vec3:
     """
     Compute the offset vector caused by shim thickness change.
 
@@ -29,16 +30,8 @@ def compute_shim_offset(shim_config: CamberShimConfigOutboard) -> Vec3:
     # Calculate thickness delta.
     delta_thickness = shim_config.setup_thickness - shim_config.design_thickness
 
-    # Get and normalise the shim normal vector.
-    normal = np.array(
-        [
-            shim_config.shim_normal["x"],
-            shim_config.shim_normal["y"],
-            shim_config.shim_normal["z"],
-        ],
-        dtype=np.float64,
-    )
-    normal_unit = normalize_vector(normal)
+    # Get and normalize the shim normal vector.
+    normal_unit = normalize_vector(coerce_vec3(shim_config.shim_normal))
 
     # Offset is along the normal direction.
     offset = normal_unit * delta_thickness
@@ -64,7 +57,7 @@ def rotate_point_about_axis(
     # Translate point to origin (pivot at origin).
     p = point - pivot
 
-    # Rodrigues' rotation formula
+    # Rodrigues' rotation formula:
     # v_rot = v*cos(θ) + (k × v)*sin(θ) + k*(k·v)*(1 - cos(θ)).
     k = axis
     cos_angle = np.cos(angle_rad)
@@ -85,7 +78,7 @@ def rotate_point_about_axis(
 
 def compute_upright_rotation_from_shim(
     lower_ball_joint: Vec3,
-    shim_face_center_design: Vec3,
+    shim_face_center_design: Vec3Like,
     shim_offset: Vec3,
 ) -> tuple[Vec3, float]:
     """
@@ -113,13 +106,16 @@ def compute_upright_rotation_from_shim(
         rotation_axis is a unit vector through the lower ball joint.
         rotation_angle_rad is the angle to rotate the upright.
     """
+    # Coerce to Vec3 (handles Pydantic model fields which may be typed as Vec3Like).
+    shim_center = coerce_vec3(shim_face_center_design)
+
     # The shim face must move to: shim_face_center_design + shim_offset.
-    shim_face_target = make_vec3(shim_face_center_design + shim_offset)
+    shim_face_target = make_vec3(shim_center + shim_offset)
 
-    # Vector from lower ball joint to design shim face centre.
-    r_design = make_vec3(shim_face_center_design - lower_ball_joint)
+    # Vector from lower ball joint to design shim face center.
+    r_design = make_vec3(shim_center - lower_ball_joint)
 
-    # Vector from lower ball joint to target shim face centre.
+    # Vector from lower ball joint to target shim face center.
     r_target = make_vec3(shim_face_target - lower_ball_joint)
 
     # The rotation axis is perpendicular to both r_design and r_target.

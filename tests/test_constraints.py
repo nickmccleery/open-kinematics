@@ -3,7 +3,7 @@ import math
 import numpy as np
 import pytest
 
-from kinematics.constants import TEST_TOLERANCE
+from kinematics.core.constants import TEST_TOLERANCE
 from kinematics.constraints import (
     AngleConstraint,
     CoplanarPointsConstraint,
@@ -17,7 +17,7 @@ from kinematics.constraints import (
     VectorsParallelConstraint,
     VectorsPerpendicularConstraint,
 )
-from kinematics.enums import Axis, PointID
+from kinematics.core.enums import Axis, PointID
 
 
 def simple_positions():

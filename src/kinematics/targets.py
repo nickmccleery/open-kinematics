@@ -5,15 +5,15 @@ This module provides functions to resolve target directions into world coordinat
 vectors.
 """
 
-from kinematics.enums import Axis
-from kinematics.types import (
+from kinematics.core.enums import Axis
+from kinematics.core.types import (
     PointTargetAxis,
     PointTargetDirection,
     PointTargetVector,
     Vec3,
     WorldAxisSystem,
 )
-from kinematics.vector_utils.generic import normalize_vector
+from kinematics.core.vector_utils.generic import normalize_vector
 
 
 def resolve_target(target: PointTargetDirection) -> Vec3:

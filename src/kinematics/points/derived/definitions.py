@@ -8,10 +8,10 @@ avoid code duplication.
 
 import numpy as np
 
-from kinematics.constants import EPSILON
-from kinematics.enums import Axis, PointID
-from kinematics.types import Vec3, WorldAxisSystem, make_vec3
-from kinematics.vector_utils.generic import normalize_vector
+from kinematics.core.constants import EPSILON
+from kinematics.core.enums import Axis, PointID
+from kinematics.core.types import Vec3, WorldAxisSystem, make_vec3
+from kinematics.core.vector_utils.generic import normalize_vector
 
 
 def get_wheel_plane_down_vector(positions: dict[PointID, Vec3]) -> Vec3:
@@ -79,8 +79,8 @@ def get_wheel_center(positions: dict[PointID, Vec3], wheel_offset: float) -> Vec
     Args:
         positions: Dictionary mapping point IDs to their 3D coordinates.
                 Must contain AXLE_INBOARD and AXLE_OUTBOARD entries.
-        wheel_offset: Distance from the hub face to the wheel center plane.
-                    Positive offset means the wheel centerline is inboard of the hub face.
+        wheel_offset: Distance from hub face to wheel center plane. Positive
+                  offset means the wheel centerline is inboard of the hub.
 
     Returns:
         A numpy array representing the 3D coordinates of the wheel center.

@@ -36,9 +36,18 @@ lint:
     uv run ruff check .
     uv run ty check .
 
-# Formatting. Note that the docformatter config is defined in pyproject.toml.
-# The `|| true` is to ignore the non-zero exit code when no files are found to
-# format.
+# Formatting.
 format:
     uv run ruff format .
-    uv run docformatter --in-place --recursive . || true 
+
+# Spell check source code and comments (includes British -> American English).
+spellcheck:
+    uv run codespell src/ tests/
+
+# Spell check and fix issues automatically.
+spellcheck-fix:
+    uv run codespell --write-changes src/ tests/
+
+# Spell check and fix issues interactively.
+spellcheck-interactive:
+    uv run codespell --write-changes --interactive 3 src/ tests/

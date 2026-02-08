@@ -37,8 +37,8 @@ class PointID(IntEnum):
     WHEEL_INBOARD = 17
     WHEEL_OUTBOARD = 18
 
-    # Contact patch center is effectively the wheel and tyre centerline's Z minimum,
-    # while wheel center on ground is the projection of the wheel centre line onto
+    # Contact patch center is effectively the wheel and tire centerline's Z minimum,
+    # while wheel center on ground is the projection of the wheel center line onto
     # the ground plane, i.e., world axis system Z=0.
     CONTACT_PATCH_CENTER = 19
     WHEEL_CENTER_ON_GROUND = 20
@@ -69,3 +69,11 @@ class Units(Enum):
     """
 
     MILLIMETERS = "millimeters"
+
+
+class ShimType(Enum):
+    """
+    Types of shim adjustments supported by suspension templates.
+    """
+
+    OUTBOARD_CAMBER = "outboard_camber"

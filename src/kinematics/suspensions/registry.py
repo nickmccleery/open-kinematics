@@ -1,35 +1,65 @@
 """
 Suspension type registry.
+
+Maps type keys to Suspension subclasses for loading from YAML.
 """
 
 from __future__ import annotations
 
-from typing import Tuple, Type
+from typing import TYPE_CHECKING
 
-from kinematics.suspensions.core.provider import SuspensionProvider
-from kinematics.suspensions.implementations.double_wishbone import (
-    DoubleWishboneGeometry,
-    DoubleWishboneProvider,
-)
-from kinematics.suspensions.implementations.macpherson import (
-    MacPhersonGeometry,
-    MacPhersonProvider,
-)
+if TYPE_CHECKING:
+    from kinematics.suspensions.base import Suspension
 
-# Registry type definitions.
-ModelCls = Type[object]
-ProviderCls = Type[SuspensionProvider]
-Registry = dict[str, Tuple[ModelCls, ProviderCls]]
+SuspensionClass = type["Suspension"]
+
+# Registry populated by importing suspension modules.
+SUSPENSION_REGISTRY: dict[str, SuspensionClass] = {}
 
 
-def build_registry() -> Registry:
+def _ensure_registry_populated() -> None:
+    """Import all suspension modules to populate registry."""
+    if not SUSPENSION_REGISTRY:
+        # Import triggers registration.
+        from kinematics.suspensions.double_wishbone import DoubleWishboneSuspension
+
+        _register_class(DoubleWishboneSuspension)
+
+
+def _register_class(cls: SuspensionClass) -> None:
+    """Register a suspension class by its TYPE_KEY and ALIASES."""
+    SUSPENSION_REGISTRY[cls.TYPE_KEY] = cls
+    for alias in cls.ALIASES:
+        SUSPENSION_REGISTRY[alias] = cls
+
+
+def get_suspension_class(type_key: str) -> SuspensionClass | None:
     """
-    Return the registry mapping suspension types to their classes.
+    Get a suspension class by type key.
+
+    Args:
+        type_key: The suspension type (e.g., "double_wishbone").
 
     Returns:
-        Dictionary mapping type strings to (ModelClass, ProviderClass) tuples.
+        The Suspension subclass, or None if not found.
     """
-    return {
-        "DOUBLE_WISHBONE": (DoubleWishboneGeometry, DoubleWishboneProvider),
-        "MACPHERSON_STRUT": (MacPhersonGeometry, MacPhersonProvider),
-    }
+    _ensure_registry_populated()
+    return SUSPENSION_REGISTRY.get(type_key.lower())
+
+
+def list_supported_types() -> list[str]:
+    """
+    List all supported suspension type keys.
+
+    Returns:
+        Sorted list of type keys (includes aliases).
+    """
+    _ensure_registry_populated()
+    return sorted(SUSPENSION_REGISTRY.keys())
+
+
+__all__ = [
+    "SuspensionClass",
+    "get_suspension_class",
+    "list_supported_types",
+]

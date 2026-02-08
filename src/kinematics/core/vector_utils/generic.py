@@ -11,7 +11,7 @@ from typing import NamedTuple, Optional, TypeVar
 import numpy as np
 from numpy.typing import NDArray
 
-from kinematics.constants import EPSILON
+from kinematics.core.constants import EPSILON
 
 FloatingT = TypeVar("FloatingT", bound=np.floating)
 
@@ -51,7 +51,6 @@ def compute_2d_vector_vector_intersection(
         - Parallel test is scale-aware: |den| < EPSILON * |d1| * |d2|
         - Endpoints are accepted with a small tolerance when segments_only=True
     """
-
     # Ensure dtype and finiteness.
     p1 = np.asarray(line1_start, dtype=np.float64)
     p2 = np.asarray(line1_end, dtype=np.float64)

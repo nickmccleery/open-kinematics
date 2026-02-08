@@ -8,10 +8,10 @@ kinematic analysis and constraint evaluation.
 
 import numpy as np
 
-from kinematics.constants import EPSILON
-from kinematics.enums import Axis
-from kinematics.types import Vec3, make_vec3
-from kinematics.vector_utils.generic import normalize_vector
+from kinematics.core.constants import EPSILON
+from kinematics.core.enums import Axis
+from kinematics.core.types import Vec3, make_vec3
+from kinematics.core.vector_utils.generic import normalize_vector
 
 
 def compute_point_point_distance(p1: Vec3, p2: Vec3) -> float:

@@ -9,8 +9,8 @@ from typing import List, Set
 
 import numpy as np
 
-from kinematics.enums import PointID
-from kinematics.types import Vec3
+from kinematics.core.enums import PointID
+from kinematics.core.types import Vec3
 
 
 @dataclass
@@ -22,9 +22,9 @@ class SuspensionState:
     for state manipulation, solver integration, and coordinate transformations.
 
     Attributes:
-        positions (dict[PointID, Vec3]): Dictionary mapping point IDs to 3D positions.
-        free_points (Set[PointID]): Set of point IDs that are free to move during solving.
-        free_points_order (List[PointID]): Sorted list of free point IDs for consistent ordering.
+        positions: Dictionary mapping point IDs to 3D positions.
+        free_points: Set of point IDs that are free to move during solving.
+        free_points_order: Sorted list of free point IDs for consistent ordering.
     """
 
     positions: dict[PointID, Vec3]
@@ -84,7 +84,7 @@ class SuspensionState:
 
         positions_2d = array.reshape(n_points, 3)
         for i, point_id in enumerate(self.free_points_order):
-            # Direct assignment without copy - caller owns the data
+            # Direct assignment without copy - caller owns the data.
             self.positions[point_id] = positions_2d[i]
 
     def update_positions(self, new_positions: dict[PointID, Vec3]) -> None:
