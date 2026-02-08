@@ -22,6 +22,18 @@ import pytest
 
 from kinematics.cli import sweep as cli_sweep
 
+# Check if matplotlib is available for animation tests.
+try:
+    import matplotlib  # noqa: F401
+
+    HAS_MATPLOTLIB = True
+except ImportError:
+    HAS_MATPLOTLIB = False
+
+requires_viz = pytest.mark.skipif(
+    not HAS_MATPLOTLIB, reason="matplotlib not installed (install with: uv pip install -e '.[viz]')"
+)
+
 
 def load_csv_data(file_path: Path) -> tuple[list[str], list[list[str]]]:
     """
@@ -323,6 +335,7 @@ class TestCliDirectEndToEnd:
 
         validate_output_against_reference(output_file, "parquet")
 
+    @requires_viz
     def test_csv_output_with_animation(
         self,
         temp_dir: Path,
@@ -345,6 +358,7 @@ class TestCliDirectEndToEnd:
         validate_output_against_reference(output_file, "csv")
         validate_animation_file(animation_file)
 
+    @requires_viz
     def test_parquet_output_with_animation(
         self,
         temp_dir: Path,
@@ -367,6 +381,7 @@ class TestCliDirectEndToEnd:
         validate_output_against_reference(output_file, "parquet")
         validate_animation_file(animation_file)
 
+    @requires_viz
     def test_gif_animation_output(
         self,
         temp_dir: Path,

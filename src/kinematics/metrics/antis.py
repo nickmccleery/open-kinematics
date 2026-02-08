@@ -3,14 +3,14 @@ This module contains functions for calculating "anti" geometry metrics like anti
 and anti-squat.
 """
 
-from kinematics.core.types import Vec3
+from kinematics.io.validation import Vec3Like
 from kinematics.state import SuspensionState
 
 
 def calculate_geometric_anti_dive(
     state: SuspensionState,
-    svic: Vec3,
-    cg_position: Vec3,
+    svic: Vec3Like,
+    cg_position: Vec3Like,
     wheelbase: float,
     tire_radius: float,
 ) -> float:
@@ -21,8 +21,8 @@ def calculate_geometric_anti_dive(
 
 def calculate_geometric_anti_squat(
     state: SuspensionState,
-    svic: Vec3,
-    cg_position: Vec3,
+    svic: Vec3Like,
+    cg_position: Vec3Like,
     wheelbase: float,
     tire_radius: float,
 ) -> float:

@@ -3,16 +3,14 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from kinematics.core.constants import TEST_TOLERANCE
 from kinematics.constraints import DistanceConstraint
+from kinematics.core.constants import TEST_TOLERANCE
 from kinematics.core.enums import Axis, PointID, TargetPositionMode
+from kinematics.core.types import PointTargetAxis, SweepConfig
 from kinematics.io.geometry_loader import load_geometry
 from kinematics.main import solve_sweep
 from kinematics.points.derived.manager import DerivedPointsManager
 from kinematics.solver import PointTarget
-from kinematics.core.types import PointTargetAxis, SweepConfig
-from kinematics.visualization.animation import create_animation
-from kinematics.visualization.main import SuspensionVisualizer, WheelVisualization
 
 
 @pytest.fixture
@@ -120,6 +118,10 @@ def test_run_solver(
         )
 
     print("Creating animation...")
+
+    # Defer visualization imports to avoid collection errors when matplotlib is missing.
+    from kinematics.visualization.animation import create_animation
+    from kinematics.visualization.main import SuspensionVisualizer, WheelVisualization
 
     # Extract positions from SuspensionState objects for animation
     position_states_positions = [state.positions for state in position_states]

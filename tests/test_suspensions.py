@@ -15,17 +15,17 @@ import numpy as np
 import pytest
 
 from kinematics.core.enums import PointID, ShimType, Units
+from kinematics.core.types import make_vec3
 from kinematics.io.geometry_loader import load_geometry
 from kinematics.suspensions.base import Suspension
 from kinematics.suspensions.config.settings import (
-    CamberShimConfigOutboard,
+    CamberShimConfig,
     SuspensionConfig,
     TireConfig,
     WheelConfig,
 )
 from kinematics.suspensions.double_wishbone import DoubleWishboneSuspension
 from kinematics.suspensions.registry import get_suspension_class, list_supported_types
-from kinematics.core.types import make_vec3
 
 # Test fixtures
 
@@ -66,7 +66,7 @@ def valid_config() -> SuspensionConfig:
         ),
         cg_position={"x": 1250, "y": 0, "z": 450},
         wheelbase=2500.0,
-        camber_shim=CamberShimConfigOutboard(
+        camber_shim=CamberShimConfig(
             shim_face_center={"x": -25.0, "y": 750.0, "z": 500.0},
             shim_normal={"x": 0.0, "y": 1.0, "z": 0.0},
             design_thickness=30.0,
@@ -463,14 +463,15 @@ class TestIntegration:
         """
         Test workflow with camber shim application.
         """
-        # Modify config to have shim effect
-        valid_config.camber_shim.setup_thickness = 35.0  # 5mm more than design
+        # Create config with modified shim thickness (5mm more than design).
+        new_shim = valid_config.camber_shim.model_copy(update={"setup_thickness": 35.0})
+        config = valid_config.model_copy(update={"camber_shim": new_shim})
 
         suspension = DoubleWishboneSuspension(
             name="test",
             units=Units.MILLIMETERS,
             hardpoints=valid_hardpoints,
-            config=valid_config,
+            config=config,
         )
         state = suspension.initial_state()
 

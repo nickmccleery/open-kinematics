@@ -5,11 +5,10 @@ Generates side-by-side comparisons of stock vs. shimmed suspension geometry,
 demonstrating how camber shims rotate the upright about the lower ball joint.
 """
 
-import copy
 from pathlib import Path
 
 from kinematics.io.geometry_loader import load_geometry
-from kinematics.suspensions.core.settings import CamberShimConfigOutboard
+from kinematics.suspensions.config.settings import CamberShimConfig
 from kinematics.visualization.api import visualize_geometry
 
 # Shim configuration constants.
@@ -33,7 +32,7 @@ def main():
     # The shim face centre should be at/near the upper ball joint for maximum effect.
     # This represents the mounting face of the upright-side bracket.
     # Normal points outboard (positive Y).
-    shim_config = CamberShimConfigOutboard(
+    shim_config = CamberShimConfig(
         shim_face_center={
             "x": -25.0,  # Near upper ball joint X.
             "y": 750.0,  # Near upper ball joint Y (outboard of inboards).
@@ -51,8 +50,7 @@ def main():
     if suspension.config is None:
         raise ValueError("Suspension has no configuration")
 
-    setup_config = copy.deepcopy(suspension.config)
-    setup_config.camber_shim = shim_config
+    setup_config = suspension.config.model_copy(update={"camber_shim": shim_config})
 
     suspension_class = type(suspension)
     setup_suspension = suspension_class(

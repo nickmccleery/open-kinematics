@@ -365,9 +365,8 @@ class DoubleWishboneSuspension(Suspension):
         # Compute shim offset.
         shim_offset = compute_shim_offset(shim_config)
 
-        # Get shim face center at design.
-        sfc = shim_config.shim_face_center
-        shim_face_center_design = make_vec3([sfc["x"], sfc["y"], sfc["z"]])
+        # Get shim face center at design (already a Vec3).
+        shim_face_center_design = shim_config.shim_face_center
 
         # Lower ball joint is the pivot.
         lower_ball_joint = make_vec3(positions[PointID.LOWER_WISHBONE_OUTBOARD])
