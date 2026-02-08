@@ -367,7 +367,7 @@ class TestHardpointsArchitecture:
         }
 
     @pytest.fixture
-    def mount_ids(self):
+    def hardpoint_point_ids(self):
         """
         Standard mount ID mapping for double wishbone upright.
         """
@@ -388,23 +388,23 @@ class TestHardpointsArchitecture:
         }
 
     def test_from_hardpoints_and_attachments_creates_upright(
-        self, hardpoints_registry, mount_ids, attachments
+        self, hardpoints_registry, hardpoint_point_ids, attachments
     ):
         """
         Test that from_hardpoints_and_attachments creates a valid upright.
         """
         upright = Upright.from_hardpoints_and_attachments(
-            mount_ids, hardpoints_registry, attachments
+            hardpoint_point_ids, hardpoints_registry, attachments
         )
 
         # Verify LCS is established
         assert upright.lcs is not None
 
         # Verify mount IDs are stored
-        assert upright.mount_ids is not None
-        assert upright.mount_ids["upper_ball_joint"] == PointID.UPPER_WISHBONE_OUTBOARD
-        assert upright.mount_ids["lower_ball_joint"] == PointID.LOWER_WISHBONE_OUTBOARD
-        assert upright.mount_ids["trackrod_outboard"] == PointID.TRACKROD_OUTBOARD
+        assert upright.hardpoint_point_ids is not None
+        assert upright.hardpoint_point_ids["upper_ball_joint"] == PointID.UPPER_WISHBONE_OUTBOARD
+        assert upright.hardpoint_point_ids["lower_ball_joint"] == PointID.LOWER_WISHBONE_OUTBOARD
+        assert upright.hardpoint_point_ids["trackrod_outboard"] == PointID.TRACKROD_OUTBOARD
 
         # Verify hardpoints match registry values
         np.testing.assert_allclose(
@@ -424,13 +424,13 @@ class TestHardpointsArchitecture:
         )
 
     def test_from_hardpoints_and_attachments_computes_local_offsets(
-        self, hardpoints_registry, mount_ids, attachments
+        self, hardpoints_registry, hardpoint_point_ids, attachments
     ):
         """
         Test that local offsets are computed for attachments.
         """
         upright = Upright.from_hardpoints_and_attachments(
-            mount_ids, hardpoints_registry, attachments
+            hardpoint_point_ids, hardpoints_registry, attachments
         )
 
         # Verify attachment local offsets are computed
@@ -455,18 +455,18 @@ class TestHardpointsArchitecture:
         """
         Test that missing mount IDs raise ValueError.
         """
-        incomplete_mount_ids = {
+        incomplete_hardpoint_point_ids = {
             "upper_ball_joint": PointID.UPPER_WISHBONE_OUTBOARD,
             # Missing lower_ball_joint and trackrod_outboard
         }
 
         with pytest.raises(ValueError, match="Missing required mounts"):
             Upright.from_hardpoints_and_attachments(
-                incomplete_mount_ids, hardpoints_registry, attachments
+                incomplete_hardpoint_point_ids, hardpoints_registry, attachments
             )
 
     def test_from_hardpoints_and_attachments_missing_attachment_raises(
-        self, hardpoints_registry, mount_ids
+        self, hardpoints_registry, hardpoint_point_ids
     ):
         """
         Test that missing attachments raise ValueError.
@@ -478,17 +478,17 @@ class TestHardpointsArchitecture:
 
         with pytest.raises(ValueError, match="Missing required attachments"):
             Upright.from_hardpoints_and_attachments(
-                mount_ids, hardpoints_registry, incomplete_attachments
+                hardpoint_point_ids, hardpoints_registry, incomplete_attachments
             )
 
     def test_update_from_hardpoints_registry_updates_hardpoints(
-        self, hardpoints_registry, mount_ids, attachments
+        self, hardpoints_registry, hardpoint_point_ids, attachments
     ):
         """
         Test that update_from_hardpoints_registry correctly updates hardpoint positions.
         """
         upright = Upright.from_hardpoints_and_attachments(
-            mount_ids, hardpoints_registry, attachments
+            hardpoint_point_ids, hardpoints_registry, attachments
         )
 
         # Store original local offset
@@ -521,12 +521,12 @@ class TestHardpointsArchitecture:
             atol=1e-10,
         )
 
-    def test_update_from_hardpoints_registry_without_mount_ids_raises(self):
+    def test_update_from_hardpoints_registry_without_hardpoint_point_ids_raises(self):
         """
         Test that update_from_hardpoints_registry raises if upright wasn't created with
         hardpoints.
         """
-        # Create upright using old-style constructor (no mount_ids)
+        # Create upright using old-style constructor (no hardpoint_point_ids)
         hardpoints = UprightHardpoints(
             lower_ball_joint=make_vec3([0, 900, 200]),
             upper_ball_joint=make_vec3([-25, 750, 500]),
@@ -545,9 +545,9 @@ class TestHardpointsArchitecture:
         with pytest.raises(RuntimeError, match="not created with hardpoint references"):
             upright.update_from_hardpoints_registry(dummy_hardpoints)
 
-    def test_mount_ids_property_returns_none_for_legacy_upright(self):
+    def test_hardpoint_point_ids_property_returns_none_for_legacy_upright(self):
         """
-        Test that mount_ids property returns None for legacy-constructed uprights.
+        Test that hardpoint_point_ids property returns None for legacy-constructed uprights.
         """
         hardpoints = UprightHardpoints(
             lower_ball_joint=make_vec3([0, 900, 200]),
@@ -561,16 +561,16 @@ class TestHardpointsArchitecture:
 
         upright = Upright.from_global_positions(hardpoints, attachments)
 
-        assert upright.mount_ids is None
+        assert upright.hardpoint_point_ids is None
 
     def test_camber_shim_works_with_hardpoints_upright(
-        self, hardpoints_registry, mount_ids, attachments
+        self, hardpoints_registry, hardpoint_point_ids, attachments
     ):
         """
         Test that camber shim can be applied to hardpoints-constructed upright.
         """
         upright = Upright.from_hardpoints_and_attachments(
-            mount_ids, hardpoints_registry, attachments
+            hardpoint_point_ids, hardpoints_registry, attachments
         )
 
         # Store original hardpoint positions

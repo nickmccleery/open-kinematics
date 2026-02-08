@@ -352,14 +352,14 @@ class DoubleWishboneSuspension(Suspension):
         shim_config = self.config.camber_shim
 
         # Build upright from current positions.
-        mount_ids = self.UPRIGHT_MOUNT_ROLES
-        hardpoints = {pid: make_vec3(positions[pid]) for pid in mount_ids.values()}
+        point_ids = self.UPRIGHT_MOUNT_ROLES
+        hardpoints = {pid: make_vec3(positions[pid]) for pid in point_ids.values()}
         attachments = {
             "axle_inboard": make_vec3(positions[PointID.AXLE_INBOARD]),
             "axle_outboard": make_vec3(positions[PointID.AXLE_OUTBOARD]),
         }
         upright = Upright.from_hardpoints_and_attachments(
-            mount_ids, hardpoints, attachments
+            point_ids, hardpoints, attachments
         )
 
         # Compute shim offset.

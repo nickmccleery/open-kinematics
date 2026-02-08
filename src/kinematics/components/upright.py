@@ -101,8 +101,9 @@ class Upright(RigidBody):
 
         self.hardpoints = hardpoints
         self.attachments = attachments
-        # Mount IDs for hardpoints-based construction.
-        self._mount_ids: dict[str, PointID] | None = None
+
+        # Hardpoint PointIDs for hardpoints-based construction.
+        self._hardpoint_point_ids: dict[str, PointID] | None = None
 
     @classmethod
     def from_global_positions(
@@ -273,7 +274,7 @@ class Upright(RigidBody):
     @classmethod
     def from_hardpoints_and_attachments(
         cls,
-        mount_ids: dict[str, PointID],
+        hardpoint_point_ids: dict[str, PointID],
         hardpoints: dict[PointID, Vec3],
         attachments: dict[str, Vec3],
     ) -> "Upright":
@@ -285,7 +286,7 @@ class Upright(RigidBody):
         and resolves them from the hardpoints at construction time.
 
         Args:
-            mount_ids: Mapping of mount role to PointID
+            hardpoint_point_ids: Mapping of mount role to PointID
                        {"upper_ball_joint": PointID.UPPER_WISHBONE_OUTBOARD,
                         "lower_ball_joint": PointID.LOWER_WISHBONE_OUTBOARD,
                         "trackrod_outboard": PointID.TRACKROD_OUTBOARD}
@@ -302,7 +303,7 @@ class Upright(RigidBody):
         """
         # Validate required mounts.
         required_mounts = {"upper_ball_joint", "lower_ball_joint", "trackrod_outboard"}
-        missing_mounts = required_mounts - set(mount_ids.keys())
+        missing_mounts = required_mounts - set(hardpoint_point_ids.keys())
         if missing_mounts:
             raise ValueError(f"Missing required mounts: {missing_mounts}")
 
@@ -314,9 +315,9 @@ class Upright(RigidBody):
 
         # Resolve mount positions from hardpoints.
         upright_hardpoints = UprightHardpoints(
-            upper_ball_joint=make_vec3(hardpoints[mount_ids["upper_ball_joint"]]),
-            lower_ball_joint=make_vec3(hardpoints[mount_ids["lower_ball_joint"]]),
-            trackrod_outboard=make_vec3(hardpoints[mount_ids["trackrod_outboard"]]),
+            upper_ball_joint=make_vec3(hardpoints[hardpoint_point_ids["upper_ball_joint"]]),
+            lower_ball_joint=make_vec3(hardpoints[hardpoint_point_ids["lower_ball_joint"]]),
+            trackrod_outboard=make_vec3(hardpoints[hardpoint_point_ids["trackrod_outboard"]]),
         )
 
         upright_attachments = UprightAttachments(
@@ -325,7 +326,7 @@ class Upright(RigidBody):
         )
 
         upright = cls(hardpoints=upright_hardpoints, attachments=upright_attachments)
-        upright._mount_ids = mount_ids  # Store for later hardpoints updates.
+        upright._hardpoint_point_ids = hardpoint_point_ids  # Store for updates.
         upright.init_local_frame()
         return upright
 
@@ -344,22 +345,22 @@ class Upright(RigidBody):
             RuntimeError: If upright was not created with hardpoint references
             KeyError: If a mount PointID is not found in hardpoints
         """
-        if self._mount_ids is None:
+        if self.hardpoint_point_ids is None:
             raise RuntimeError(
                 "Upright not created with hardpoint references. "
                 "Use from_hardpoints_and_attachments() constructor."
             )
 
-        mount_ids = self._mount_ids  # Local reference for type narrowing.
+        point_ids = self.hardpoint_point_ids  # Local reference for type narrowing.
         new_hardpoints = {
-            "upper_ball_joint": hardpoints[mount_ids["upper_ball_joint"]],
-            "lower_ball_joint": hardpoints[mount_ids["lower_ball_joint"]],
-            "trackrod_outboard": hardpoints[mount_ids["trackrod_outboard"]],
+            "upper_ball_joint": hardpoints[point_ids["upper_ball_joint"]],
+            "lower_ball_joint": hardpoints[point_ids["lower_ball_joint"]],
+            "trackrod_outboard": hardpoints[point_ids["trackrod_outboard"]],
         }
         self.update_from_hardpoints(new_hardpoints)
 
     @property
-    def mount_ids(self) -> dict[str, PointID] | None:
+    def hardpoint_point_ids(self) -> dict[str, PointID] | None:
         """
         Get the mount PointID references if available.
 
@@ -367,4 +368,4 @@ class Upright(RigidBody):
             Dictionary mapping mount roles to PointIDs, or None if not using
             hardpoints-based construction.
         """
-        return getattr(self, "_mount_ids", None)
+        return getattr(self, "_hardpoint_point_ids", None)
