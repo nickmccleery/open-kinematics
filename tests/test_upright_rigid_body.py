@@ -402,9 +402,18 @@ class TestHardpointsArchitecture:
 
         # Verify mount IDs are stored
         assert upright.hardpoint_point_ids is not None
-        assert upright.hardpoint_point_ids["upper_ball_joint"] == PointID.UPPER_WISHBONE_OUTBOARD
-        assert upright.hardpoint_point_ids["lower_ball_joint"] == PointID.LOWER_WISHBONE_OUTBOARD
-        assert upright.hardpoint_point_ids["trackrod_outboard"] == PointID.TRACKROD_OUTBOARD
+        assert (
+            upright.hardpoint_point_ids["upper_ball_joint"]
+            == PointID.UPPER_WISHBONE_OUTBOARD
+        )
+        assert (
+            upright.hardpoint_point_ids["lower_ball_joint"]
+            == PointID.LOWER_WISHBONE_OUTBOARD
+        )
+        assert (
+            upright.hardpoint_point_ids["trackrod_outboard"]
+            == PointID.TRACKROD_OUTBOARD
+        )
 
         # Verify hardpoints match registry values
         np.testing.assert_allclose(

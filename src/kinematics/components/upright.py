@@ -315,9 +315,15 @@ class Upright(RigidBody):
 
         # Resolve mount positions from hardpoints.
         upright_hardpoints = UprightHardpoints(
-            upper_ball_joint=make_vec3(hardpoints[hardpoint_point_ids["upper_ball_joint"]]),
-            lower_ball_joint=make_vec3(hardpoints[hardpoint_point_ids["lower_ball_joint"]]),
-            trackrod_outboard=make_vec3(hardpoints[hardpoint_point_ids["trackrod_outboard"]]),
+            upper_ball_joint=make_vec3(
+                hardpoints[hardpoint_point_ids["upper_ball_joint"]]
+            ),
+            lower_ball_joint=make_vec3(
+                hardpoints[hardpoint_point_ids["lower_ball_joint"]]
+            ),
+            trackrod_outboard=make_vec3(
+                hardpoints[hardpoint_point_ids["trackrod_outboard"]]
+            ),
         )
 
         upright_attachments = UprightAttachments(

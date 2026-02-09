@@ -40,6 +40,10 @@ lint:
 format:
     uv run ruff format .
 
+# Print CSE snippets for Jacobian functions (paste into src/kinematics/jacobians.py).
+generate-jacobians:
+    uv run python tools/generate_jacobians.py
+
 # Spell check source code and comments (includes British -> American English).
 spellcheck:
     uv run codespell src/ tests/
