@@ -7,21 +7,18 @@ Each constraint computes a residual value that the solver attempts to drive to z
 """
 
 from abc import ABC, abstractmethod
+from math import atan2
 from typing import Set
 
 import numpy as np
 
 from kinematics.core.constants import EPSILON
 from kinematics.core.enums import Axis, PointID
+from kinematics.core.soft_math import softnorm
 from kinematics.core.types import Vec3, make_vec3
 from kinematics.core.vector_utils.geometric import (
-    compute_point_point_distance,
-    compute_point_to_line_distance,
     compute_point_to_plane_distance,
     compute_scalar_triple_product,
-    compute_vector_vector_angle,
-    compute_vectors_cross_product_magnitude,
-    compute_vectors_dot_product,
 )
 
 
@@ -93,11 +90,10 @@ class DistanceConstraint(Constraint):
         Compute the distance residual.
 
         Returns the difference between the current distance and target distance.
-        Positive values indicate the points are too far apart.
+        Uses softnorm(dx^2 + dy^2 + dz^2) to match the analytical Jacobian.
         """
-        current_distance = compute_point_point_distance(
-            positions[self.p1], positions[self.p2]
-        )
+        delta = positions[self.p2] - positions[self.p1]
+        current_distance = softnorm(float(np.dot(delta, delta)))
         return float(current_distance - self.target_distance)
 
 
@@ -128,9 +124,11 @@ class SphericalJointConstraint(Constraint):
         """
         Compute the distance between the two points.
 
-        Returns the distance (should be zero for a perfect joint).
+        Returns softnorm of the squared separation (should be zero for a
+        perfect joint). Uses softnorm to match the analytical Jacobian.
         """
-        return compute_point_point_distance(positions[self.p1], positions[self.p2])
+        delta = positions[self.p2] - positions[self.p1]
+        return float(softnorm(float(np.dot(delta, delta))))
 
 
 class AngleConstraint(Constraint):
@@ -181,17 +179,21 @@ class AngleConstraint(Constraint):
         Compute the angle residual.
 
         Returns the difference between the current angle and target angle in radians.
-        Positive values indicate the angle is larger than the target.
-
-        Raises:
-            ValueError: If either vector has zero length (degenerate geometry).
+        Uses raw (unnormalized) vectors with softnorm on the cross product magnitude,
+        matching the analytical Jacobian: atan2(softnorm(|cross|^2), dot) - target.
         """
         v1 = positions[self.v1_end] - positions[self.v1_start]
         v2 = positions[self.v2_end] - positions[self.v2_start]
 
-        # This will raise ValueError if vectors are zero-length.
-        current_angle = compute_vector_vector_angle(make_vec3(v1), make_vec3(v2))
+        # Cross product components.
+        cx = v1[1] * v2[2] - v1[2] * v2[1]
+        cy = v1[2] * v2[0] - v1[0] * v2[2]
+        cz = v1[0] * v2[1] - v1[1] * v2[0]
 
+        cross_mag = softnorm(float(cx * cx + cy * cy + cz * cz))
+        dot_raw = float(np.dot(v1, v2))
+
+        current_angle = atan2(cross_mag, dot_raw)
         return float(current_angle - self.target_angle)
 
 
@@ -239,15 +241,22 @@ class ThreePointAngleConstraint(Constraint):
         Compute the angle residual at the vertex.
 
         Returns the difference between the current angle and target angle in radians.
-
-        Raises:
-            ValueError: If either vector has zero length (degenerate geometry).
+        Uses raw (unnormalized) vectors from the vertex with softnorm on the cross
+        product magnitude, matching the analytical Jacobian.
         """
         # Vectors from vertex to other points.
         v1 = positions[self.p1] - positions[self.p2]
         v2 = positions[self.p3] - positions[self.p2]
 
-        current_angle = compute_vector_vector_angle(make_vec3(v1), make_vec3(v2))
+        # Cross product components.
+        cx = v1[1] * v2[2] - v1[2] * v2[1]
+        cy = v1[2] * v2[0] - v1[0] * v2[2]
+        cz = v1[0] * v2[1] - v1[1] * v2[0]
+
+        cross_mag = softnorm(float(cx * cx + cy * cy + cz * cz))
+        dot_raw = float(np.dot(v1, v2))
+
+        current_angle = atan2(cross_mag, dot_raw)
         return float(current_angle - self.target_angle)
 
 
@@ -288,15 +297,23 @@ class VectorsParallelConstraint(Constraint):
         """
         Compute the parallel vectors constraint residual.
 
-        Returns the magnitude of the cross product between normalized vectors.
-        Zero indicates the vectors are parallel or anti-parallel.
-
-        Raises:
-            ValueError: If either vector has zero length (degenerate geometry).
+        Returns softnorm(|cross|^2) / (softnorm(|v1|^2) * softnorm(|v2|^2)),
+        matching the analytical Jacobian. Zero indicates the vectors are
+        parallel or anti-parallel.
         """
         v1 = positions[self.v1_end] - positions[self.v1_start]
         v2 = positions[self.v2_end] - positions[self.v2_start]
-        return compute_vectors_cross_product_magnitude(make_vec3(v1), make_vec3(v2))
+
+        # Cross product components.
+        cx = v1[1] * v2[2] - v1[2] * v2[1]
+        cy = v1[2] * v2[0] - v1[0] * v2[2]
+        cz = v1[0] * v2[1] - v1[1] * v2[0]
+
+        cross_mag = softnorm(float(cx * cx + cy * cy + cz * cz))
+        v1_mag = softnorm(float(np.dot(v1, v1)))
+        v2_mag = softnorm(float(np.dot(v2, v2)))
+
+        return float(cross_mag / (v1_mag * v2_mag))
 
 
 class VectorsPerpendicularConstraint(Constraint):
@@ -336,15 +353,18 @@ class VectorsPerpendicularConstraint(Constraint):
         """
         Compute the perpendicular constraint residual.
 
-        Returns the dot product between normalized vectors.
-        Zero indicates the vectors are perpendicular.
-
-        Raises:
-            ValueError: If either vector has zero length (degenerate geometry).
+        Returns dot(v1, v2) / (softnorm(|v1|^2) * softnorm(|v2|^2)),
+        matching the analytical Jacobian. Zero indicates the vectors are
+        perpendicular.
         """
         v1 = positions[self.v1_end] - positions[self.v1_start]
         v2 = positions[self.v2_end] - positions[self.v2_start]
-        return compute_vectors_dot_product(make_vec3(v1), make_vec3(v2))
+
+        dot_raw = float(np.dot(v1, v2))
+        v1_mag = softnorm(float(np.dot(v1, v1)))
+        v2_mag = softnorm(float(np.dot(v2, v2)))
+
+        return float(dot_raw / (v1_mag * v2_mag))
 
 
 class EqualDistanceConstraint(Constraint):
@@ -383,11 +403,13 @@ class EqualDistanceConstraint(Constraint):
         """
         Compute the equal distance residual.
 
-        Returns the difference between the two distances. Zero indicates the distances
-        are equal.
+        Returns softnorm(|d1|^2) - softnorm(|d2|^2), matching the analytical
+        Jacobian. Zero indicates the distances are equal.
         """
-        dist1 = compute_point_point_distance(positions[self.p1], positions[self.p2])
-        dist2 = compute_point_point_distance(positions[self.p3], positions[self.p4])
+        d1 = positions[self.p2] - positions[self.p1]
+        d2 = positions[self.p4] - positions[self.p3]
+        dist1 = softnorm(float(np.dot(d1, d1)))
+        dist2 = softnorm(float(np.dot(d2, d2)))
         return float(dist1 - dist2)
 
 
@@ -469,13 +491,19 @@ class PointOnLineConstraint(Constraint):
         """
         Compute the point-to-line distance residual.
 
-        Returns the perpendicular distance from the point to the line. Zero indicates
-        the point lies exactly on the line. Always non-negative.
+        Returns softnorm(|cross(p - line_point, line_direction)|^2), matching
+        the analytical Jacobian. Zero indicates the point lies exactly on the
+        line.
         """
-        current_point = positions[self.point_id]
-        return compute_point_to_line_distance(
-            current_point, make_vec3(self.line_point), make_vec3(self.line_direction)
-        )
+        w = positions[self.point_id] - self.line_point
+        ld = self.line_direction
+
+        # Cross product components: w x line_direction.
+        cx = w[1] * ld[2] - w[2] * ld[1]
+        cy = w[2] * ld[0] - w[0] * ld[2]
+        cz = w[0] * ld[1] - w[1] * ld[0]
+
+        return float(softnorm(float(cx * cx + cy * cy + cz * cz)))
 
 
 class PointOnPlaneConstraint(Constraint):

@@ -52,6 +52,14 @@ from kinematics.targets import resolve_target
 # constraints.
 SOLVE_METHOD = "lm"
 
+# Finite-difference step for derived-point target Jacobian rows.
+# Derived points (e.g. WHEEL_CENTER) are computed from free points via
+# nonlinear functions, so their target Jacobian rows need the chain rule.
+# We approximate this with forward finite differences on the derived-point
+# computation.  1e-7 mm is small enough for accurate derivatives while
+# staying above float64 noise.
+_DERIVED_TARGET_FD_STEP = 1e-7
+
 
 class SolverConfig(NamedTuple):
     """
@@ -349,13 +357,41 @@ class ResidualComputer:
                 jac[i, j_col : j_col + 3] = derivs[d_start : d_start + 3]
 
         # Target rows: residual = dot(position, direction) - value.
-        # Derivative w.r.t. position coords = direction components.
         offset = self.n_constraints
         for i, target in enumerate(step_targets):
+            row = offset + i
+            direction = resolve_target(target.direction)
+
             if target.point_id in self._point_var_offsets:
+                # Free-point target: derivative w.r.t. its own coords is
+                # just the direction vector.
                 col = self._point_var_offsets[target.point_id]
-                direction = resolve_target(target.direction)
-                jac[offset + i, col : col + 3] = direction
+                jac[row, col : col + 3] = direction
+            else:
+                # Derived-point target (e.g. WHEEL_CENTER): the point is
+                # computed from free points via a nonlinear function, so the
+                # Jacobian row must include the chain rule through that
+                # computation.  We approximate it with forward finite
+                # differences on the derived-point update.
+                base_val = project_coordinate(
+                    positions[target.point_id], direction
+                )
+                h = _DERIVED_TARGET_FD_STEP
+                for pid in self.state_buffer.free_points_order:
+                    col = self._point_var_offsets[pid]
+                    saved = positions[pid].copy()
+                    for d in range(3):
+                        positions[pid] = saved.copy()
+                        positions[pid][d] += h
+                        self.derived_manager.update_in_place(positions)
+                        pert_val = project_coordinate(
+                            positions[target.point_id], direction
+                        )
+                        jac[row, col + d] = (pert_val - base_val) / h
+                    # Restore this free point before moving to the next.
+                    positions[pid] = saved
+                # Restore derived points to their unperturbed state.
+                self.derived_manager.update_in_place(positions)
 
         return jac.copy()
 
