@@ -295,6 +295,7 @@ def validate_animation_file(animation_file: Path) -> None:
     print(f"✓ Validated animation file: {file_size} bytes")
 
 
+@pytest.mark.manual
 class TestCliDirectEndToEnd:
     """
     Test class for CLI end-to-end functionality using direct function calls.
