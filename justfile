@@ -4,9 +4,14 @@ setup:
     uv sync --all-extras --dev
     uv pip install -e .
 
-# Install dependencies only.
+# Install dependencies.
 install:
     uv sync --all-extras --dev
+    uv pip install -e .
+
+# Install dependencies for CI (no optional extras like viz).
+install-ci:
+    uv sync --dev
     uv pip install -e .
 
 # Clean.
