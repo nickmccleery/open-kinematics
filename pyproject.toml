@@ -110,7 +110,10 @@ dictionary = ".codespell-british.txt,-"
 # ty type checker settings.
 # --------------------------------------------------------------------------------------
 [tool.ty.src]
-exclude = ["src/kinematics/generated/"]
+exclude = [
+    "src/kinematics/generated/",
+    "src/kinematics/visualization/",
+]
 
 [build-system]
 requires = ["hatchling"]

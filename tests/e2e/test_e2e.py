@@ -25,7 +25,7 @@ from kinematics.cli import sweep as cli_sweep
 
 # Check if matplotlib is available for animation tests.
 try:
-    import matplotlib  # noqa: F401
+    import matplotlib  # noqa: F401  # type: ignore[import-not-found]
 
     HAS_MATPLOTLIB = True
 except ImportError:

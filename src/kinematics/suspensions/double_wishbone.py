@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from functools import partial
-from typing import ClassVar, Sequence
+from typing import TYPE_CHECKING, ClassVar, Sequence
 
 import numpy as np
 
@@ -45,7 +45,9 @@ from kinematics.suspensions.config.shims import (
     compute_upright_rotation_from_shim,
     rotate_point_about_axis,
 )
-from kinematics.visualization.main import LinkVisualization
+
+if TYPE_CHECKING:
+    from kinematics.visualization.main import LinkVisualization
 
 
 @dataclass
@@ -289,6 +291,8 @@ class DoubleWishboneSuspension(Suspension):
 
     def get_visualization_links(self) -> list[LinkVisualization]:
         """Visualization links for 3D rendering."""
+        from kinematics.visualization.main import LinkVisualization
+
         return [
             LinkVisualization(
                 points=[
