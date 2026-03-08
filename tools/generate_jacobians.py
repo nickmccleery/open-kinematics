@@ -16,6 +16,8 @@ Run
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 import sympy as sp
 from sympy.printing.pycode import pycode
 
@@ -30,19 +32,22 @@ CSE_SYMBOLS = sp.symbols(" ".join(f"t{i}" for i in range(200)))
 EPS_SQ = sp.Symbol("EPS_SQ", positive=True)
 
 
-def real_symbols(names: str) -> tuple[sp.Symbol, ...]:
-    return sp.symbols(names, real=True)
+def real_symbols(names: str) -> tuple[Any, ...]:
+    """
+    Create a tuple of real-valued SymPy symbols.
+    """
+    return cast(tuple[Any, ...], sp.symbols(names, real=True))
 
 
-def softnorm(sum_of_squares: sp.Expr) -> sp.Expr:
+def softnorm(sum_of_squares: Any) -> Any:
     """`sqrt(sum_of_squares + EPS_SQ)` — smooth everywhere."""
     return sp.sqrt(sum_of_squares + EPS_SQ)
 
 
 def print_snippet(
     name: str,
-    variables: list[sp.Symbol],
-    residual: sp.Expr,
+    variables: list[Any],
+    residual: Any,
 ) -> None:
     """Differentiate *residual* w.r.t. *variables* and print the CSE body.
 
@@ -52,11 +57,19 @@ def print_snippet(
     """
     derivs = [sp.diff(residual, v) for v in variables]
     replacements, reduced = sp.cse(derivs, symbols=list(CSE_SYMBOLS))
+    reduced_exprs = cast(list[sp.Expr], reduced)
 
     print(f"# === {name} ===")
     for sym, expr in replacements:
         print(f"    {sym} = {pycode(expr)}")
-    values = ", ".join(pycode(r) for r in reduced)
+    rendered_values: list[str] = []
+    for r in reduced_exprs:
+        rendered = pycode(r)
+        if isinstance(rendered, tuple):
+            rendered_values.append(rendered[2])
+        else:
+            rendered_values.append(rendered)
+    values = ", ".join(rendered_values)
     print(f"    return np.array([{values}])")
     print()
 
@@ -189,6 +202,7 @@ def gen_coplanar() -> None:
 
 
 def main() -> None:
+    """Generate and print Jacobian snippets for all supported constraints."""
     generators = [
         ("DistanceConstraint / SphericalJointConstraint", gen_distance),
         ("AngleConstraint", gen_angle),

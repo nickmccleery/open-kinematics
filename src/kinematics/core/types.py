@@ -29,6 +29,10 @@ def make_vec3(data) -> NDArray[np.float64]:
     Raises:
         ValueError: If the input cannot be shaped into a 3-element array.
     """
+    # Passthrough for dual-number types (automatic differentiation).
+    if hasattr(data, "deriv"):
+        return data
+
     if isinstance(data, np.ndarray) and data.dtype == np.float64 and data.shape == (3,):
         return data
 

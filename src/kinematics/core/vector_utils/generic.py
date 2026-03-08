@@ -6,12 +6,17 @@ system. These operations do not use any types specific to this project, so can b
 in utility contexts without introducing circular dependencies.
 """
 
-from typing import NamedTuple, Optional, TypeVar
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, NamedTuple, Optional, TypeVar, overload
 
 import numpy as np
 from numpy.typing import NDArray
 
 from kinematics.core.constants import EPSILON
+
+if TYPE_CHECKING:
+    from kinematics.core.dual import DualVec3
 
 FloatingT = TypeVar("FloatingT", bound=np.floating)
 
@@ -114,12 +119,20 @@ def compute_2d_vector_vector_intersection(
     return LineIntersectionResult(point=point, t1=float(t1), t2=float(t2))
 
 
-def normalize_vector(v: NDArray[FloatingT]) -> NDArray[FloatingT]:
+@overload
+def normalize_vector(v: DualVec3) -> DualVec3: ...
+
+
+@overload
+def normalize_vector(v: NDArray[FloatingT]) -> NDArray[FloatingT]: ...
+
+
+def normalize_vector(v: NDArray[FloatingT] | DualVec3) -> NDArray[FloatingT] | DualVec3:
     """
     Normalize a vector of any dimension to a unit vector.
 
     Args:
-        v: Input vector of any dimension.
+        v: Input vector of any dimension (ndarray or DualVec3).
 
     Returns:
         Unit vector in the same direction as the input.
@@ -127,6 +140,17 @@ def normalize_vector(v: NDArray[FloatingT]) -> NDArray[FloatingT]:
     Raises:
         ValueError: If the input vector has zero length (magnitude < EPSILON).
     """
+    # Import here to avoid circular dependency at module level.
+    from kinematics.core.dual import DualVec3
+    from kinematics.core.dual import norm as dual_norm
+
+    if isinstance(v, DualVec3):
+        # Use dual-aware norm to propagate derivatives through the quotient rule.
+        n = dual_norm(v)
+        if n.val < EPSILON:
+            raise ValueError("Cannot normalize zero-length vector")
+        return v / n
+
     norm = np.linalg.norm(v)
     if norm < EPSILON:
         raise ValueError("Cannot normalize zero-length vector")

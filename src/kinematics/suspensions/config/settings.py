@@ -98,7 +98,9 @@ class CamberShimConfig(BaseModel):
     def check_normal_nonzero(self) -> "CamberShimConfig":
         import numpy as np
 
-        magnitude = float(np.linalg.norm(self.shim_normal))
+        magnitude = float(
+            np.linalg.norm(np.asarray(self.shim_normal, dtype=np.float64))
+        )
         if magnitude < 1e-6:
             raise ValueError("shim_normal vector is near-zero")
         return self
