@@ -22,6 +22,7 @@ import pyarrow.parquet as pq
 import pytest
 
 from kinematics.cli import sweep as cli_sweep
+from kinematics.core.constants import TEST_TOLERANCE
 
 # Check if matplotlib is available for animation tests.
 try:
@@ -39,12 +40,6 @@ requires_viz = pytest.mark.skipif(
 # Columns that contain solver internals which vary across platforms.
 # These are excluded from numerical comparison.
 SOLVER_METADATA_COLUMNS = {"solver_max_residual", "solver_nfev"}
-
-# Tolerance for numerical comparison of solved positions.
-# The LM solver can converge to slightly different solutions on different
-# platforms due to differences in BLAS/LAPACK implementations.
-POSITION_ATOL = 1e-3  # mm
-POSITION_RTOL = 1e-6
 
 
 def load_csv_data(file_path: Path) -> tuple[list[str], list[list[str]]]:
@@ -212,8 +207,8 @@ def compare_numerical_csv(
                 np.testing.assert_allclose(
                     a,
                     e,
-                    atol=POSITION_ATOL,
-                    rtol=POSITION_RTOL,
+                    atol=TEST_TOLERANCE,
+                    rtol=0,
                     err_msg=(
                         f"Row {row_idx}, column '{col_name}': "
                         f"{actual_val} != {expected_val}"
@@ -265,8 +260,8 @@ def compare_numerical_parquet(
             np.testing.assert_allclose(
                 actual_col,
                 expected_col,
-                atol=POSITION_ATOL,
-                rtol=POSITION_RTOL,
+                atol=TEST_TOLERANCE,
+                rtol=0,
                 err_msg=f"Column '{col_name}' values differ",
             )
         else:
