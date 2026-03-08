@@ -5,11 +5,11 @@ on:
   pull_request:
     branches: [main]
 
-# Cancel duplicate runs: when a PR exists for a branch, skip the push-triggered
-# run and only keep the pull_request-triggered one.
-# https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency
+# Deduplicate runs: use the head branch ref so push and pull_request events
+# for the same branch share a concurrency group. cancel-in-progress keeps
+# only the latest run.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
 jobs:
