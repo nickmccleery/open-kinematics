@@ -123,11 +123,8 @@ def test_run_solver(
     from kinematics.visualization.animation import create_animation
     from kinematics.visualization.main import SuspensionVisualizer, WheelVisualization
 
-    # Extract positions from SuspensionState objects for animation
+    # Extract positions from SuspensionState objects for animation.
     position_states_positions = [state.positions for state in position_states]
-    position_states_animate = (
-        position_states_positions + position_states_positions[::-1]
-    )
     output_path = (
         Path(__file__).parent.parent / "data" / "manual" / "suspension_motion.mp4"
     )
@@ -144,7 +141,7 @@ def test_run_solver(
     visualization_links = suspension.get_visualization_links()
     visualizer = SuspensionVisualizer(visualization_links, wheel_config)
     create_animation(
-        position_states_animate,
+        position_states_positions,
         initial_positions,
         visualizer,
         output_path,
