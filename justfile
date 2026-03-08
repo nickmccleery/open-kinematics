@@ -4,9 +4,14 @@ setup:
     uv sync --all-extras --dev
     uv pip install -e .
 
-# Install dependencies only.
+# Install dependencies.
 install:
     uv sync --all-extras --dev
+    uv pip install -e .
+
+# Install dependencies for CI (no optional extras like viz).
+install-ci:
+    uv sync --dev
     uv pip install -e .
 
 # Clean.
@@ -44,13 +49,17 @@ generate-jacobians:
     uv run python tools/generate_jacobians.py
 
 # Type check.
-type:
+type-check:
     uv run ty check .
 
 # Linting.
 lint:
     uv run ruff check .
-    uv run ty check .
+
+# Lint and type check.
+check:
+    just lint
+    just type-check
 
 # Formatting.
 format:

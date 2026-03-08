@@ -3,7 +3,6 @@ import math
 import numpy as np
 import pytest
 
-from kinematics.core.constants import TEST_TOLERANCE
 from kinematics.constraints import (
     AngleConstraint,
     CoplanarPointsConstraint,
@@ -17,6 +16,7 @@ from kinematics.constraints import (
     VectorsParallelConstraint,
     VectorsPerpendicularConstraint,
 )
+from kinematics.core.constants import TEST_TOLERANCE
 from kinematics.core.enums import Axis, PointID
 
 

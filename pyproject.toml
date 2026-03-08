@@ -45,6 +45,7 @@ markers = ["manual: marks tests as manual (deselected by default)"]
 [tool.ruff]
 line-length = 88
 target-version = "py312"
+extend-exclude = ["src/kinematics/generated"]
 
 [tool.ruff.lint]
 select = [
@@ -68,7 +69,7 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["D103"]  # Test functions don't need docstrings
-"visualize_*.py" = ["D103"]  # Script functions don't need docstrings
+"visualize_*.py" = ["D103"] # Script functions don't need docstrings
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
@@ -105,6 +106,15 @@ ignore-words-list = "nd"
 # Use custom dictionary for British -> American English conversions.
 builtin = "clear,rare,informal,usage"
 dictionary = ".codespell-british.txt,-"
+
+# ty type checker settings.
+# --------------------------------------------------------------------------------------
+[tool.ty.src]
+exclude = [
+    "src/kinematics/generated/",
+    "src/kinematics/visualization/",
+    "src/kinematics/core/vector_utils/visualization.py",
+]
 
 [build-system]
 requires = ["hatchling"]

@@ -2,8 +2,8 @@
 Base class for suspension types.
 
 This module defines the abstract Suspension class that combines topology definition
-(required points, shim support) with behavior implementation (constraints, visualization)
-in a single unified interface.
+(required points, shim support) with behavior implementation (constraints,
+visualization) in a single unified interface.
 """
 
 from __future__ import annotations
