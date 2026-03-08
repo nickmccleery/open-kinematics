@@ -1,24 +1,50 @@
 """
 Kinematics solver using damped least squares.
 
-This module provides functions to solve suspension kinematics by satisfying geometric
-constraints and position targets using Levenberg-Marquardt.
+This module provides functions to solve suspension kinematics by
+satisfying geometric constraints and position targets using Levenberg-
+Marquardt.
 """
 
 from dataclasses import dataclass
-from typing import NamedTuple
+from typing import Callable, NamedTuple
 
 import numpy as np
 from scipy.optimize import least_squares
 
-from kinematics.constraints import Constraint
+from kinematics.constraints import (
+    AngleConstraint,
+    Constraint,
+    CoplanarPointsConstraint,
+    DistanceConstraint,
+    EqualDistanceConstraint,
+    FixedAxisConstraint,
+    PointOnLineConstraint,
+    PointOnPlaneConstraint,
+    SphericalJointConstraint,
+    ThreePointAngleConstraint,
+    VectorsParallelConstraint,
+    VectorsPerpendicularConstraint,
+)
 from kinematics.core.constants import (
     SOLVE_TOLERANCE_GRAD,
     SOLVE_TOLERANCE_STEP,
     SOLVE_TOLERANCE_VALUE,
 )
-from kinematics.core.types import PointTarget, SweepConfig, TargetPositionMode
+from kinematics.core.dual import seed_positions
+from kinematics.core.enums import PointID
+from kinematics.core.types import PointTarget, SweepConfig, TargetPositionMode, Vec3
 from kinematics.core.vector_utils.generic import project_coordinate
+from kinematics.jacobians import (
+    jac_angle,
+    jac_coplanar,
+    jac_distance,
+    jac_equal_distance,
+    jac_point_on_line,
+    jac_three_point_angle,
+    jac_vectors_parallel,
+    jac_vectors_perpendicular,
+)
 from kinematics.points.derived.manager import DerivedPointsManager
 from kinematics.state import SuspensionState
 from kinematics.targets import resolve_target
@@ -26,7 +52,7 @@ from kinematics.targets import resolve_target
 # Levenberg-Marquardt: damped least squares that can deal with the system being
 # overdetermined (m > n), as may be the case with any redundant (but consistent)
 # constraints.
-SOLVE_METHOD = "lm"
+SOLVE_METHOD: str = "lm"
 
 
 class SolverConfig(NamedTuple):
@@ -93,9 +119,17 @@ class ResidualComputer:
         # element to the residuals vector, so if we're sweeping wheel center Z and
         # steering at the same time, we need two extra slots.
         self.n_constraints = len(constraints)
-        self.residuals_buffer = np.empty(
-            self.n_constraints + n_target_variables, dtype=np.float64
-        )
+        n_max_residuals = self.n_constraints + n_target_variables
+        self.residuals_buffer = np.empty(n_max_residuals, dtype=np.float64)
+
+        # Jacobian infrastructure: map each free PointID to its column offset
+        # in the flattened free_array, and pre-compute per-constraint plans.
+        self._point_var_offsets = {
+            pid: 3 * k for k, pid in enumerate(state_buffer.free_points_order)
+        }
+        self._n_vars = len(state_buffer.free_points_order) * 3
+        self._jac_buffer = np.zeros((n_max_residuals, self._n_vars), dtype=np.float64)
+        self._jac_plans = [self._build_jac_plan(c) for c in constraints]
 
     def compute(
         self,
@@ -146,6 +180,254 @@ class ResidualComputer:
         n_residuals = self.n_constraints + len(step_targets)
         residuals = self.residuals_buffer[:n_residuals]
         return residuals.copy()
+
+    # ------------------------------------------------------------------
+    # Analytical Jacobian
+    # ------------------------------------------------------------------
+
+    def _build_jac_plan(self, constraint: Constraint):
+        """
+        Pre-compute the Jacobian function and scatter mapping for constraint.
+
+        Returns `(compute_fn, scatter)` where:
+        - `compute_fn(positions_dict)` returns the partial-derivative array
+          for all involved point coordinates (3 entries per point, in point order).
+        - `scatter` is a list of `(deriv_offset, jac_col)` tuples indicating
+          where to copy each 3-wide block into the Jacobian row.  Only free
+          points appear in the scatter list.
+        """
+        offsets = self._point_var_offsets
+        compute_fn: Callable[[dict[PointID, Vec3]], np.ndarray]
+
+        if isinstance(constraint, (DistanceConstraint, SphericalJointConstraint)):
+            point_ids = (constraint.p1, constraint.p2)
+            p1 = constraint.p1
+            p2 = constraint.p2
+
+            def compute_distance(pos: dict[PointID, Vec3]) -> np.ndarray:
+                return jac_distance(pos[p1], pos[p2])
+
+            compute_fn = compute_distance
+
+        elif isinstance(constraint, AngleConstraint):
+            point_ids = (
+                constraint.v1_start,
+                constraint.v1_end,
+                constraint.v2_start,
+                constraint.v2_end,
+            )
+            v1_start = constraint.v1_start
+            v1_end = constraint.v1_end
+            v2_start = constraint.v2_start
+            v2_end = constraint.v2_end
+
+            def compute_angle(pos: dict[PointID, Vec3]) -> np.ndarray:
+                return jac_angle(
+                    pos[v1_start],
+                    pos[v1_end],
+                    pos[v2_start],
+                    pos[v2_end],
+                )
+
+            compute_fn = compute_angle
+
+        elif isinstance(constraint, ThreePointAngleConstraint):
+            point_ids = (constraint.p1, constraint.p2, constraint.p3)
+            p1 = constraint.p1
+            p2 = constraint.p2
+            p3 = constraint.p3
+
+            def compute_three_point_angle(pos: dict[PointID, Vec3]) -> np.ndarray:
+                return jac_three_point_angle(pos[p1], pos[p2], pos[p3])
+
+            compute_fn = compute_three_point_angle
+
+        elif isinstance(constraint, VectorsParallelConstraint):
+            point_ids = (
+                constraint.v1_start,
+                constraint.v1_end,
+                constraint.v2_start,
+                constraint.v2_end,
+            )
+            v1_start = constraint.v1_start
+            v1_end = constraint.v1_end
+            v2_start = constraint.v2_start
+            v2_end = constraint.v2_end
+
+            def compute_vectors_parallel(pos: dict[PointID, Vec3]) -> np.ndarray:
+                return jac_vectors_parallel(
+                    pos[v1_start],
+                    pos[v1_end],
+                    pos[v2_start],
+                    pos[v2_end],
+                )
+
+            compute_fn = compute_vectors_parallel
+
+        elif isinstance(constraint, VectorsPerpendicularConstraint):
+            point_ids = (
+                constraint.v1_start,
+                constraint.v1_end,
+                constraint.v2_start,
+                constraint.v2_end,
+            )
+            v1_start = constraint.v1_start
+            v1_end = constraint.v1_end
+            v2_start = constraint.v2_start
+            v2_end = constraint.v2_end
+
+            def compute_vectors_perpendicular(pos: dict[PointID, Vec3]) -> np.ndarray:
+                return jac_vectors_perpendicular(
+                    pos[v1_start],
+                    pos[v1_end],
+                    pos[v2_start],
+                    pos[v2_end],
+                )
+
+            compute_fn = compute_vectors_perpendicular
+
+        elif isinstance(constraint, EqualDistanceConstraint):
+            point_ids = (
+                constraint.p1,
+                constraint.p2,
+                constraint.p3,
+                constraint.p4,
+            )
+            p1 = constraint.p1
+            p2 = constraint.p2
+            p3 = constraint.p3
+            p4 = constraint.p4
+
+            def compute_equal_distance(pos: dict[PointID, Vec3]) -> np.ndarray:
+                return jac_equal_distance(pos[p1], pos[p2], pos[p3], pos[p4])
+
+            compute_fn = compute_equal_distance
+
+        elif isinstance(constraint, FixedAxisConstraint):
+            point_ids = (constraint.point_id,)
+            fixed = np.zeros(3)
+            fixed[constraint.axis.value] = 1.0
+
+            def compute_fixed_axis(pos: dict[PointID, Vec3]) -> np.ndarray:
+                _ = pos
+                return fixed
+
+            compute_fn = compute_fixed_axis
+
+        elif isinstance(constraint, PointOnLineConstraint):
+            point_ids = (constraint.point_id,)
+            point_id = constraint.point_id
+            line_point = constraint.line_point
+            line_direction = constraint.line_direction
+
+            def compute_point_on_line(pos: dict[PointID, Vec3]) -> np.ndarray:
+                return jac_point_on_line(pos[point_id], line_point, line_direction)
+
+            compute_fn = compute_point_on_line
+
+        elif isinstance(constraint, PointOnPlaneConstraint):
+            point_ids = (constraint.point_id,)
+            normal = constraint.plane_normal.copy()
+
+            def compute_point_on_plane(pos: dict[PointID, Vec3]) -> np.ndarray:
+                _ = pos
+                return normal
+
+            compute_fn = compute_point_on_plane
+
+        elif isinstance(constraint, CoplanarPointsConstraint):
+            point_ids = (
+                constraint.p1,
+                constraint.p2,
+                constraint.p3,
+                constraint.p4,
+            )
+            p1 = constraint.p1
+            p2 = constraint.p2
+            p3 = constraint.p3
+            p4 = constraint.p4
+
+            def compute_coplanar(pos: dict[PointID, Vec3]) -> np.ndarray:
+                return jac_coplanar(pos[p1], pos[p2], pos[p3], pos[p4])
+
+            compute_fn = compute_coplanar
+
+        else:
+            raise TypeError(
+                f"No Jacobian implementation for {type(constraint).__name__}"
+            )
+
+        # Map each involved point's 3-wide derivative block to its Jacobian
+        # column offset.  Points that are not free are omitted (their partials
+        # are structurally zero in the Jacobian).
+        scatter = []
+        for i, pid in enumerate(point_ids):
+            if pid in offsets:
+                scatter.append((3 * i, offsets[pid]))
+
+        return compute_fn, scatter
+
+    def compute_jacobian(
+        self,
+        free_array: np.ndarray,
+        step_targets: list[PointTarget],
+    ) -> np.ndarray:
+        """
+        Compute the analytical Jacobian matrix.
+
+        Has the same calling convention as `compute` so it can be passed
+        directly as `jac=` to `scipy.optimize.least_squares`.
+        """
+        self.state_buffer.update_from_array(free_array)
+        self.derived_manager.update_in_place(self.state_buffer.positions)
+
+        n_residuals = self.n_constraints + len(step_targets)
+        jac = self._jac_buffer[:n_residuals, :]
+        jac[:] = 0.0
+
+        positions = self.state_buffer.positions
+
+        # Constraint rows.
+        for i, (compute_fn, scatter) in enumerate(self._jac_plans):
+            try:
+                derivs = compute_fn(positions)
+            except ZeroDivisionError:
+                # Singularity at an exactly-satisfied constraint (e.g. point
+                # already on the line).  The residual is zero so this row's
+                # contribution to J^T r is zero — safe to leave as zeros.
+                continue
+            for d_start, j_col in scatter:
+                jac[i, j_col : j_col + 3] = derivs[d_start : d_start + 3]
+
+        # Target rows: residual = dot(position, direction) - value.
+        offset = self.n_constraints
+        for i, target in enumerate(step_targets):
+            row = offset + i
+            direction = resolve_target(target.direction)
+
+            if target.point_id in self._point_var_offsets:
+                # Free-point target: derivative w.r.t. its own coords is
+                # just the direction vector.
+                col = self._point_var_offsets[target.point_id]
+                jac[row, col : col + 3] = direction
+            else:
+                # Derived-point target (e.g. WHEEL_CENTER): the point is
+                # computed from free points via a nonlinear function, so the
+                # Jacobian row needs the chain rule through that computation.
+                # We use forward-mode autodiff with dual numbers to get exact
+                # derivatives: seed one input coordinate at a time and read
+                # the derivative of the output.
+                for pid in self.state_buffer.free_points_order:
+                    col = self._point_var_offsets[pid]
+                    for d in range(3):
+                        dual_pos = seed_positions(positions, pid, d)
+                        self.derived_manager.update_in_place(dual_pos)
+                        target_dual = dual_pos[target.point_id]
+                        # d(dot(pos, direction)) / d(pid[d]) =
+                        #     dot(direction, d(pos)/d(pid[d]))
+                        jac[row, col + d] = float(np.dot(direction, target_dual.deriv))
+
+        return jac.copy()
 
 
 def convert_targets_to_absolute(
@@ -202,11 +484,11 @@ def solve_suspension_sweep(
     solver_config: SolverConfig = SolverConfig(),
 ) -> tuple[list[SuspensionState], list[SolverInfo]]:
     """
-    Solves a series of kinematic states by sweeping through target configurations using
-    damped non-linear least squares. This function performs a sweep where each step in
-    the sweep corresponds to a set of targets, solving sequentially from the initial
-    state. All state and residual buffers are reused across evaluations to minimize
-    allocations.
+    Solves a series of kinematic states by sweeping through target
+    configurations using damped non-linear least squares. This function
+    performs a sweep where each step in the sweep corresponds to a set of
+    targets, solving sequentially from the initial state. All state and
+    residual buffers are reused across evaluations to minimize allocations.
 
     Args:
         initial_state: The initial suspension state to start the sweep from.
@@ -267,6 +549,7 @@ def solve_suspension_sweep(
             fun=residual_computer.compute,
             x0=x_0,
             args=(step_targets,),
+            jac=residual_computer.compute_jacobian,  # pyright: ignore[reportArgumentType]
             method=SOLVE_METHOD,
             ftol=solver_config.ftol,
             xtol=solver_config.xtol,

@@ -31,6 +31,22 @@ regen-refs:
     @echo "✓ Reference files regenerated successfully"
     @echo "Run 'just test-e2e' to verify the new reference files work correctly"
 
+# Run the manual visualization test to generate a suspension animation.
+generate-animation-test:
+    uv run pytest tests/manual/test_run_with_viz.py -m manual -s
+
+# Directly generate visualization without the test.
+generate-animation:
+    uv run kinematics sweep --geometry=tests/data/geometry.yaml --sweep=tests/data/sweep.yaml --out=results.csv --animation-out=anim.gif
+
+# Print CSE snippets for Jacobian functions (paste into src/kinematics/jacobians.py).
+generate-jacobians:
+    uv run python tools/generate_jacobians.py
+
+# Type check.
+type:
+    uv run ty check .
+
 # Linting.
 lint:
     uv run ruff check .
@@ -39,6 +55,7 @@ lint:
 # Formatting.
 format:
     uv run ruff format .
+
 
 # Spell check source code and comments (includes British -> American English).
 spellcheck:

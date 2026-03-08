@@ -10,10 +10,10 @@ This module verifies:
 import numpy as np
 import pytest
 
+from kinematics.components.upright import Upright, UprightAttachments, UprightHardpoints
 from kinematics.core.enums import PointID
 from kinematics.core.rigid_body import LocalCoordinateSystem
 from kinematics.core.types import make_vec3
-from kinematics.components.upright import Upright, UprightAttachments, UprightHardpoints
 
 
 class TestLocalCoordinateSystem:
@@ -263,12 +263,15 @@ class TestUprightRigidBody:
 
         # Simulate suspension bump: move all hardpoints up by 50mm
         new_hardpoints = {
-            "upper_ball_joint": upright.hardpoints.upper_ball_joint
-            + make_vec3([0, 0, 50]),
-            "lower_ball_joint": upright.hardpoints.lower_ball_joint
-            + make_vec3([0, 0, 50]),
-            "trackrod_outboard": upright.hardpoints.trackrod_outboard
-            + make_vec3([0, 0, 50]),
+            "upper_ball_joint": make_vec3(
+                upright.hardpoints.upper_ball_joint + make_vec3([0, 0, 50])
+            ),
+            "lower_ball_joint": make_vec3(
+                upright.hardpoints.lower_ball_joint + make_vec3([0, 0, 50])
+            ),
+            "trackrod_outboard": make_vec3(
+                upright.hardpoints.trackrod_outboard + make_vec3([0, 0, 50])
+            ),
         }
 
         upright.update_from_hardpoints(new_hardpoints)
@@ -323,12 +326,15 @@ class TestUprightIntegration:
 
         # Step 3: Simulate suspension travel (50mm bump)
         new_hardpoints = {
-            "upper_ball_joint": upright.hardpoints.upper_ball_joint
-            + make_vec3([0, 5, 50]),
-            "lower_ball_joint": upright.hardpoints.lower_ball_joint
-            + make_vec3([0, 3, 45]),
-            "trackrod_outboard": upright.hardpoints.trackrod_outboard
-            + make_vec3([0, 4, 48]),
+            "upper_ball_joint": make_vec3(
+                upright.hardpoints.upper_ball_joint + make_vec3([0, 5, 50])
+            ),
+            "lower_ball_joint": make_vec3(
+                upright.hardpoints.lower_ball_joint + make_vec3([0, 3, 45])
+            ),
+            "trackrod_outboard": make_vec3(
+                upright.hardpoints.trackrod_outboard + make_vec3([0, 4, 48])
+            ),
         }
 
         upright.update_from_hardpoints(new_hardpoints)
@@ -402,9 +408,18 @@ class TestHardpointsArchitecture:
 
         # Verify mount IDs are stored
         assert upright.hardpoint_point_ids is not None
-        assert upright.hardpoint_point_ids["upper_ball_joint"] == PointID.UPPER_WISHBONE_OUTBOARD
-        assert upright.hardpoint_point_ids["lower_ball_joint"] == PointID.LOWER_WISHBONE_OUTBOARD
-        assert upright.hardpoint_point_ids["trackrod_outboard"] == PointID.TRACKROD_OUTBOARD
+        assert (
+            upright.hardpoint_point_ids["upper_ball_joint"]
+            == PointID.UPPER_WISHBONE_OUTBOARD
+        )
+        assert (
+            upright.hardpoint_point_ids["lower_ball_joint"]
+            == PointID.LOWER_WISHBONE_OUTBOARD
+        )
+        assert (
+            upright.hardpoint_point_ids["trackrod_outboard"]
+            == PointID.TRACKROD_OUTBOARD
+        )
 
         # Verify hardpoints match registry values
         np.testing.assert_allclose(
@@ -547,7 +562,8 @@ class TestHardpointsArchitecture:
 
     def test_hardpoint_point_ids_property_returns_none_for_legacy_upright(self):
         """
-        Test that hardpoint_point_ids property returns None for legacy-constructed uprights.
+        Test that hardpoint_point_ids property returns None for legacy-constructed
+        uprights.
         """
         hardpoints = UprightHardpoints(
             lower_ball_joint=make_vec3([0, 900, 200]),

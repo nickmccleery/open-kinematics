@@ -31,7 +31,8 @@ except ImportError:
     HAS_MATPLOTLIB = False
 
 requires_viz = pytest.mark.skipif(
-    not HAS_MATPLOTLIB, reason="matplotlib not installed (install with: uv pip install -e '.[viz]')"
+    not HAS_MATPLOTLIB,
+    reason="matplotlib not installed (install with: uv pip install -e '.[viz]')",
 )
 
 

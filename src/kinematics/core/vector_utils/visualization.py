@@ -2,7 +2,7 @@
 Visualization utilities for geometric computations.
 """
 
-from typing import Optional
+from typing import Any, Optional, cast
 
 import numpy as np
 
@@ -51,10 +51,11 @@ def plot_plane_from_points(
 
     fig = plt.figure(figsize=(10, 8))
     ax = fig.add_subplot(111, projection="3d")
+    ax3d = cast(Any, ax)
 
     # Plot the three points.
     points = np.array([a, b, c])
-    ax.scatter(
+    ax3d.scatter(
         points[:, 0],
         points[:, 1],
         points[:, 2],
@@ -64,9 +65,9 @@ def plot_plane_from_points(
     )
 
     # Label the points.
-    ax.text(a[0], a[1], a[2], "A", fontsize=12)  # type: ignore[call-arg]
-    ax.text(b[0], b[1], b[2], "B", fontsize=12)  # type: ignore[call-arg]
-    ax.text(c[0], c[1], c[2], "C", fontsize=12)  # type: ignore[call-arg]
+    ax3d.text(a[0], a[1], a[2], "A", fontsize=12)
+    ax3d.text(b[0], b[1], b[2], "B", fontsize=12)
+    ax3d.text(c[0], c[1], c[2], "C", fontsize=12)
 
     # Draw lines between points to show the triangle.
     triangle = np.array([a, b, c, a])  # Close the triangle.
@@ -90,7 +91,7 @@ def plot_plane_from_points(
             linewidth=3,
         )
 
-        ax.text(  # type: ignore[call-arg]
+        ax3d.text(
             centroid[0] + normal[0] * normal_scale * 1.1,
             centroid[1] + normal[1] * normal_scale * 1.1,
             centroid[2] + normal[2] * normal_scale * 1.1,
@@ -159,13 +160,14 @@ def plot_plane_intersection(
 
     fig = plt.figure(figsize=(12, 8))
     ax = fig.add_subplot(111, projection="3d")
+    ax3d = cast(Any, ax)
 
     # Plot intersection line if provided.
     if line_point is not None and line_direction is not None:
         plot_range = 5.0
         t_vals = np.linspace(-plot_range, plot_range, 100)
         line_points = line_point + t_vals[:, np.newaxis] * line_direction
-        ax.plot(
+        ax3d.plot(
             line_points[:, 0],
             line_points[:, 1],
             line_points[:, 2],
@@ -175,7 +177,7 @@ def plot_plane_intersection(
         )
 
         # Plot direction vector at line point.
-        ax.quiver(
+        ax3d.quiver(
             line_point[0],
             line_point[1],
             line_point[2],
@@ -189,7 +191,7 @@ def plot_plane_intersection(
 
     # Plot normal vectors from origin.
     origin = np.array([0.0, 0.0, 0.0])
-    ax.quiver(
+    ax3d.quiver(
         origin[0],
         origin[1],
         origin[2],
@@ -202,7 +204,7 @@ def plot_plane_intersection(
         alpha=0.7,
         label="Normal 1",
     )
-    ax.quiver(
+    ax3d.quiver(
         origin[0],
         origin[1],
         origin[2],
@@ -216,17 +218,17 @@ def plot_plane_intersection(
         label="Normal 2",
     )
 
-    ax.set_xlabel("X")
-    ax.set_ylabel("Y")
-    ax.set_zlabel("Z")  # type: ignore[attr-defined]
-    ax.set_title(title)
+    ax3d.set_xlabel("X")
+    ax3d.set_ylabel("Y")
+    ax3d.set_zlabel("Z")
+    ax3d.set_title(title)
 
     plot_range = 5.0
-    ax.set_xlim(-plot_range, plot_range)
-    ax.set_ylim(-plot_range, plot_range)
-    ax.set_zlim(-plot_range, plot_range)  # type: ignore[attr-defined]
+    ax3d.set_xlim(-plot_range, plot_range)
+    ax3d.set_ylim(-plot_range, plot_range)
+    ax3d.set_zlim(-plot_range, plot_range)
 
-    ax.legend()
+    ax3d.legend()
     plt.tight_layout()
     plt.show()
 
@@ -260,12 +262,13 @@ def plot_line_plane_intersection(
 
     fig = plt.figure(figsize=(10, 8))
     ax = fig.add_subplot(111, projection="3d")
+    ax3d = cast(Any, ax)
 
     # Plot the line.
     plot_range = 10.0
     t_vals = np.linspace(-plot_range, plot_range, 100)
     line_points = line_point + t_vals[:, np.newaxis] * line_direction
-    ax.plot(
+    ax3d.plot(
         line_points[:, 0],
         line_points[:, 1],
         line_points[:, 2],
@@ -278,7 +281,7 @@ def plot_line_plane_intersection(
     x_edges = [-plot_range, plot_range, plot_range, -plot_range, -plot_range]
     z_edges = [-plot_range, -plot_range, plot_range, plot_range, -plot_range]
     y_edges = [plane_y] * len(x_edges)
-    ax.plot(
+    ax3d.plot(
         x_edges,
         y_edges,
         z_edges,
@@ -290,7 +293,7 @@ def plot_line_plane_intersection(
 
     # Plot intersection point if provided.
     if intersection is not None:
-        ax.scatter(
+        ax3d.scatter(
             intersection[0],
             intersection[1],
             intersection[2],
@@ -298,16 +301,16 @@ def plot_line_plane_intersection(
             s=100,
             label="Intersection",
         )
-        ax.text(
+        ax3d.text(
             intersection[0],
             intersection[1],
             intersection[2],
-            f"  ({intersection[0]:.1f}, {intersection[1]:.1f}, {intersection[2]:.1f})",  # type: ignore[call-arg]
+            f"  ({intersection[0]:.1f}, {intersection[1]:.1f}, {intersection[2]:.1f})",
             fontsize=10,
         )
 
     # Plot line direction vector.
-    ax.quiver(
+    ax3d.quiver(
         line_point[0],
         line_point[1],
         line_point[2],
@@ -321,7 +324,7 @@ def plot_line_plane_intersection(
     )
 
     # Plot line starting point.
-    ax.scatter(
+    ax3d.scatter(
         line_point[0],
         line_point[1],
         line_point[2],
@@ -330,10 +333,10 @@ def plot_line_plane_intersection(
         label="Line Point",
     )
 
-    ax.set_xlabel("X")
-    ax.set_ylabel("Y")
-    ax.set_zlabel("Z")  # type: ignore[attr-defined]
-    ax.set_title(title)
+    ax3d.set_xlabel("X")
+    ax3d.set_ylabel("Y")
+    ax3d.set_zlabel("Z")
+    ax3d.set_title(title)
 
     # Set reasonable axis limits.
     all_points = line_points
@@ -347,10 +350,10 @@ def plot_line_plane_intersection(
     )
     z_range = (all_points[:, 2].min() - 2, all_points[:, 2].max() + 2)
 
-    ax.set_xlim(x_range)
-    ax.set_ylim(y_range)
-    ax.set_zlim(z_range)  # type: ignore[attr-defined]
+    ax3d.set_xlim(x_range)
+    ax3d.set_ylim(y_range)
+    ax3d.set_zlim(z_range)
 
-    ax.legend()
+    ax3d.legend()
     plt.tight_layout()
     plt.show()

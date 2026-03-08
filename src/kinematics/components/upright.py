@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Mapping
 
 import numpy as np
 
@@ -172,7 +173,7 @@ class Upright(RigidBody):
             self.attachments.axle_outboard
         )
 
-    def update_from_hardpoints(self, hardpoints: dict[str, Vec3]) -> None:
+    def update_from_hardpoints(self, hardpoints: Mapping[str, Vec3]) -> None:
         """
         Update the upright's orientation from new hardpoint positions.
 
@@ -315,9 +316,15 @@ class Upright(RigidBody):
 
         # Resolve mount positions from hardpoints.
         upright_hardpoints = UprightHardpoints(
-            upper_ball_joint=make_vec3(hardpoints[hardpoint_point_ids["upper_ball_joint"]]),
-            lower_ball_joint=make_vec3(hardpoints[hardpoint_point_ids["lower_ball_joint"]]),
-            trackrod_outboard=make_vec3(hardpoints[hardpoint_point_ids["trackrod_outboard"]]),
+            upper_ball_joint=make_vec3(
+                hardpoints[hardpoint_point_ids["upper_ball_joint"]]
+            ),
+            lower_ball_joint=make_vec3(
+                hardpoints[hardpoint_point_ids["lower_ball_joint"]]
+            ),
+            trackrod_outboard=make_vec3(
+                hardpoints[hardpoint_point_ids["trackrod_outboard"]]
+            ),
         )
 
         upright_attachments = UprightAttachments(
@@ -330,7 +337,9 @@ class Upright(RigidBody):
         upright.init_local_frame()
         return upright
 
-    def update_from_hardpoints_registry(self, hardpoints: dict[PointID, Vec3]) -> None:
+    def update_from_hardpoints_registry(
+        self, hardpoints: Mapping[PointID, Vec3]
+    ) -> None:
         """
         Update the upright's orientation from the hardpoints registry.
 
