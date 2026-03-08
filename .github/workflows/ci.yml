@@ -2,12 +2,10 @@ name: CI
 
 on:
   push:
-  pull_request:
     branches: [main]
+  pull_request:
 
-# Deduplicate runs: use the head branch ref so push and pull_request events
-# for the same branch share a concurrency group. cancel-in-progress keeps
-# only the latest run.
+# Cancel outdated runs on the same branch.
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
