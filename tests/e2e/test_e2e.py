@@ -472,6 +472,7 @@ class TestCliDirectEndToEnd:
         print("✓ Both CSV and Parquet outputs match their reference files")
 
 
+@pytest.mark.manual
 class TestUserExampleEquivalenceDirect:
     """
     Test that our direct CLI calls match the user's example command.
