@@ -73,14 +73,17 @@ def get_axle_midpoint(positions: dict[PointID, Vec3]) -> Vec3:
 
 def get_wheel_center(positions: dict[PointID, Vec3], wheel_offset: float) -> Vec3:
     """
-    Determines the wheel center by projecting inboard from the axle outboard position
-    along the axle axis by the specified wheel offset distance.
+    Determine wheel center from hub face using ISO/SAE wheel-offset convention.
+
+    Starting at `AXLE_OUTBOARD` (hub mounting face), this moves along the axle
+    axis by `wheel_offset` toward axle inboard for positive values.
 
     Args:
         positions: Dictionary mapping point IDs to their 3D coordinates.
                 Must contain AXLE_INBOARD and AXLE_OUTBOARD entries.
-        wheel_offset: Distance from hub face to wheel center plane. Positive
-                  offset means the wheel centerline is inboard of the hub.
+        wheel_offset: Wheel offset (ET) from hub mounting face to wheel center
+                  plane in mm. Positive values place the wheel centerline
+                  inboard of the hub face; negative values place it outboard.
 
     Returns:
         A numpy array representing the 3D coordinates of the wheel center.
@@ -89,7 +92,9 @@ def get_wheel_center(positions: dict[PointID, Vec3], wheel_offset: float) -> Vec
     p2 = positions[PointID.AXLE_INBOARD]  # Axle inboard point.
     v = p1 - p2  # Points outboard; from inboard to axle outboard (hub face).
     v = normalize_vector(v)
-    wheel_center = make_vec3(p1 + v * wheel_offset)
+
+    # ISO/SAE wheel offset convention: positive offset places centerline inboard.
+    wheel_center = make_vec3(p1 - v * wheel_offset)
     return wheel_center
 
 

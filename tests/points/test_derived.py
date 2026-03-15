@@ -32,9 +32,10 @@ def test_axle_midpoint(sample_positions):
 
 
 def test_wheel_center(sample_positions):
-    # With axle outboard at x=2.0 and offset of 0.5, wheel center should be at x=2.5
+    # Positive wheel offset (ET) moves centerline inboard from hub face.
+    # With axle outboard at x=2.0 and offset of +0.5, center should be at x=1.5.
     result = get_wheel_center(sample_positions, wheel_offset=0.5)
-    np.testing.assert_array_equal(result, np.array([2.5, 0.0, 0.0]))
+    np.testing.assert_array_equal(result, np.array([1.5, 0.0, 0.0]))
 
 
 def test_wheel_inboard_outboard(sample_positions):
@@ -45,11 +46,11 @@ def test_wheel_inboard_outboard(sample_positions):
 
     # Test inboard point (should be 0.5 units inboard of wheel center)
     inboard = get_wheel_inboard(positions_dict, wheel_width=1.0)
-    np.testing.assert_array_equal(inboard, np.array([2.0, 0.0, 0.0]))
+    np.testing.assert_array_equal(inboard, np.array([1.0, 0.0, 0.0]))
 
     # Test outboard point (should be 0.5 units outboard of wheel center)
     outboard = get_wheel_outboard(positions_dict, wheel_width=1.0)
-    np.testing.assert_array_equal(outboard, np.array([3.0, 0.0, 0.0]))
+    np.testing.assert_array_equal(outboard, np.array([2.0, 0.0, 0.0]))
 
 
 def test_dependency_manager_basic(sample_positions):
@@ -108,13 +109,13 @@ def test_dependency_manager_complex(sample_positions):
         sample_positions[PointID.AXLE_MIDPOINT], np.array([1.0, 0.0, 0.0])
     )
     np.testing.assert_array_equal(
-        sample_positions[PointID.WHEEL_CENTER], np.array([2.5, 0.0, 0.0])
+        sample_positions[PointID.WHEEL_CENTER], np.array([1.5, 0.0, 0.0])
     )
     np.testing.assert_array_equal(
-        sample_positions[PointID.WHEEL_INBOARD], np.array([2.0, 0.0, 0.0])
+        sample_positions[PointID.WHEEL_INBOARD], np.array([1.0, 0.0, 0.0])
     )
     np.testing.assert_array_equal(
-        sample_positions[PointID.WHEEL_OUTBOARD], np.array([3.0, 0.0, 0.0])
+        sample_positions[PointID.WHEEL_OUTBOARD], np.array([2.0, 0.0, 0.0])
     )
 
 
