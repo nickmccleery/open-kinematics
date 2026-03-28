@@ -42,7 +42,7 @@ def load_geometry(file_path: Path) -> Suspension:
         config:
           steered: true
           wheel:
-            offset: 0
+            offset: 0  # ET convention: positive is inboard.
             tire: {...}
           camber_shim:
             shim_face_center: {x: ..., y: ..., z: ...}

@@ -41,7 +41,7 @@ def get_wheel_plane_down_vector(positions: dict[PointID, Vec3]) -> Vec3:
     axle_vector = axle_outboard - axle_inboard
     axle_direction = normalize_vector(axle_vector)
 
-    # Find the wheel plane normal (points 'down' in wheel's reference frame).
+    # Find the 'down' direction within the wheel plane (perpendicular to the axle).
     global_down = -1 * WorldAxisSystem.Z
 
     # Project global down onto the plane perpendicular to the axle. This removes
@@ -73,14 +73,17 @@ def get_axle_midpoint(positions: dict[PointID, Vec3]) -> Vec3:
 
 def get_wheel_center(positions: dict[PointID, Vec3], wheel_offset: float) -> Vec3:
     """
-    Determines the wheel center by projecting inboard from the axle outboard position
-    along the axle axis by the specified wheel offset distance.
+    Determine wheel center from hub face using ISO/SAE wheel-offset convention.
+
+    Starting at `AXLE_OUTBOARD` (hub mounting face), this moves along the axle
+    axis by `wheel_offset` toward axle inboard for positive values.
 
     Args:
         positions: Dictionary mapping point IDs to their 3D coordinates.
                 Must contain AXLE_INBOARD and AXLE_OUTBOARD entries.
-        wheel_offset: Distance from hub face to wheel center plane. Positive
-                  offset means the wheel centerline is inboard of the hub.
+        wheel_offset: Wheel offset (ET) from hub mounting face to wheel center
+                  plane in mm. Positive values place the wheel centerline
+                  inboard of the hub face; negative values place it outboard.
 
     Returns:
         A numpy array representing the 3D coordinates of the wheel center.
@@ -89,7 +92,9 @@ def get_wheel_center(positions: dict[PointID, Vec3], wheel_offset: float) -> Vec
     p2 = positions[PointID.AXLE_INBOARD]  # Axle inboard point.
     v = p1 - p2  # Points outboard; from inboard to axle outboard (hub face).
     v = normalize_vector(v)
-    wheel_center = make_vec3(p1 + v * wheel_offset)
+
+    # ISO/SAE wheel offset convention: positive offset places centerline inboard.
+    wheel_center = make_vec3(p1 - v * wheel_offset)
     return wheel_center
 
 
@@ -140,11 +145,16 @@ def get_wheel_center_on_ground(
     ground_plane_z: float = 0.0,
 ) -> Vec3:
     """
-    Project the wheel center onto the ground plane along the wheel plane normal.
+    Computes the intersection of the ground plane with the wheel-center line in the
+    wheel plane.
 
-    This function computes where the wheel center projects onto the ground when
-    following the wheel's plane normal direction (perpendicular to the axle),
-    accounting for camber and caster.
+    Starting at `WHEEL_CENTER`, this traces the wheel-plane 'down' direction
+    (the component of global down that is perpendicular to the axle) until it
+    reaches `z = ground_plane_z`. The result is the ground intercept of the
+    wheel centerline in the wheel's central plane, so it moves with camber.
+
+    This is a geometric projection and does not use tire radius; for a
+    radius-based tire contact point, use `get_contact_patch_center`.
 
     Args:
         positions: Dictionary of point coordinates.
@@ -178,9 +188,10 @@ def get_contact_patch_center(
     """
     Computes the position of the geometric contact patch center.
 
-    This point is found by moving from the wheel center in the 'down'
-    direction of the wheel's plane by a distance equal to the tire radius.
-    Its Z-coordinate is not fixed and will move with the suspension.
+    This is the lowest point on an ideal tire circle in the wheel's center
+    plane. It is found by moving from the wheel center in the wheel-plane
+    'down' direction by a distance equal to the tire radius. Its Z-coordinate
+    is not fixed and will move with the suspension.
 
     Args:
         positions: Dictionary of point coordinates.

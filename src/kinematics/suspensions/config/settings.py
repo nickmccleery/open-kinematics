@@ -61,7 +61,8 @@ class WheelConfig(BaseModel):
     Configuration parameters for a wheel and tire assembly.
 
     Attributes:
-        offset: Wheel offset from mounting surface in mm.
+        offset: Wheel offset (ET) from hub mounting face to wheel center plane
+            in mm. Positive means wheel centerline is inboard of the hub face.
         tire: Tire configuration parameters.
     """
 
