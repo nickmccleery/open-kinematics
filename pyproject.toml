@@ -1,6 +1,6 @@
 [project]
 name = "kinematics"
-version = "0.1.0"
+version = "0.3.0"
 description = "Kinematics solver for suspension systems."
 readme = "README.md"
 requires-python = ">=3.12"

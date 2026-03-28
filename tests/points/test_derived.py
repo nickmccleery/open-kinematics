@@ -38,6 +38,20 @@ def test_wheel_center(sample_positions):
     np.testing.assert_array_equal(result, np.array([1.5, 0.0, 0.0]))
 
 
+def test_wheel_center_zero_offset(sample_positions):
+    # Zero wheel offset leaves the centerline at the hub face (axle outboard point).
+    # With axle outboard at x=2.0 and offset of 0.0, center should be at x=2.0.
+    result = get_wheel_center(sample_positions, wheel_offset=0.0)
+    np.testing.assert_array_equal(result, np.array([2.0, 0.0, 0.0]))
+
+
+def test_wheel_center_negative_offset(sample_positions):
+    # Negative wheel offset moves centerline outboard from hub face.
+    # With axle outboard at x=2.0 and offset of -0.5, center should be at x=2.5.
+    result = get_wheel_center(sample_positions, wheel_offset=-0.5)
+    np.testing.assert_array_equal(result, np.array([2.5, 0.0, 0.0]))
+
+
 def test_wheel_inboard_outboard(sample_positions):
     # First compute wheel center
     wheel_center = get_wheel_center(sample_positions, wheel_offset=0.5)
