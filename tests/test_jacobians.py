@@ -502,3 +502,56 @@ class TestFullJacobianAssembly:
             numerical[:, j] = (r_plus - r_minus) / (2.0 * STEP_SIZE)
 
         np.testing.assert_allclose(analytical, numerical, atol=TOLERANCE)
+
+    def test_residual_computer_rejects_target_count_changes(self):
+        from kinematics.core.types import (
+            PointTarget,
+            PointTargetAxis,
+            TargetPositionMode,
+        )
+        from kinematics.points.derived.manager import (
+            DerivedPointsManager,
+            DerivedPointsSpec,
+        )
+        from kinematics.solver import ResidualComputer
+        from kinematics.state import SuspensionState
+
+        positions = {
+            P1: np.array([0.0, 0.0, 0.0]),
+            P2: np.array([3.0, 4.0, 0.0]),
+        }
+        state = SuspensionState(
+            positions={k: v.copy() for k, v in positions.items()},
+            free_points={P1, P2},
+        )
+
+        derived_spec = DerivedPointsSpec(functions={}, dependencies={})
+        derived_mgr = DerivedPointsManager(derived_spec)
+        rc = ResidualComputer(
+            constraints=[DistanceConstraint(P1, P2, target_distance=5.0)],
+            derived_manager=derived_mgr,
+            state_buffer=state,
+            n_target_variables=1,
+        )
+
+        x0 = state.get_free_array()
+        bad_targets = [
+            PointTarget(
+                point_id=P1,
+                direction=PointTargetAxis(axis=Axis.X),
+                value=0.0,
+                mode=TargetPositionMode.ABSOLUTE,
+            ),
+            PointTarget(
+                point_id=P2,
+                direction=PointTargetAxis(axis=Axis.Y),
+                value=0.0,
+                mode=TargetPositionMode.ABSOLUTE,
+            ),
+        ]
+
+        with pytest.raises(ValueError, match="fixed number of targets"):
+            rc.compute(x0, bad_targets)
+
+        with pytest.raises(ValueError, match="fixed number of targets"):
+            rc.compute_jacobian(x0, bad_targets)
