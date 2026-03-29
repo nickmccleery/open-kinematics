@@ -188,9 +188,9 @@ class ResidualComputer:
             current_coordinate = project_coordinate(current_pos, direction)
             self.residuals_buffer[offset + i] = current_coordinate - target.value
 
-        # Return a copy of the fixed-size residual vector. Note that we must return a copy
-        # here because Scipy's least squares keeps references to the evaluated arrays,
-        # so subsequent calls would overwrite previous values.
+        # Return a copy of the fixed-size residual vector. Note that we must return a
+        # copy here because Scipy's least squares keeps references to the evaluated
+        # arrays, so subsequent calls would overwrite previous values.
         return self.residuals_buffer.copy()
 
     # ------------------------------------------------------------------
