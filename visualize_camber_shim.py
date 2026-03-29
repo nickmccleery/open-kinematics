@@ -6,21 +6,14 @@ demonstrating how camber shims rotate the upright about the lower ball joint.
 """
 
 from pathlib import Path
-from typing import cast
 
-import matplotlib.pyplot as plt
 import numpy as np
-from mpl_toolkits.mplot3d.axes3d import Axes3D
 
 from kinematics.core.enums import PointID
 from kinematics.io.geometry_loader import load_geometry
 from kinematics.suspensions.config.settings import CamberShimConfig
 from kinematics.visualization.api import visualize_geometry
 from kinematics.visualization.main import SuspensionVisualizer, WheelVisualization
-from kinematics.visualization.plots import (
-    compute_bounds_from_positions,
-    configure_3d_axis,
-)
 
 # Shim configuration constants.
 DESIGN_SHIM_THICKNESS = 30.0  # mm - design/baseline shim stack thickness.
@@ -100,6 +93,16 @@ def plot_front_view_comparison(
     The design configuration is drawn in blue and the setup configuration
     in red so the geometric difference from the shim change is visible.
     """
+    from typing import cast
+
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.mplot3d.axes3d import Axes3D
+
+    from kinematics.visualization.plots import (
+        compute_bounds_from_positions,
+        configure_3d_axis,
+    )
+
     design_state = design_suspension.initial_state()
     setup_state = setup_suspension.initial_state()
 
