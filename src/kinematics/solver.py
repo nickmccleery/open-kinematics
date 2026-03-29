@@ -187,14 +187,14 @@ class ResidualComputer:
 
     def _build_jac_plan(self, constraint: Constraint):
         """
-        Pre-compute the Jacobian function and scatter mapping for constraint.
+        Pre-compute the Jacobian function and distribution mapping for constraint.
 
-        Returns `(compute_fn, scatter)` where:
+        Returns `(compute_fn, distribution)` where:
         - `compute_fn(positions_dict)` returns the partial-derivative array
           for all involved point coordinates (3 entries per point, in point order).
-        - `scatter` is a list of `(deriv_offset, jac_col)` tuples indicating
+        - `distribution` is a list of `(deriv_offset, jac_col)` tuples indicating
           where to copy each 3-wide block into the Jacobian row.  Only free
-          points appear in the scatter list.
+          points appear in the distribution list.
         """
         offsets = self._point_var_offsets
         compute_fn: Callable[[dict[PointID, Vec3]], np.ndarray]
@@ -360,12 +360,12 @@ class ResidualComputer:
         # Map each involved point's 3-wide derivative block to its Jacobian
         # column offset.  Points that are not free are omitted (their partials
         # are structurally zero in the Jacobian).
-        scatter = []
+        distribution = []
         for i, pid in enumerate(point_ids):
             if pid in offsets:
-                scatter.append((3 * i, offsets[pid]))
+                distribution.append((3 * i, offsets[pid]))
 
-        return compute_fn, scatter
+        return compute_fn, distribution
 
     def compute_jacobian(
         self,
@@ -388,7 +388,7 @@ class ResidualComputer:
         positions = self.state_buffer.positions
 
         # Constraint rows.
-        for i, (compute_fn, scatter) in enumerate(self._jac_plans):
+        for i, (compute_fn, distribution) in enumerate(self._jac_plans):
             try:
                 derivs = compute_fn(positions)
             except ZeroDivisionError:
@@ -396,7 +396,7 @@ class ResidualComputer:
                 # already on the line).  The residual is zero so this row's
                 # contribution to J^T r is zero — safe to leave as zeros.
                 continue
-            for d_start, j_col in scatter:
+            for d_start, j_col in distribution:
                 jac[i, j_col : j_col + 3] = derivs[d_start : d_start + 3]
 
         # Target rows: residual = dot(position, direction) - value.
