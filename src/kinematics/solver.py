@@ -119,17 +119,28 @@ class ResidualComputer:
         # element to the residuals vector, so if we're sweeping wheel center Z and
         # steering at the same time, we need two extra slots.
         self.n_constraints = len(constraints)
-        n_max_residuals = self.n_constraints + n_target_variables
-        self.residuals_buffer = np.empty(n_max_residuals, dtype=np.float64)
+        self.n_target_variables = n_target_variables
+        self.n_residuals = self.n_constraints + self.n_target_variables
+        self.residuals_buffer = np.empty(self.n_residuals, dtype=np.float64)
 
         # Jacobian infrastructure: map each free PointID to its column offset
         # in the flattened free_array, and pre-compute per-constraint plans.
         self._point_var_offsets = {
             pid: 3 * k for k, pid in enumerate(state_buffer.free_points_order)
         }
-        self._n_vars = len(state_buffer.free_points_order) * 3
-        self._jac_buffer = np.zeros((n_max_residuals, self._n_vars), dtype=np.float64)
-        self._jac_plans = [self._build_jac_plan(c) for c in constraints]
+        self.n_vars = len(state_buffer.free_points_order) * 3
+        self.jac_buffer = np.zeros((self.n_residuals, self.n_vars), dtype=np.float64)
+        self.jac_plan = [self._build_jac_plan(c) for c in constraints]
+
+    def validate_target_count(self, step_targets: list[PointTarget]) -> None:
+        """
+        Ensure each evaluation uses the fixed target count configured at init time.
+        """
+        if len(step_targets) != self.n_target_variables:
+            raise ValueError(
+                "ResidualComputer requires a fixed number of targets per evaluation "
+                f"(expected {self.n_target_variables}, got {len(step_targets)})."
+            )
 
     def compute(
         self,
@@ -140,22 +151,25 @@ class ResidualComputer:
         Compute residuals for the given free point positions and targets.
 
         This method mutates state_buffer in-place and reuses residuals_buffer
-        for performance. Returns a view of the buffer containing only the
-        residuals for this evaluation.
+        for performance. The number of targets is fixed for the lifetime of
+        the residual computer, so the residual vector shape is constant across
+        evaluations.
 
         Args:
             free_array: Flattened array of free point coordinates.
-            step_targets: Target constraints for this solve step.
+            step_targets: Target constraints for this solve step. Must match
+                the fixed target count configured at initialization.
 
         Returns:
-            View of residuals array containing [constraint_residuals, target_residuals].
-            The view length matches the actual number of residuals for this step.
+            Copy of the fixed-size residual array containing
+            [constraint_residuals, target_residuals].
 
         Note:
-            The returned array is a view into residuals_buffer and will be
-            overwritten on the next call. The solver consumes values immediately,
-            so this is safe.
+            The returned array is a copy because SciPy's least-squares solver
+            keeps references to past evaluations.
         """
+        self.validate_target_count(step_targets)
+
         # Update state buffer in-place with current guess.
         self.state_buffer.update_from_array(free_array)
 
@@ -174,12 +188,10 @@ class ResidualComputer:
             current_coordinate = project_coordinate(current_pos, direction)
             self.residuals_buffer[offset + i] = current_coordinate - target.value
 
-        # Return (copy of) view of the used portion. Note that we must return a copy
+        # Return a copy of the fixed-size residual vector. Note that we must return a copy
         # here because Scipy's least squares keeps references to the evaluated arrays,
         # so subsequent calls would overwrite previous values.
-        n_residuals = self.n_constraints + len(step_targets)
-        residuals = self.residuals_buffer[:n_residuals]
-        return residuals.copy()
+        return self.residuals_buffer.copy()
 
     # ------------------------------------------------------------------
     # Analytical Jacobian
@@ -378,17 +390,18 @@ class ResidualComputer:
         Has the same calling convention as `compute` so it can be passed
         directly as `jac=` to `scipy.optimize.least_squares`.
         """
+        self.validate_target_count(step_targets)
+
         self.state_buffer.update_from_array(free_array)
         self.derived_manager.update_in_place(self.state_buffer.positions)
 
-        n_residuals = self.n_constraints + len(step_targets)
-        jac = self._jac_buffer[:n_residuals, :]
+        jac = self.jac_buffer
         jac[:] = 0.0
 
         positions = self.state_buffer.positions
 
         # Constraint rows.
-        for i, (compute_fn, distribution) in enumerate(self._jac_plans):
+        for i, (compute_fn, distribution) in enumerate(self.jac_plan):
             try:
                 derivs = compute_fn(positions)
             except ZeroDivisionError:
@@ -534,17 +547,17 @@ def solve_suspension_sweep(
     # Initial guess built from the working state's free points.
     x_0 = working_state.get_free_array()
 
+    # Both counts are fixed for the entire sweep, so validate once up front.
+    n_vars = len(working_state.free_points_order) * 3
+    m_res = residual_computer.n_residuals
+    if n_vars > m_res:
+        raise ValueError(
+            f"System is underdetermined (n_vars={n_vars} > m_res={m_res}). "
+            "The solve method (Levenberg-Marquardt) requires at least as "
+            "many residuals as variables."
+        )
+
     for step_targets in sweep_targets:
-        n_vars = len(working_state.free_points_order) * 3
-        m_res = len(constraints) + len(step_targets)
-
-        if n_vars > m_res:
-            raise ValueError(
-                f"System is underdetermined (n_vars={n_vars} > m_res={m_res}). "
-                "The solve method (Levenberg-Marquardt) requires at least as "
-                "many residuals as variables."
-            )
-
         result = least_squares(
             fun=residual_computer.compute,
             x0=x_0,
