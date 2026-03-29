@@ -347,8 +347,7 @@ class DoubleWishboneSuspension(Suspension):
         Apply camber shim transformation to attachment positions.
 
         The shim rotates only attachments (axle points), not the hardpoints
-        (ball joints). The shim sits between the structural upright and the hub/bearing
-        assembly.
+        (ball joints).
         """
         if self.config is None or self.config.camber_shim is None:
             return
