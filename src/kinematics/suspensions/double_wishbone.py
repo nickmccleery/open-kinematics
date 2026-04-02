@@ -27,7 +27,6 @@ from kinematics.core.vector_utils.geometric import (
     intersect_line_with_vertical_plane,
     intersect_two_planes,
     plane_from_three_points,
-    rotate_point_about_axis,
 )
 from kinematics.points.derived.definitions import (
     get_axle_midpoint,
@@ -367,6 +366,6 @@ class DoubleWishboneSuspension(Suspension):
             setup_thickness=shim_config.setup_thickness,
         )
 
-        for point_name in self.config.upright_mounted_points:
-           # Rotate each of these points about the LBJ so they
-           # land where the shim demands.
+        # for point_name in self.config.upright_mounted_points:
+        # Rotate each of these points about the LBJ so they
+        # land where the shim demands.

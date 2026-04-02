@@ -145,6 +145,8 @@ def solve_camber_shim_assembly(
     # - Upright body shim face centroid distance from LBJ.
     # - Shim face centroid to centroid distance - setup shim thickness.
 
+    # Note: azimuth/elevation isn't enough. I think we'll need Euler angles.
+
     shim_face_center = make_vec3(shim_face_center)
     upper_ball_joint = make_vec3(upper_ball_joint)
     lower_ball_joint = make_vec3(lower_ball_joint)
@@ -179,3 +181,45 @@ def solve_camber_shim_assembly(
     ]
 
     # Now we need to set up a solve with our four angle variables...
+    azimuth_inboard = 0
+    elevation_inboard = 0
+    azimuth_outboard = 0
+    elevation_outboard = 0
+
+    x0 = [azimuth_inboard, elevation_inboard, azimuth_outboard, elevation_outboard]
+
+    def compute_residuals(x):
+        # From x (vector of angles):
+        # - 1: Apply azimuth rotation to upper arm (+ve CCW about Z transposed to UBJ
+        #      position)
+        # - 2: Apply elevation rotation to upper arm (+ve CCW about X transposed to
+        #      UBJ position)
+        #  ...
+        # - Establish the overall transformation we want to apply to each shim face centroid.
+        # - Evaluate the residual on each constraint.
+        # - Bundle into the residuals array.
+
+        dummy_vec = make_vec3([0, 0, 0])
+
+        positions = {
+            PointID.UPPER_WISHBONE_OUTBOARD: dummy_vec,  # Should be initial position; fixed.
+            PointID.LOWER_WISHBONE_INBOARD_FRONT: dummy_vec,  # Should be initial position; fixed.
+            PointID.CAMBER_SHIM_CENTROID_INBOARD: dummy_vec,  # To be computed...
+            PointID.CAMBER_SHIM_CENTROID_OUTBOARD: dummy_vec,  # To be computed...
+        }
+
+        r = []
+        for constraint in constraints:
+            r_local = constraint.residual(positions)
+            r.append(r_local)
+
+        return r
+
+    # TODO:
+    # - Patch in Euler angles.
+    # - Get transformation setup up and running, maybe a Rodrigues rotation about each
+    #   Euler angle axis, or just a global transformation matrix.
+    # - Get least_squares solve going.
+    # - Try to reuse exciting `solver.py` machinery; we have a much smaller solve here,
+    #   but we're doing basically the same thing so factoring out the common approach
+    #   to fixed points vs. variables etc. would be good.
