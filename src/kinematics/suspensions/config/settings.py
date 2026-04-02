@@ -77,13 +77,13 @@ class CamberShimConfig(BaseModel):
     Configuration for a camber shim adjustment.
 
     This type of shim sits outboard of the top balljoint, effectively splitting the
-    upright in two. Modification of camber shim serves to rotate the upright body
-    (and all upright-fixed attachments) about an axis perpendicular to the shim normal
-    and passing through the lower ball joint.
+    upright in two. A local assembly solve rotates the UBJ-side shim block about the
+    upper ball joint and the lower upright body about the lower ball joint while the
+    shim faces remain parallel at the requested setup thickness.
 
     Attributes:
-        shim_face_center: Coordinates in mm of the shim face center at design condition.
-        shim_normal: Unit vector pointing outboard perpendicular to shim face.
+        shim_face_center: Coordinates in mm of the design shim mid-plane center.
+        shim_normal: Unit vector perpendicular to the design shim faces.
         design_thickness: Shim stack thickness in mm at design condition.
         setup_thickness: Actual shim stack thickness in mm for this configuration.
     """

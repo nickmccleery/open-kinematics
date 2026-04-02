@@ -301,3 +301,40 @@ def intersect_line_with_vertical_plane(
     t = (plane_y - float(line_point[Axis.Y])) / direction_y
 
     return line_point + t * line_direction
+
+
+def rotate_point_about_axis(
+    point: Vec3, pivot: Vec3, axis: Vec3, angle_rad: float
+) -> Vec3:
+    """
+    Rotate a point about an arbitrary axis using Rodrigues' rotation formula.
+
+    Args:
+        point: Point to rotate.
+        pivot: Point on the rotation axis.
+        axis: Unit vector defining the rotation axis direction.
+        angle_rad: Rotation angle in radians.
+
+    Returns:
+        Rotated point coordinates.
+    """
+    # Translate point to origin (pivot at origin).
+    p = point - pivot
+
+    # Rodrigues' rotation formula:
+    # v_rot = v*cos(theta) + cross(k, v)*sin(theta) + k*dot(k, v)*(1 - cos(theta)).
+    k = axis
+    cos_angle = np.cos(angle_rad)
+    sin_angle = np.sin(angle_rad)
+
+    # Cross product cross(k, p).
+    k_cross_p = np.cross(k, p)
+
+    # Dot product dot(k, p).
+    k_dot_p = np.dot(k, p)
+
+    # Apply Rodrigues formula.
+    p_rot = p * cos_angle + k_cross_p * sin_angle + k * k_dot_p * (1 - cos_angle)
+
+    # Translate back.
+    return make_vec3(p_rot + pivot)

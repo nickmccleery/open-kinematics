@@ -43,6 +43,10 @@ class PointID(IntEnum):
     CONTACT_PATCH_CENTER = 19
     WHEEL_CENTER_ON_GROUND = 20
 
+    # Shim faces for outboard camber shim.
+    CAMBER_SHIM_CENTROID_INBOARD = 21
+    CAMBER_SHIM_CENTROID_OUTBOARD = 22
+
 
 class Axis(IntEnum):
     """

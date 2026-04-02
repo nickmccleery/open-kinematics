@@ -13,7 +13,6 @@ from typing import TYPE_CHECKING, ClassVar, Sequence
 
 import numpy as np
 
-from kinematics.components.upright import Upright
 from kinematics.constraints import (
     AngleConstraint,
     Constraint,
@@ -28,6 +27,7 @@ from kinematics.core.vector_utils.geometric import (
     intersect_line_with_vertical_plane,
     intersect_two_planes,
     plane_from_three_points,
+    rotate_point_about_axis,
 )
 from kinematics.points.derived.definitions import (
     get_axle_midpoint,
@@ -40,11 +40,7 @@ from kinematics.points.derived.definitions import (
 from kinematics.points.derived.manager import DerivedPointsManager, DerivedPointsSpec
 from kinematics.state import SuspensionState
 from kinematics.suspensions.base import Suspension
-from kinematics.suspensions.config.shims import (
-    compute_shim_offset,
-    compute_upright_rotation_from_shim,
-    rotate_point_about_axis,
-)
+from kinematics.suspensions.config.shims import solve_camber_shim_assembly
 
 if TYPE_CHECKING:
     from kinematics.visualization.main import LinkVisualization
@@ -92,10 +88,12 @@ class DoubleWishboneSuspension(Suspension):
         {ShimType.OUTBOARD_CAMBER}
     )
 
-    # Upright mount roles (for shim application).
-    UPRIGHT_MOUNT_ROLES: ClassVar[dict[str, PointID]] = {
-        "upper_ball_joint": PointID.UPPER_WISHBONE_OUTBOARD,
-        "lower_ball_joint": PointID.LOWER_WISHBONE_OUTBOARD,
+    # Config names for points that should rotate with the lower upright body when a
+    # split camber shim is solved.
+    UPRIGHT_MOUNTED_POINT_IDS: ClassVar[dict[str, PointID]] = {
+        "axle_inboard": PointID.AXLE_INBOARD,
+        "axle_outboard": PointID.AXLE_OUTBOARD,
+        "pushrod_outboard": PointID.PUSHROD_OUTBOARD,
         "trackrod_outboard": PointID.TRACKROD_OUTBOARD,
     }
 
@@ -119,6 +117,8 @@ class DoubleWishboneSuspension(Suspension):
             return self._initial_state
 
         positions = self.get_hardpoints_as_arrays()
+
+        # Get camber shim point positions.
 
         # Apply camber shim if configured.
         if self.config is not None and self.config.camber_shim is not None:
@@ -346,57 +346,27 @@ class DoubleWishboneSuspension(Suspension):
         """
         Apply camber shim transformation to attachment positions.
 
-        The shim rotates only attachments (axle points), not the hardpoints
-        (ball joints).
+        The local shim assembly solve rotates both the UBJ-side shim block and the
+        lower upright body, but only the solved lower-body rotation is applied to
+        the suspension state. Hardpoints remain fixed; only configured upright-
+        mounted points rotate about the lower ball joint.
         """
         if self.config is None or self.config.camber_shim is None:
             return
 
         shim_config = self.config.camber_shim
-
-        # Build upright from current positions.
-        point_ids = self.UPRIGHT_MOUNT_ROLES
-        hardpoints = {pid: make_vec3(positions[pid]) for pid in point_ids.values()}
-        attachments = {
-            "axle_inboard": make_vec3(positions[PointID.AXLE_INBOARD]),
-            "axle_outboard": make_vec3(positions[PointID.AXLE_OUTBOARD]),
-        }
-        upright = Upright.from_hardpoints_and_attachments(
-            point_ids, hardpoints, attachments
-        )
-
-        # Compute shim offset.
-        shim_offset = compute_shim_offset(shim_config)
-
-        # Get shim face center at design (already a Vec3).
-        shim_face_center_design = shim_config.shim_face_center
-
-        # Lower ball joint is the pivot.
+        upper_ball_joint = make_vec3(positions[PointID.UPPER_WISHBONE_OUTBOARD])
         lower_ball_joint = make_vec3(positions[PointID.LOWER_WISHBONE_OUTBOARD])
 
-        # Compute rotation.
-        rotation_axis, rotation_angle = compute_upright_rotation_from_shim(
-            lower_ball_joint,
-            shim_face_center_design,
-            shim_offset,
+        assembly_solution = solve_camber_shim_assembly(
+            upper_ball_joint=upper_ball_joint,
+            lower_ball_joint=lower_ball_joint,
+            shim_face_center=shim_config.shim_face_center,
+            shim_normal=shim_config.shim_normal,
+            design_thickness=shim_config.design_thickness,
+            setup_thickness=shim_config.setup_thickness,
         )
 
-        # Apply shim to upright.
-        upright.apply_camber_shim(lower_ball_joint, rotation_axis, rotation_angle)
-
-        # Update positions with rotated attachments.
-        positions[PointID.AXLE_INBOARD] = np.array(
-            upright.get_world_position("axle_inboard")
-        )
-        positions[PointID.AXLE_OUTBOARD] = np.array(
-            upright.get_world_position("axle_outboard")
-        )
-
-        # Rotate trackrod if it's upright-mounted.
-        upright_mounted = self.config.upright_mounted_points
-        if upright_mounted and "trackrod_outboard" in upright_mounted:
-            trackrod_pos = make_vec3(positions[PointID.TRACKROD_OUTBOARD])
-            trackrod_rotated = rotate_point_about_axis(
-                trackrod_pos, lower_ball_joint, rotation_axis, rotation_angle
-            )
-            positions[PointID.TRACKROD_OUTBOARD] = np.array(trackrod_rotated)
+        for point_name in self.config.upright_mounted_points:
+           # Rotate each of these points about the LBJ so they
+           # land where the shim demands.

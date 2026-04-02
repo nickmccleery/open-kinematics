@@ -1,138 +1,181 @@
 """
 Camber shim geometry calculations.
 
-This module handles the geometric transformations required when camber shims are added
-or removed from a suspension system.
+This module solves the local split-body camber shim assembly. The upper shim block
+rotates about the upper ball joint, the lower upright body rotates about the lower
+ball joint, and the two shim faces remain separated by the requested setup thickness.
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import numpy as np
 
-from kinematics.core.constants import EPSILON
+from kinematics.constraints import DistanceConstraint
+from kinematics.core.enums import PointID
 from kinematics.core.types import Vec3, make_vec3
 from kinematics.core.vector_utils.generic import normalize_vector
-from kinematics.core.vector_utils.geometric import compute_vector_vector_angle
 from kinematics.io.validation import Vec3Like, coerce_vec3
-from kinematics.suspensions.config.settings import CamberShimConfig
 
 
-def compute_shim_offset(shim_config: CamberShimConfig) -> Vec3:
+@dataclass(frozen=True)
+class ShimFaceCenters:
     """
-    Compute the offset vector caused by shim thickness change.
+    Design-state shim face centers derived from the configured shim mid-plane.
+    """
+
+    upper_face_center_design: Vec3
+    lower_face_center_design: Vec3
+
+
+@dataclass(frozen=True)
+class CamberShimAssemblySolution:
+    """
+    Solved split-body shim assembly state.
+
+    The local assembly solve tracks the upper and lower rigid-body rotations, but the
+    suspension model only consumes the lower-body rotation when rotating the upright-
+    mounted points in the global suspension state.
+    """
+
+    upper_rotation_vector: Vec3
+    lower_rotation_vector: Vec3
+    upper_face_center: Vec3
+    lower_face_center: Vec3
+    upper_face_normal: Vec3
+    lower_face_normal: Vec3
+    lower_rotation_axis: Vec3
+    lower_rotation_angle_rad: float
+    constraint_residual_norm: float
+
+
+@dataclass(frozen=True)
+class ShimAssemblyState:
+    """
+    Internal state derived from a pair of upper/lower rotation vectors.
+    """
+
+    upper_face_center: Vec3
+    upper_face_normal: Vec3
+
+    lower_face_center: Vec3
+    lower_face_normal: Vec3
+
+
+def compute_shim_face_centers(
+    shim_face_center: Vec3Like,
+    shim_normal: Vec3Like,
+    design_thickness: float,
+) -> ShimFaceCenters:
+    """
+    Derive the design-state shim face centers from the configured shim mid-plane.
 
     Args:
-        shim_config: Camber shim configuration.
+        shim_face_center: Design shim mid-plane center in world coordinates.
+        shim_normal: Design shim-face normal.
+        design_thickness: Design shim stack thickness in mm.
 
     Returns:
-        Offset vector in mm (points outboard from chassis).
+        Design upper and lower shim face centers.
     """
-    # Calculate thickness delta.
-    delta_thickness = shim_config.setup_thickness - shim_config.design_thickness
+    shim_center = coerce_vec3(shim_face_center)
+    normal_unit = normalize_vector(coerce_vec3(shim_normal))
 
-    # Get and normalize the shim normal vector.
-    normal_unit = normalize_vector(coerce_vec3(shim_config.shim_normal))
+    # The configured point is the mid-plane center, so each face sits half a design
+    # thickness away from that point along the face normal.
+    half_thickness_offset = 0.5 * design_thickness * normal_unit
 
-    # Offset is along the normal direction.
-    offset = normal_unit * delta_thickness
+    return ShimFaceCenters(
+        upper_face_center_design=make_vec3(shim_center - half_thickness_offset),
+        lower_face_center_design=make_vec3(shim_center + half_thickness_offset),
+    )
 
-    return make_vec3(offset)
 
-
-def rotate_point_about_axis(
-    point: Vec3, pivot: Vec3, axis: Vec3, angle_rad: float
-) -> Vec3:
+def solve_camber_shim_assembly(
+    upper_ball_joint: Vec3Like,
+    lower_ball_joint: Vec3Like,
+    shim_face_center: Vec3Like,
+    shim_normal: Vec3Like,
+    design_thickness: float,
+    setup_thickness: float,
+) -> CamberShimAssemblySolution:
     """
-    Rotate a point about an arbitrary axis using Rodrigues' rotation formula.
+    Solve the local split-body shim assembly.
+
+    The solve enforces three physical constraints:
+
+    1. The upper face center remains on the rigid orbit about the upper ball joint.
+    2. The lower face center remains on the rigid orbit about the lower ball joint.
+    3. The two shim face centre points are separated by the setup shim thickness.
 
     Args:
-        point: Point to rotate.
-        pivot: Point on the rotation axis.
-        axis: Unit vector defining the rotation axis direction.
-        angle_rad: Rotation angle in radians.
+        upper_ball_joint: Upper ball joint position in world coordinates.
+        lower_ball_joint: Lower ball joint position in world coordinates.
+        shim_face_center: Design shim mid-plane center in world coordinates.
+        shim_normal: Design shim-face normal.
+        design_thickness: Design shim stack thickness in mm.
+        setup_thickness: Setup shim stack thickness in mm.
 
     Returns:
-        Rotated point coordinates.
+        Solved assembly state, including the lower-body axis/angle consumed by the
+        suspension model.
+
+    Raises:
+        ValueError: If the requested shim geometry is infeasible for the split-body
+            assembly model.
     """
-    # Translate point to origin (pivot at origin).
-    p = point - pivot
+    # Constraints here:
+    # - UBJ mounted camber block is free to rotate. One constraint: shim face centre
+    #   must remain a Euclidean fixed distance from the UBJ.
+    # - Upright body is free to rotate about LBJ. Upright rigid body (including axle
+    #   points, trackrod pickup etc.) points remain fixed distance from the LBJ.
+    # - Distance between shim face centre points must match the setup shim thickness.
+    #
+    # So I think we end up with four degrees of freedom:
+    # - Azimuth angle, camber block.
+    # - Elevation angle, camber block.
+    # - Azimuth angle, upright body.
+    # - Elevation angle, upright body.
+    # We'll need to come up with axis system for the ball joints; maybe global
+    # axis aligned but centred at each ball joint?
+    #
+    # Then our residual terms will just be:
+    # - Camber block shim face centroid distance from UBJ.
+    # - Upright body shim face centroid distance from LBJ.
+    # - Shim face centroid to centroid distance - setup shim thickness.
 
-    # Rodrigues' rotation formula:
-    # v_rot = v*cos(θ) + (k × v)*sin(θ) + k*(k·v)*(1 - cos(θ)).
-    k = axis
-    cos_angle = np.cos(angle_rad)
-    sin_angle = np.sin(angle_rad)
+    shim_face_center = make_vec3(shim_face_center)
+    upper_ball_joint = make_vec3(upper_ball_joint)
+    lower_ball_joint = make_vec3(lower_ball_joint)
 
-    # Cross product k × p.
-    k_cross_p = np.cross(k, p)
+    t_shim_half = design_thickness / 2
+    position_inboard_sfc = shim_face_center + t_shim_half * (
+        upper_ball_joint - shim_face_center
+    )
+    position_outboard_sfc = shim_face_center + t_shim_half * (
+        lower_ball_joint - shim_face_center
+    )
 
-    # Dot product k · p.
-    k_dot_p = np.dot(k, p)
+    l_inboard_arm = float(np.linalg.norm(upper_ball_joint - position_inboard_sfc))
+    l_outboard_arm = float(np.linalg.norm(lower_ball_joint - position_outboard_sfc))
 
-    # Apply Rodrigues formula.
-    p_rot = p * cos_angle + k_cross_p * sin_angle + k * k_dot_p * (1 - cos_angle)
+    constraints = [
+        DistanceConstraint(
+            PointID.UPPER_WISHBONE_OUTBOARD,
+            PointID.CAMBER_SHIM_CENTROID_INBOARD,
+            l_inboard_arm,
+        ),
+        DistanceConstraint(
+            PointID.LOWER_WISHBONE_OUTBOARD,
+            PointID.CAMBER_SHIM_CENTROID_OUTBOARD,
+            l_outboard_arm,
+        ),
+        DistanceConstraint(
+            PointID.CAMBER_SHIM_CENTROID_INBOARD,
+            PointID.CAMBER_SHIM_CENTROID_OUTBOARD,
+            setup_thickness,
+        ),
+    ]
 
-    # Translate back.
-    return make_vec3(p_rot + pivot)
-
-
-def compute_upright_rotation_from_shim(
-    lower_ball_joint: Vec3,
-    shim_face_center_design: Vec3Like,
-    shim_offset: Vec3,
-) -> tuple[Vec3, float]:
-    """
-    Compute the rotation axis and angle for the upright given a shim offset.
-
-    The upright rotates about an axis through the lower ball joint. The rotation
-    is determined by the constraint that the shim face center must move by the
-    shim offset vector.
-
-    The rotation axis is perpendicular to both:
-    - The radial vector from lower ball joint to shim face center
-    - The shim offset direction (parallel to shim normal)
-
-    This means the axis is also perpendicular to the shim normal, which makes
-    physical sense: pushing the shim face outboard causes rotation about an axis
-    perpendicular to that push direction.
-
-    Args:
-        lower_ball_joint: Position of the lower ball joint (rotation pivot).
-        shim_face_center_design: Design position of the shim face center.
-        shim_offset: Offset vector from shim thickness change (parallel to shim normal).
-
-    Returns:
-        Tuple of (rotation_axis, rotation_angle_rad).
-        rotation_axis is a unit vector through the lower ball joint.
-        rotation_angle_rad is the angle to rotate the upright.
-    """
-    # Coerce to Vec3 (handles Pydantic model fields which may be typed as Vec3Like).
-    shim_center = coerce_vec3(shim_face_center_design)
-
-    # The shim face must move to: shim_face_center_design + shim_offset.
-    shim_face_target = make_vec3(shim_center + shim_offset)
-
-    # Vector from lower ball joint to design shim face center.
-    r_design = make_vec3(shim_center - lower_ball_joint)
-
-    # Vector from lower ball joint to target shim face center.
-    r_target = make_vec3(shim_face_target - lower_ball_joint)
-
-    # The rotation axis is perpendicular to both r_design and r_target.
-    # Note: r_target = r_design + shim_offset, so by cross product properties:
-    #   r_design × r_target = r_design × (r_design + shim_offset)
-    #                       = r_design × shim_offset
-    # Therefore the axis is perpendicular to both the radial arm and the shim normal.
-    cross = np.cross(r_design, r_target)
-    cross_magnitude = np.linalg.norm(cross)
-
-    if cross_magnitude < EPSILON:
-        # Vectors are parallel - no rotation needed.
-        return make_vec3(np.array([0.0, 0.0, 1.0])), 0.0
-
-    rotation_axis = make_vec3(cross / cross_magnitude)
-
-    # Compute the rotation angle between the two radial vectors.
-    rotation_angle = compute_vector_vector_angle(r_design, r_target)
-
-    return rotation_axis, rotation_angle
+    # Now we need to set up a solve with our four angle variables...
