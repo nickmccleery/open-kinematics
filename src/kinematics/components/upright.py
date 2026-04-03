@@ -221,7 +221,7 @@ class Upright(RigidBody):
             rotation_axis: Normalized rotation axis vector.
             rotation_angle_rad: Rotation angle in radians.
         """
-        from kinematics.suspensions.config.shims import rotate_point_about_axis
+        from kinematics.core.vector_utils.geometric import rotate_point_about_axis
 
         # Ensure rotation axis is normalized.
         rotation_axis = normalize_vector(rotation_axis)

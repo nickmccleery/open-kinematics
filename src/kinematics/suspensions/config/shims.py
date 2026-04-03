@@ -27,6 +27,7 @@ from scipy.optimize import least_squares
 
 from kinematics.core.types import Vec3, make_vec3
 from kinematics.core.vector_utils.generic import normalize_vector
+from kinematics.core.vector_utils.geometric import rodrigues_rotate_vector
 from kinematics.io.validation import Vec3Like, coerce_vec3
 
 
@@ -49,63 +50,6 @@ class CamberShimAssemblySolution:
     lower_rotation_axis: Vec3
     lower_rotation_angle_rad: float
     constraint_residual_norm: float
-
-
-def rotate_point_about_axis(
-    point: Vec3Like,
-    pivot: Vec3Like,
-    axis: Vec3Like,
-    angle: float,
-) -> Vec3:
-    """
-    Rotate a point about an axis passing through a pivot using Rodrigues' formula.
-
-    Args:
-        point: The point to rotate, in world coordinates.
-        pivot: A point on the rotation axis (center of rotation).
-        axis: Direction vector of the rotation axis (will be normalized).
-        angle: Rotation angle in radians (right-hand rule about axis).
-
-    Returns:
-        The rotated point in world coordinates.
-    """
-    p = coerce_vec3(point)
-    c = coerce_vec3(pivot)
-    k = normalize_vector(coerce_vec3(axis))
-
-    # Vector from pivot to point.
-    v = p - c
-
-    cos_a = np.cos(angle)
-    sin_a = np.sin(angle)
-
-    # Rodrigues' rotation: v_rot = v*cos(a) + (k x v)*sin(a) + k*(k.v)*(1-cos(a))
-    rotated = v * cos_a + np.cross(k, v) * sin_a + k * np.dot(k, v) * (1.0 - cos_a)
-    return make_vec3(c + rotated)
-
-
-def _rodrigues_rotate_vector(v: np.ndarray, rotvec: np.ndarray) -> np.ndarray:
-    """
-    Rotate a vector by a rotation vector using Rodrigues' formula.
-
-    The rotation vector encodes both axis and angle: its direction is the rotation
-    axis and its magnitude is the rotation angle in radians.
-
-    Args:
-        v: The 3D vector to rotate.
-        rotvec: Rotation vector (axis * angle).
-
-    Returns:
-        The rotated vector.
-    """
-    angle = np.linalg.norm(rotvec)
-    if angle < 1e-15:
-        return v.copy()
-
-    k = rotvec / angle
-    cos_a = np.cos(angle)
-    sin_a = np.sin(angle)
-    return v * cos_a + np.cross(k, v) * sin_a + k * np.dot(k, v) * (1.0 - cos_a)
 
 
 def solve_camber_shim_assembly(
@@ -227,12 +171,12 @@ def solve_camber_shim_assembly(
         dist_rear = np.linalg.norm(ubj_pos - uwb_ir) - arm_length_rear
 
         # Rotate design offsets by the respective rotation vectors.
-        rot_upper_a = _rodrigues_rotate_vector(d_upper_a, upper_rv)
-        rot_upper_b = _rodrigues_rotate_vector(d_upper_b, upper_rv)
-        rot_lower_a = _rodrigues_rotate_vector(d_lower_a, lower_rv)
-        rot_lower_b = _rodrigues_rotate_vector(d_lower_b, lower_rv)
-        n_u = _rodrigues_rotate_vector(normal, upper_rv)
-        n_l = _rodrigues_rotate_vector(normal, lower_rv)
+        rot_upper_a = rodrigues_rotate_vector(d_upper_a, upper_rv)
+        rot_upper_b = rodrigues_rotate_vector(d_upper_b, upper_rv)
+        rot_lower_a = rodrigues_rotate_vector(d_lower_a, lower_rv)
+        rot_lower_b = rodrigues_rotate_vector(d_lower_b, lower_rv)
+        n_u = rodrigues_rotate_vector(normal, upper_rv)
+        n_l = rodrigues_rotate_vector(normal, lower_rv)
 
         # World positions of face datums after rotation.
         p_upper_a = ubj_pos + rot_upper_a
@@ -251,7 +195,7 @@ def solve_camber_shim_assembly(
         # Trackrod length: the trackrod outboard pickup rotates with the lower body
         # about LBJ, but the trackrod is a rigid link so its length must match the
         # design-state distance to the fixed inboard pickup.
-        rot_trackrod = _rodrigues_rotate_vector(d_trackrod, lower_rv)
+        rot_trackrod = rodrigues_rotate_vector(d_trackrod, lower_rv)
         tro_solved = lbj + rot_trackrod
         trackrod_residual = np.linalg.norm(tro_solved - tri) - trackrod_length
 
@@ -290,8 +234,8 @@ def solve_camber_shim_assembly(
     lower_rv = make_vec3(result.x[6:9])
 
     # Compute solved face normals.
-    solved_n_upper = make_vec3(_rodrigues_rotate_vector(normal, result.x[3:6]))
-    solved_n_lower = make_vec3(_rodrigues_rotate_vector(normal, result.x[6:9]))
+    solved_n_upper = make_vec3(rodrigues_rotate_vector(normal, result.x[3:6]))
+    solved_n_lower = make_vec3(rodrigues_rotate_vector(normal, result.x[6:9]))
 
     # Extract lower rotation axis and angle for suspension integration.
     lower_angle = float(np.linalg.norm(lower_rv))

@@ -27,6 +27,7 @@ from kinematics.core.vector_utils.geometric import (
     intersect_line_with_vertical_plane,
     intersect_two_planes,
     plane_from_three_points,
+    rotate_point_about_axis,
 )
 from kinematics.points.derived.definitions import (
     get_axle_midpoint,
@@ -39,10 +40,7 @@ from kinematics.points.derived.definitions import (
 from kinematics.points.derived.manager import DerivedPointsManager, DerivedPointsSpec
 from kinematics.state import SuspensionState
 from kinematics.suspensions.base import Suspension
-from kinematics.suspensions.config.shims import (
-    rotate_point_about_axis,
-    solve_camber_shim_assembly,
-)
+from kinematics.suspensions.config.shims import solve_camber_shim_assembly
 
 if TYPE_CHECKING:
     from kinematics.visualization.main import LinkVisualization
