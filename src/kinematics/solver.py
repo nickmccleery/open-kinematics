@@ -7,10 +7,10 @@ Marquardt.
 """
 
 from dataclasses import dataclass
-from typing import Callable, NamedTuple
+from typing import Any, Callable, NamedTuple
 
 import numpy as np
-from scipy.optimize import least_squares
+from scipy.optimize import OptimizeResult, least_squares
 
 from kinematics.constraints import (
     AngleConstraint,
@@ -86,6 +86,81 @@ class SolverInfo:
     converged: bool
     nfev: int
     max_residual: float
+
+
+def validate_least_squares_dimensions(
+    n_vars: int,
+    n_residuals: int,
+    *,
+    method: str = SOLVE_METHOD,
+) -> None:
+    """
+    Validate that the chosen least-squares method is compatible with the system size.
+
+    Args:
+        n_vars: Number of solver variables.
+        n_residuals: Number of residual equations.
+        method: Least-squares method passed to SciPy.
+
+    Raises:
+        ValueError: If the requested method cannot solve the given system size.
+    """
+    if method == "lm" and n_vars > n_residuals:
+        raise ValueError(
+            f"System is underdetermined (n_vars={n_vars} > m_res={n_residuals}). "
+            "The solve method (Levenberg-Marquardt) requires at least as "
+            "many residuals as variables."
+        )
+
+
+def solve_least_squares_problem(
+    *,
+    residual_function: Callable[..., np.ndarray],
+    x_0: np.ndarray,
+    args: tuple[Any, ...] = (),
+    solver_config: SolverConfig = SolverConfig(),
+    n_residuals: int | None = None,
+    jacobian_function: Callable[..., np.ndarray] | str | None = None,
+    method: str = SOLVE_METHOD,
+) -> OptimizeResult:
+    """
+    Run a single least-squares solve with shared validation and tolerance handling.
+
+    Args:
+        residual_function: Residual callback passed to SciPy.
+        x_0: Initial guess.
+        args: Extra arguments forwarded to the residual function.
+        solver_config: Shared solver tolerance and verbosity settings.
+        n_residuals: Residual count for method-size validation. If omitted, no
+            up-front dimension validation is performed.
+        jacobian_function: Optional analytical Jacobian callback or SciPy Jacobian
+            mode string.
+        method: Least-squares method passed to SciPy.
+
+    Returns:
+        The raw SciPy optimize result.
+    """
+    if n_residuals is not None:
+        validate_least_squares_dimensions(
+            int(x_0.size),
+            n_residuals,
+            method=method,
+        )
+
+    least_squares_kwargs: dict[str, Any] = {
+        "fun": residual_function,
+        "x0": x_0,
+        "args": args,
+        "method": method,
+        "ftol": solver_config.ftol,
+        "xtol": solver_config.xtol,
+        "gtol": solver_config.gtol,
+        "verbose": solver_config.verbose,
+    }
+    if jacobian_function is not None:
+        least_squares_kwargs["jac"] = jacobian_function
+
+    return least_squares(**least_squares_kwargs)
 
 
 class ResidualComputer:
@@ -547,27 +622,18 @@ def solve_suspension_sweep(
     # Initial guess built from the working state's free points.
     x_0 = working_state.get_free_array()
 
-    # Both counts are fixed for the entire sweep, so validate once up front.
-    n_vars = len(working_state.free_points_order) * 3
-    m_res = residual_computer.n_residuals
-    if n_vars > m_res:
-        raise ValueError(
-            f"System is underdetermined (n_vars={n_vars} > m_res={m_res}). "
-            "The solve method (Levenberg-Marquardt) requires at least as "
-            "many residuals as variables."
-        )
+    # Both counts are fixed for the entire sweep, so pass the residual count through
+    # the shared least-squares helper for LM dimension validation.
+    n_residuals = residual_computer.n_residuals
 
     for step_targets in sweep_targets:
-        result = least_squares(
-            fun=residual_computer.compute,
-            x0=x_0,
+        result = solve_least_squares_problem(
+            residual_function=residual_computer.compute,
+            x_0=x_0,
             args=(step_targets,),
-            jac=residual_computer.compute_jacobian,  # pyright: ignore[reportArgumentType]
-            method=SOLVE_METHOD,
-            ftol=solver_config.ftol,
-            xtol=solver_config.xtol,
-            gtol=solver_config.gtol,
-            verbose=solver_config.verbose,
+            solver_config=solver_config,
+            n_residuals=n_residuals,
+            jacobian_function=residual_computer.compute_jacobian,  # pyright: ignore[reportArgumentType]
         )
 
         if not result.success:

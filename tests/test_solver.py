@@ -6,7 +6,12 @@ from kinematics.core.constants import TEST_TOLERANCE
 from kinematics.core.enums import Axis, PointID, TargetPositionMode
 from kinematics.core.types import PointTargetAxis, SweepConfig
 from kinematics.points.derived.manager import DerivedPointsManager, DerivedPointsSpec
-from kinematics.solver import PointTarget, SolverConfig, solve_suspension_sweep
+from kinematics.solver import (
+    PointTarget,
+    SolverConfig,
+    solve_least_squares_problem,
+    solve_suspension_sweep,
+)
 from kinematics.state import SuspensionState
 
 
@@ -127,4 +132,16 @@ def test_solve_sweep(
         # Target displacement
         assert p_outboard[2] == pytest.approx(
             displacement_values[i], rel=TEST_TOLERANCE
+        )
+
+
+def test_solve_least_squares_problem_rejects_underdetermined_lm():
+    def residual_function(x: np.ndarray) -> np.ndarray:
+        return np.array([x[0] + x[1]])
+
+    with pytest.raises(ValueError, match="System is underdetermined"):
+        solve_least_squares_problem(
+            residual_function=residual_function,
+            x_0=np.zeros(2),
+            n_residuals=1,
         )
