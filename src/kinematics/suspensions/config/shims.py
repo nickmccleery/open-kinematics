@@ -4,6 +4,18 @@ Camber shim geometry calculations.
 This module solves the local split-body camber shim assembly. The upper shim block
 rotates about the upper ball joint, the lower upright body rotates about the lower
 ball joint, and the two shim faces remain separated by the requested setup thickness.
+
+The solver uses a 9-variable overdetermined least-squares formulation:
+    - UBJ_xyz (3): upper ball joint position, constrained to the upper wishbone arc
+    - upper_rotvec (3): rotation vector for the upper shim block about UBJ
+    - lower_rotvec (3): rotation vector for the lower upright body about LBJ
+
+with 12 residuals:
+    - 2 scalar upper-arm distance constraints (UBJ to each inboard pickup)
+    - 3 scalar datum A closure (lower face A - upper face A = thickness * normal)
+    - 3 scalar datum B closure (lower face B - upper face B = thickness * normal)
+    - 3 scalar parallelism (cross product of upper and lower face normals)
+    - 1 scalar trackrod length (preserves design trackrod length through shim change)
 """
 
 from __future__ import annotations
@@ -11,22 +23,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
+from scipy.optimize import least_squares
 
-from kinematics.constraints import DistanceConstraint
-from kinematics.core.enums import PointID
 from kinematics.core.types import Vec3, make_vec3
 from kinematics.core.vector_utils.generic import normalize_vector
 from kinematics.io.validation import Vec3Like, coerce_vec3
-
-
-@dataclass(frozen=True)
-class ShimFaceCenters:
-    """
-    Design-state shim face centers derived from the configured shim mid-plane.
-    """
-
-    upper_face_center_design: Vec3
-    lower_face_center_design: Vec3
 
 
 @dataclass(frozen=True)
@@ -34,15 +35,15 @@ class CamberShimAssemblySolution:
     """
     Solved split-body shim assembly state.
 
-    The local assembly solve tracks the upper and lower rigid-body rotations, but the
-    suspension model only consumes the lower-body rotation when rotating the upright-
-    mounted points in the global suspension state.
+    The local assembly solve determines how both the upper shim block and lower
+    upright body rotate to accommodate the setup shim thickness. The suspension
+    integration consumes the solved UBJ position and lower-body rotation to update
+    the global suspension state.
     """
 
+    solved_ubj: Vec3
     upper_rotation_vector: Vec3
     lower_rotation_vector: Vec3
-    upper_face_center: Vec3
-    lower_face_center: Vec3
     upper_face_normal: Vec3
     lower_face_normal: Vec3
     lower_rotation_axis: Vec3
@@ -50,176 +51,262 @@ class CamberShimAssemblySolution:
     constraint_residual_norm: float
 
 
-@dataclass(frozen=True)
-class ShimAssemblyState:
+def rotate_point_about_axis(
+    point: Vec3Like,
+    pivot: Vec3Like,
+    axis: Vec3Like,
+    angle: float,
+) -> Vec3:
     """
-    Internal state derived from a pair of upper/lower rotation vectors.
-    """
-
-    upper_face_center: Vec3
-    upper_face_normal: Vec3
-
-    lower_face_center: Vec3
-    lower_face_normal: Vec3
-
-
-def compute_shim_face_centers(
-    shim_face_center: Vec3Like,
-    shim_normal: Vec3Like,
-    design_thickness: float,
-) -> ShimFaceCenters:
-    """
-    Derive the design-state shim face centers from the configured shim mid-plane.
+    Rotate a point about an axis passing through a pivot using Rodrigues' formula.
 
     Args:
-        shim_face_center: Design shim mid-plane center in world coordinates.
-        shim_normal: Design shim-face normal.
-        design_thickness: Design shim stack thickness in mm.
+        point: The point to rotate, in world coordinates.
+        pivot: A point on the rotation axis (center of rotation).
+        axis: Direction vector of the rotation axis (will be normalized).
+        angle: Rotation angle in radians (right-hand rule about axis).
 
     Returns:
-        Design upper and lower shim face centers.
+        The rotated point in world coordinates.
     """
-    shim_center = coerce_vec3(shim_face_center)
-    normal_unit = normalize_vector(coerce_vec3(shim_normal))
+    p = coerce_vec3(point)
+    c = coerce_vec3(pivot)
+    k = normalize_vector(coerce_vec3(axis))
 
-    # The configured point is the mid-plane center, so each face sits half a design
-    # thickness away from that point along the face normal.
-    half_thickness_offset = 0.5 * design_thickness * normal_unit
+    # Vector from pivot to point.
+    v = p - c
 
-    return ShimFaceCenters(
-        upper_face_center_design=make_vec3(shim_center - half_thickness_offset),
-        lower_face_center_design=make_vec3(shim_center + half_thickness_offset),
-    )
+    cos_a = np.cos(angle)
+    sin_a = np.sin(angle)
+
+    # Rodrigues' rotation: v_rot = v*cos(a) + (k x v)*sin(a) + k*(k.v)*(1-cos(a))
+    rotated = v * cos_a + np.cross(k, v) * sin_a + k * np.dot(k, v) * (1.0 - cos_a)
+    return make_vec3(c + rotated)
+
+
+def _rodrigues_rotate_vector(v: np.ndarray, rotvec: np.ndarray) -> np.ndarray:
+    """
+    Rotate a vector by a rotation vector using Rodrigues' formula.
+
+    The rotation vector encodes both axis and angle: its direction is the rotation
+    axis and its magnitude is the rotation angle in radians.
+
+    Args:
+        v: The 3D vector to rotate.
+        rotvec: Rotation vector (axis * angle).
+
+    Returns:
+        The rotated vector.
+    """
+    angle = np.linalg.norm(rotvec)
+    if angle < 1e-15:
+        return v.copy()
+
+    k = rotvec / angle
+    cos_a = np.cos(angle)
+    sin_a = np.sin(angle)
+    return v * cos_a + np.cross(k, v) * sin_a + k * np.dot(k, v) * (1.0 - cos_a)
 
 
 def solve_camber_shim_assembly(
     upper_ball_joint: Vec3Like,
     lower_ball_joint: Vec3Like,
-    shim_face_center: Vec3Like,
-    shim_normal: Vec3Like,
+    upper_wishbone_inboard_front: Vec3Like,
+    upper_wishbone_inboard_rear: Vec3Like,
+    trackrod_outboard: Vec3Like,
+    trackrod_inboard: Vec3Like,
+    shim_face_point_a: Vec3Like,
+    shim_face_point_b: Vec3Like,
+    shim_face_normal: Vec3Like,
     design_thickness: float,
     setup_thickness: float,
 ) -> CamberShimAssemblySolution:
     """
     Solve the local split-body shim assembly.
 
-    The solve enforces three physical constraints:
-
-    1. The upper face center remains on the rigid orbit about the upper ball joint.
-    2. The lower face center remains on the rigid orbit about the lower ball joint.
-    3. The two shim face centre points are separated by the setup shim thickness.
+    Finds the configuration where the upper shim block (rotating about UBJ) and the
+    lower upright body (rotating about LBJ) produce parallel shim faces separated by
+    the setup thickness, while UBJ remains on the upper wishbone arc and the trackrod
+    length is preserved.
 
     Args:
-        upper_ball_joint: Upper ball joint position in world coordinates.
-        lower_ball_joint: Lower ball joint position in world coordinates.
-        shim_face_center: Design shim mid-plane center in world coordinates.
-        shim_normal: Design shim-face normal.
+        upper_ball_joint: Design UBJ position in world coordinates.
+        lower_ball_joint: Fixed LBJ position in world coordinates.
+        upper_wishbone_inboard_front: Fixed upper wishbone front pickup.
+        upper_wishbone_inboard_rear: Fixed upper wishbone rear pickup.
+        trackrod_outboard: Design trackrod outboard position (on the upright body).
+        trackrod_inboard: Fixed trackrod inboard position (on the chassis/rack).
+        shim_face_point_a: First dowel datum on the design mid-thickness plane.
+        shim_face_point_b: Second dowel datum on the design mid-thickness plane.
+        shim_face_normal: Design shim face normal direction.
         design_thickness: Design shim stack thickness in mm.
         setup_thickness: Setup shim stack thickness in mm.
 
     Returns:
-        Solved assembly state, including the lower-body axis/angle consumed by the
-        suspension model.
+        Solved assembly state with UBJ position, rotation vectors, and convergence
+        info.
 
     Raises:
-        ValueError: If the requested shim geometry is infeasible for the split-body
-            assembly model.
+        RuntimeError: If the solver fails to converge.
     """
-    # Constraints here:
-    # - UBJ mounted camber block is free to rotate. One constraint: shim face centre
-    #   must remain a Euclidean fixed distance from the UBJ.
-    # - Upright body is free to rotate about LBJ. Upright rigid body (including axle
-    #   points, trackrod pickup etc.) points remain fixed distance from the LBJ.
-    # - Distance between shim face centre points must match the setup shim thickness.
-    #
-    # So I think we end up with four degrees of freedom:
-    # - Azimuth angle, camber block.
-    # - Elevation angle, camber block.
-    # - Azimuth angle, upright body.
-    # - Elevation angle, upright body.
-    # We'll need to come up with axis system for the ball joints; maybe global
-    # axis aligned but centred at each ball joint?
-    #
-    # Then our residual terms will just be:
-    # - Camber block shim face centroid distance from UBJ.
-    # - Upright body shim face centroid distance from LBJ.
-    # - Shim face centroid to centroid distance - setup shim thickness.
+    ubj = coerce_vec3(upper_ball_joint)
+    lbj = coerce_vec3(lower_ball_joint)
+    uwb_if = coerce_vec3(upper_wishbone_inboard_front)
+    uwb_ir = coerce_vec3(upper_wishbone_inboard_rear)
+    tro = coerce_vec3(trackrod_outboard)
+    tri = coerce_vec3(trackrod_inboard)
+    pt_a = coerce_vec3(shim_face_point_a)
+    pt_b = coerce_vec3(shim_face_point_b)
+    normal = normalize_vector(coerce_vec3(shim_face_normal))
 
-    # Note: azimuth/elevation isn't enough. I think we'll need Euler angles.
+    # Early exit when there is no shim thickness change.
+    if abs(setup_thickness - design_thickness) < 1e-10:
+        return CamberShimAssemblySolution(
+            solved_ubj=make_vec3(ubj.copy()),
+            upper_rotation_vector=make_vec3(np.zeros(3)),
+            lower_rotation_vector=make_vec3(np.zeros(3)),
+            upper_face_normal=make_vec3(normal.copy()),
+            lower_face_normal=make_vec3(normal.copy()),
+            lower_rotation_axis=make_vec3(np.array([0.0, 0.0, 1.0])),
+            lower_rotation_angle_rad=0.0,
+            constraint_residual_norm=0.0,
+        )
 
-    shim_face_center = make_vec3(shim_face_center)
-    upper_ball_joint = make_vec3(upper_ball_joint)
-    lower_ball_joint = make_vec3(lower_ball_joint)
+    half_design = 0.5 * design_thickness
 
-    t_shim_half = design_thickness / 2
-    position_inboard_sfc = shim_face_center + t_shim_half * (
-        upper_ball_joint - shim_face_center
+    # Design-state face datum positions. The upper face is on the inboard side
+    # (toward UBJ), the lower face on the outboard side (toward the upright body).
+    # "Upper" and "lower" refer to the shim block attached to UBJ and the upright
+    # body attached to LBJ respectively, not vertical position.
+    upper_a_design = pt_a - half_design * normal
+    upper_b_design = pt_b - half_design * normal
+    lower_a_design = pt_a + half_design * normal
+    lower_b_design = pt_b + half_design * normal
+
+    # Design-state upper wishbone arm lengths (invariant under UBJ articulation).
+    arm_length_front = float(np.linalg.norm(ubj - uwb_if))
+    arm_length_rear = float(np.linalg.norm(ubj - uwb_ir))
+
+    # Design-state trackrod length. The trackrod is a rigid link so this distance
+    # must be preserved through the shim change.
+    trackrod_length = float(np.linalg.norm(tro - tri))
+
+    # Design-state local offsets from each ball joint. These are the vectors that
+    # get rotated by the respective rotation vectors during the solve.
+    d_upper_a = upper_a_design - ubj
+    d_upper_b = upper_b_design - ubj
+    d_lower_a = lower_a_design - lbj
+    d_lower_b = lower_b_design - lbj
+
+    # Trackrod outboard offset from LBJ (rotates with the lower body).
+    d_trackrod = tro - lbj
+
+    def residuals(x: np.ndarray) -> np.ndarray:
+        """
+        Compute the 12 residuals for the shim assembly.
+
+        Variables (9):
+            x[0:3] - UBJ position
+            x[3:6] - upper block rotation vector about UBJ
+            x[6:9] - lower body rotation vector about LBJ
+
+        Residuals (12):
+            [0]    - |UBJ - UWB_IF| - L_front
+            [1]    - |UBJ - UWB_IR| - L_rear
+            [2:5]  - datum A closure: p_lA - p_uA - t * n_u
+            [5:8]  - datum B closure: p_lB - p_uB - t * n_u
+            [8:11] - parallelism: cross(n_u, n_l)
+            [11]   - trackrod length: |rotated_tro - tri| - L_trackrod
+        """
+        ubj_pos = x[:3]
+        upper_rv = x[3:6]
+        lower_rv = x[6:9]
+
+        # Upper arm distance constraints. These keep UBJ on the upper wishbone arc.
+        dist_front = np.linalg.norm(ubj_pos - uwb_if) - arm_length_front
+        dist_rear = np.linalg.norm(ubj_pos - uwb_ir) - arm_length_rear
+
+        # Rotate design offsets by the respective rotation vectors.
+        rot_upper_a = _rodrigues_rotate_vector(d_upper_a, upper_rv)
+        rot_upper_b = _rodrigues_rotate_vector(d_upper_b, upper_rv)
+        rot_lower_a = _rodrigues_rotate_vector(d_lower_a, lower_rv)
+        rot_lower_b = _rodrigues_rotate_vector(d_lower_b, lower_rv)
+        n_u = _rodrigues_rotate_vector(normal, upper_rv)
+        n_l = _rodrigues_rotate_vector(normal, lower_rv)
+
+        # World positions of face datums after rotation.
+        p_upper_a = ubj_pos + rot_upper_a
+        p_upper_b = ubj_pos + rot_upper_b
+        p_lower_a = lbj + rot_lower_a
+        p_lower_b = lbj + rot_lower_b
+
+        # Datum closure: the gap from upper to lower face at each datum must equal
+        # the setup thickness along the upper face normal direction.
+        closure_a = p_lower_a - p_upper_a - setup_thickness * n_u
+        closure_b = p_lower_b - p_upper_b - setup_thickness * n_u
+
+        # Parallelism: upper and lower face normals must remain parallel.
+        parallel = np.cross(n_u, n_l)
+
+        # Trackrod length: the trackrod outboard pickup rotates with the lower body
+        # about LBJ, but the trackrod is a rigid link so its length must match the
+        # design-state distance to the fixed inboard pickup.
+        rot_trackrod = _rodrigues_rotate_vector(d_trackrod, lower_rv)
+        tro_solved = lbj + rot_trackrod
+        trackrod_residual = np.linalg.norm(tro_solved - tri) - trackrod_length
+
+        return np.concatenate(
+            [
+                np.array([dist_front, dist_rear]),
+                closure_a,
+                closure_b,
+                parallel,
+                np.array([trackrod_residual]),
+            ]
+        )
+
+    # Seed from design condition: design UBJ position, zero rotations.
+    x0 = np.zeros(9)
+    x0[:3] = ubj
+
+    result = least_squares(
+        residuals,
+        x0,
+        method="lm",
+        ftol=1e-12,
+        xtol=1e-12,
+        gtol=1e-12,
     )
-    position_outboard_sfc = shim_face_center + t_shim_half * (
-        lower_ball_joint - shim_face_center
+
+    if not result.success:
+        raise RuntimeError(
+            f"Camber shim assembly solve failed to converge.\n"
+            f"Message: {result.message}"
+        )
+
+    # Extract solution.
+    solved_ubj_pos = make_vec3(result.x[:3])
+    upper_rv = make_vec3(result.x[3:6])
+    lower_rv = make_vec3(result.x[6:9])
+
+    # Compute solved face normals.
+    solved_n_upper = make_vec3(_rodrigues_rotate_vector(normal, result.x[3:6]))
+    solved_n_lower = make_vec3(_rodrigues_rotate_vector(normal, result.x[6:9]))
+
+    # Extract lower rotation axis and angle for suspension integration.
+    lower_angle = float(np.linalg.norm(lower_rv))
+    if lower_angle > 1e-15:
+        lower_axis = make_vec3(lower_rv / lower_angle)
+    else:
+        lower_axis = make_vec3(np.array([0.0, 0.0, 1.0]))
+
+    return CamberShimAssemblySolution(
+        solved_ubj=solved_ubj_pos,
+        upper_rotation_vector=upper_rv,
+        lower_rotation_vector=lower_rv,
+        upper_face_normal=solved_n_upper,
+        lower_face_normal=solved_n_lower,
+        lower_rotation_axis=lower_axis,
+        lower_rotation_angle_rad=lower_angle,
+        constraint_residual_norm=float(np.linalg.norm(result.fun)),
     )
-
-    l_inboard_arm = float(np.linalg.norm(upper_ball_joint - position_inboard_sfc))
-    l_outboard_arm = float(np.linalg.norm(lower_ball_joint - position_outboard_sfc))
-
-    constraints = [
-        DistanceConstraint(
-            PointID.UPPER_WISHBONE_OUTBOARD,
-            PointID.CAMBER_SHIM_CENTROID_INBOARD,
-            l_inboard_arm,
-        ),
-        DistanceConstraint(
-            PointID.LOWER_WISHBONE_OUTBOARD,
-            PointID.CAMBER_SHIM_CENTROID_OUTBOARD,
-            l_outboard_arm,
-        ),
-        DistanceConstraint(
-            PointID.CAMBER_SHIM_CENTROID_INBOARD,
-            PointID.CAMBER_SHIM_CENTROID_OUTBOARD,
-            setup_thickness,
-        ),
-    ]
-
-    # Now we need to set up a solve with our four angle variables...
-    azimuth_inboard = 0
-    elevation_inboard = 0
-    azimuth_outboard = 0
-    elevation_outboard = 0
-
-    x0 = [azimuth_inboard, elevation_inboard, azimuth_outboard, elevation_outboard]
-
-    def compute_residuals(x):
-        # From x (vector of angles):
-        # - 1: Apply azimuth rotation to upper arm (+ve CCW about Z transposed to UBJ
-        #      position)
-        # - 2: Apply elevation rotation to upper arm (+ve CCW about X transposed to
-        #      UBJ position)
-        #  ...
-        # - Establish the overall transformation we want to apply to each shim face centroid.
-        # - Evaluate the residual on each constraint.
-        # - Bundle into the residuals array.
-
-        dummy_vec = make_vec3([0, 0, 0])
-
-        positions = {
-            PointID.UPPER_WISHBONE_OUTBOARD: dummy_vec,  # Should be initial position; fixed.
-            PointID.LOWER_WISHBONE_INBOARD_FRONT: dummy_vec,  # Should be initial position; fixed.
-            PointID.CAMBER_SHIM_CENTROID_INBOARD: dummy_vec,  # To be computed...
-            PointID.CAMBER_SHIM_CENTROID_OUTBOARD: dummy_vec,  # To be computed...
-        }
-
-        r = []
-        for constraint in constraints:
-            r_local = constraint.residual(positions)
-            r.append(r_local)
-
-        return r
-
-    # TODO:
-    # - Patch in Euler angles.
-    # - Get transformation setup up and running, maybe a Rodrigues rotation about each
-    #   Euler angle axis, or just a global transformation matrix.
-    # - Get least_squares solve going.
-    # - Try to reuse exciting `solver.py` machinery; we have a much smaller solve here,
-    #   but we're doing basically the same thing so factoring out the common approach
-    #   to fixed points vs. variables etc. would be good.

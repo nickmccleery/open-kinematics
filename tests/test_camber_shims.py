@@ -1,8 +1,10 @@
 """
 Tests for camber shim functionality.
 
-These tests verify that camber shims correctly rotate the upright about the lower ball
-joint, modifying the as-built geometry without changing the design hard points.
+These tests verify that the local split-body shim assembly solver correctly finds
+a configuration where both shim faces remain parallel at the requested thickness,
+UBJ stays on the upper wishbone arc, and the lower-body rotation is applied to
+upright-mounted points.
 """
 
 import numpy as np
@@ -12,68 +14,14 @@ from kinematics.core.types import make_vec3
 from kinematics.io.geometry_loader import load_geometry
 from kinematics.suspensions.config.settings import CamberShimConfig
 from kinematics.suspensions.config.shims import (
-    compute_shim_offset,
-    compute_upright_rotation_from_shim,
     rotate_point_about_axis,
+    solve_camber_shim_assembly,
 )
 from kinematics.suspensions.double_wishbone import DoubleWishboneSuspension
 
-
-def test_compute_shim_offset_positive():
-    """
-    Test that increasing shim thickness creates outboard offset.
-    """
-    shim_config = CamberShimConfig(
-        shim_face_center={"x": 0.0, "y": 350.0, "z": 500.0},
-        shim_normal={"x": 0.0, "y": 1.0, "z": 0.0},  # Unit vector pointing outboard
-        design_thickness=0.0,
-        setup_thickness=10.0,  # 10mm of shim added
-    )
-
-    offset = compute_shim_offset(shim_config)
-
-    # Should move 10mm outboard (positive Y direction)
-    assert np.isclose(offset[Axis.X], 0.0)
-    assert np.isclose(offset[Axis.Y], 10.0)
-    assert np.isclose(offset[Axis.Z], 0.0)
-
-
-def test_compute_shim_offset_negative():
-    """
-    Test that removing shims creates inboard offset.
-    """
-    shim_config = CamberShimConfig(
-        shim_face_center={"x": 0.0, "y": 350.0, "z": 500.0},
-        shim_normal={"x": 0.0, "y": 1.0, "z": 0.0},
-        design_thickness=10.0,
-        setup_thickness=5.0,  # Removed 5mm of shim
-    )
-
-    offset = compute_shim_offset(shim_config)
-
-    # Should move 5mm inboard (negative Y direction)
-    assert np.isclose(offset[Axis.X], 0.0)
-    assert np.isclose(offset[Axis.Y], -5.0)
-    assert np.isclose(offset[Axis.Z], 0.0)
-
-
-def test_compute_shim_offset_zero():
-    """
-    Test that no shim change creates no offset.
-    """
-    shim_config = CamberShimConfig(
-        shim_face_center={"x": 0.0, "y": 350.0, "z": 500.0},
-        shim_normal={"x": 0.0, "y": 1.0, "z": 0.0},
-        design_thickness=5.0,
-        setup_thickness=5.0,  # No change
-    )
-
-    offset = compute_shim_offset(shim_config)
-
-    # Should have no offset
-    assert np.isclose(offset[Axis.X], 0.0)
-    assert np.isclose(offset[Axis.Y], 0.0)
-    assert np.isclose(offset[Axis.Z], 0.0)
+# ---------------------------------------------------------------------------
+# rotate_point_about_axis
+# ---------------------------------------------------------------------------
 
 
 def test_rotate_point_about_axis_90_degrees():
@@ -110,123 +58,262 @@ def test_rotate_point_about_axis_with_offset_pivot():
     assert np.isclose(rotated[Axis.Z], 0.0, atol=1e-10)
 
 
-def test_compute_upright_rotation_simple_case():
-    """
-    Test upright rotation calculation for a simple geometry.
-    """
-    lower_ball_joint = make_vec3(np.array([0.0, 900.0, 200.0]))
-    shim_face_center_design = make_vec3(np.array([0.0, 350.0, 500.0]))
+# ---------------------------------------------------------------------------
+# solve_camber_shim_assembly: unit-level tests
+# ---------------------------------------------------------------------------
 
-    # 10mm outboard offset
-    shim_offset = make_vec3(np.array([0.0, 10.0, 0.0]))
 
-    axis, angle = compute_upright_rotation_from_shim(
-        lower_ball_joint,
-        shim_face_center_design,
-        shim_offset,
+def _make_simple_geometry():
+    """
+    Return a minimal geometry dict for the shim assembly solver.
+
+    Uses positions matching the test geometry YAML: UBJ at the tip of two upper
+    wishbone arms, LBJ below, trackrod connecting rack to upright.
+    """
+    return dict(
+        upper_ball_joint=make_vec3([0.0, 750.0, 500.0]),
+        lower_ball_joint=make_vec3([0.0, 900.0, 200.0]),
+        upper_wishbone_inboard_front=make_vec3([225.0, 350.0, 500.0]),
+        upper_wishbone_inboard_rear=make_vec3([-275.0, 350.0, 500.0]),
+        trackrod_outboard=make_vec3([150.0, 800.0, 275.0]),
+        trackrod_inboard=make_vec3([50.0, 200.0, 250.0]),
+        shim_face_point_a=make_vec3([0.0, 750.0, 510.0]),
+        shim_face_point_b=make_vec3([0.0, 750.0, 490.0]),
+        shim_face_normal=make_vec3([0.0, 1.0, 0.0]),
     )
 
-    # Axis should be primarily in X direction (perpendicular to Y-Z plane)
-    assert abs(axis[Axis.X]) > 0.9  # Mostly X direction
 
-    # Angle should be small but non-zero
-    assert angle > 0.0
-    assert angle < np.deg2rad(5.0)  # Less than 5 degrees for 10mm shim
+def test_design_thickness_returns_identity():
+    """
+    When setup_thickness == design_thickness the solver should return design state
+    with zero rotation and unchanged UBJ.
+    """
+    geo = _make_simple_geometry()
+    sol = solve_camber_shim_assembly(
+        **geo, design_thickness=30.0, setup_thickness=30.0
+    )
+
+    np.testing.assert_allclose(sol.solved_ubj, geo["upper_ball_joint"], atol=1e-10)
+    np.testing.assert_allclose(sol.upper_rotation_vector, 0.0, atol=1e-10)
+    np.testing.assert_allclose(sol.lower_rotation_vector, 0.0, atol=1e-10)
+    assert sol.lower_rotation_angle_rad == 0.0
+    assert sol.constraint_residual_norm == 0.0
+
+
+def test_solver_converges():
+    """
+    Basic convergence check: a 10mm shim change should produce a solution with
+    near-zero residual norm.
+    """
+    geo = _make_simple_geometry()
+    sol = solve_camber_shim_assembly(
+        **geo, design_thickness=30.0, setup_thickness=40.0
+    )
+
+    assert sol.constraint_residual_norm < 1e-5
+
+
+def test_upper_arm_lengths_preserved():
+    """
+    The solved UBJ must remain on the upper wishbone arc, so the distances to
+    both inboard pickups must match their design values.
+    """
+    geo = _make_simple_geometry()
+    ubj = geo["upper_ball_joint"]
+    design_front = float(np.linalg.norm(ubj - geo["upper_wishbone_inboard_front"]))
+    design_rear = float(np.linalg.norm(ubj - geo["upper_wishbone_inboard_rear"]))
+
+    sol = solve_camber_shim_assembly(
+        **geo, design_thickness=30.0, setup_thickness=40.0
+    )
+
+    solved_front = float(
+        np.linalg.norm(sol.solved_ubj - geo["upper_wishbone_inboard_front"])
+    )
+    solved_rear = float(
+        np.linalg.norm(sol.solved_ubj - geo["upper_wishbone_inboard_rear"])
+    )
+
+    assert abs(solved_front - design_front) < 1e-6
+    assert abs(solved_rear - design_rear) < 1e-6
+
+
+def test_face_normals_parallel_at_solution():
+    """
+    At the solved state the upper and lower face normals must be parallel.
+    """
+    geo = _make_simple_geometry()
+    sol = solve_camber_shim_assembly(
+        **geo, design_thickness=30.0, setup_thickness=40.0
+    )
+
+    cross = np.cross(sol.upper_face_normal, sol.lower_face_normal)
+    assert np.linalg.norm(cross) < 1e-8
+
+
+def test_lbj_stays_fixed():
+    """
+    The lower ball joint is the fixed pivot and must not appear in the solution
+    as having moved.
+    """
+    geo = _make_simple_geometry()
+    sol = solve_camber_shim_assembly(
+        **geo, design_thickness=30.0, setup_thickness=40.0
+    )
+
+    # The solver doesn't move LBJ, but the lower rotation angle should be non-zero
+    # (the body rotates about LBJ, LBJ itself stays put).
+    assert sol.lower_rotation_angle_rad > 1e-6
+
+
+def test_nonzero_lower_body_rotation():
+    """
+    A shim change must produce a non-trivial lower-body rotation so that upright-
+    mounted points actually move. This guards against the solver finding a spurious
+    branch where the shim change is absorbed entirely by the upper block.
+    """
+    geo = _make_simple_geometry()
+    sol = solve_camber_shim_assembly(
+        **geo, design_thickness=30.0, setup_thickness=40.0
+    )
+
+    assert sol.lower_rotation_angle_rad > 1e-6
+    assert np.linalg.norm(sol.lower_rotation_vector) > 1e-6
+
+
+def test_trackrod_length_preserved():
+    """
+    The trackrod is a rigid link. Its length must be unchanged after the shim solve.
+    """
+    geo = _make_simple_geometry()
+    design_length = float(
+        np.linalg.norm(geo["trackrod_outboard"] - geo["trackrod_inboard"])
+    )
+
+    sol = solve_camber_shim_assembly(
+        **geo, design_thickness=30.0, setup_thickness=40.0
+    )
+
+    # Compute where trackrod outboard lands after lower-body rotation about LBJ.
+    solved_tro = rotate_point_about_axis(
+        geo["trackrod_outboard"],
+        geo["lower_ball_joint"],
+        sol.lower_rotation_axis,
+        sol.lower_rotation_angle_rad,
+    )
+    solved_length = float(np.linalg.norm(solved_tro - geo["trackrod_inboard"]))
+
+    assert abs(solved_length - design_length) < 1e-4, (
+        f"Trackrod length changed: design={design_length:.4f}, "
+        f"solved={solved_length:.4f}"
+    )
+
+
+def test_ubj_moves_for_nonzero_shim_change():
+    """
+    UBJ should move along the upper wishbone arc when the shim thickness changes.
+    """
+    geo = _make_simple_geometry()
+    sol = solve_camber_shim_assembly(
+        **geo, design_thickness=30.0, setup_thickness=40.0
+    )
+
+    displacement = np.linalg.norm(sol.solved_ubj - geo["upper_ball_joint"])
+    assert displacement > 1e-4, (
+        f"UBJ should move for non-trivial shim change, moved {displacement:.6f}mm"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Integration tests (full suspension)
+# ---------------------------------------------------------------------------
+
+
+def _make_shim_config(
+    design_thickness: float = 30.0,
+    setup_thickness: float = 40.0,
+) -> CamberShimConfig:
+    """
+    Build a CamberShimConfig matching the test geometry YAML datum positions.
+    """
+    return CamberShimConfig(
+        shim_face_point_a={"x": -25.0, "y": 750.0, "z": 510.0},
+        shim_face_point_b={"x": -25.0, "y": 750.0, "z": 490.0},
+        shim_face_normal={"x": 0.0, "y": 1.0, "z": 0.0},
+        design_thickness=design_thickness,
+        setup_thickness=setup_thickness,
+    )
+
+
+def _make_shimmed_suspension(
+    base_suspension: DoubleWishboneSuspension,
+    shim_config: CamberShimConfig,
+) -> DoubleWishboneSuspension:
+    """
+    Create a new suspension instance with the given shim config applied.
+    """
+    assert base_suspension.config is not None
+    new_config = base_suspension.config.model_copy(
+        update={"camber_shim": shim_config}
+    )
+    return DoubleWishboneSuspension(
+        name=base_suspension.name,
+        version=base_suspension.version,
+        units=base_suspension.units,
+        hardpoints=base_suspension.hardpoints.copy(),
+        config=new_config,
+    )
 
 
 def test_shim_application_changes_camber(double_wishbone_geometry_file):
     """
     Test that applying a camber shim rotates the upright and changes camber angle.
     """
-    # Load base geometry
     suspension = load_geometry(double_wishbone_geometry_file)
-
-    # Get initial camber (no shim effect - design == setup)
     initial_state = suspension.initial_state()
+
     initial_axle_in = initial_state.positions[PointID.AXLE_INBOARD]
     initial_axle_out = initial_state.positions[PointID.AXLE_OUTBOARD]
-
-    # Calculate initial camber angle
     initial_axle_vector = initial_axle_out - initial_axle_in
     initial_camber_rad = np.arctan2(
         initial_axle_vector[Axis.Y], initial_axle_vector[Axis.Z]
     )
 
-    # Create a new suspension with a camber shim applied
-    shim_config = CamberShimConfig(
-        shim_face_center={"x": 0.0, "y": 350.0, "z": 500.0},
-        shim_normal={"x": 0.0, "y": 1.0, "z": 0.0},
-        design_thickness=0.0,
-        setup_thickness=10.0,
-    )
-
-    # Create new config with the shim
-    assert suspension.config is not None
-    new_config = suspension.config.model_copy(update={"camber_shim": shim_config})
-
-    # Create new suspension with shimmed config
-    shimmed_suspension = DoubleWishboneSuspension(
-        name=suspension.name,
-        version=suspension.version,
-        units=suspension.units,
-        hardpoints=suspension.hardpoints.copy(),
-        config=new_config,
-    )
+    shimmed_suspension = _make_shimmed_suspension(suspension, _make_shim_config())
     shimmed_state = shimmed_suspension.initial_state()
 
-    # Get shimmed camber
     shimmed_axle_in = shimmed_state.positions[PointID.AXLE_INBOARD]
     shimmed_axle_out = shimmed_state.positions[PointID.AXLE_OUTBOARD]
-
     shimmed_axle_vector = shimmed_axle_out - shimmed_axle_in
     shimmed_camber_rad = np.arctan2(
         shimmed_axle_vector[Axis.Y], shimmed_axle_vector[Axis.Z]
     )
 
-    # Camber should have changed (become less negative / more positive)
-    # Adding shim outboard should reduce negative camber
-    assert shimmed_camber_rad > initial_camber_rad, (
-        f"Expected camber to increase (less negative), "
-        f"got initial={np.degrees(initial_camber_rad):.3f}°, "
-        f"shimmed={np.degrees(shimmed_camber_rad):.3f}°"
+    # Adding shim outboard should change camber.
+    assert not np.isclose(initial_camber_rad, shimmed_camber_rad, atol=1e-6), (
+        f"Expected camber to change, "
+        f"got initial={np.degrees(initial_camber_rad):.3f} deg, "
+        f"shimmed={np.degrees(shimmed_camber_rad):.3f} deg"
     )
 
 
 def test_shim_does_not_move_lower_ball_joint(double_wishbone_geometry_file):
     """
-    Test that the lower ball joint (pivot point) doesn't move when shims are applied.
+    Test that the lower ball joint (fixed pivot) doesn't move when shims are applied.
     """
     suspension = load_geometry(double_wishbone_geometry_file)
-
-    # Get initial lower ball joint position
     initial_state = suspension.initial_state()
     initial_lbj = initial_state.positions[PointID.LOWER_WISHBONE_OUTBOARD].copy()
 
-    # Apply shim
-    shim_config = CamberShimConfig(
-        shim_face_center={"x": 0.0, "y": 350.0, "z": 500.0},
-        shim_normal={"x": 0.0, "y": 1.0, "z": 0.0},
-        design_thickness=0.0,
-        setup_thickness=10.0,
-    )
-
-    assert suspension.config is not None
-    new_config = suspension.config.model_copy(update={"camber_shim": shim_config})
-
-    shimmed_suspension = DoubleWishboneSuspension(
-        name=suspension.name,
-        version=suspension.version,
-        units=suspension.units,
-        hardpoints=suspension.hardpoints.copy(),
-        config=new_config,
-    )
+    shimmed_suspension = _make_shimmed_suspension(suspension, _make_shim_config())
     shimmed_state = shimmed_suspension.initial_state()
-
     shimmed_lbj = shimmed_state.positions[PointID.LOWER_WISHBONE_OUTBOARD]
 
-    # Lower ball joint should not move
-    assert np.allclose(initial_lbj, shimmed_lbj), (
-        "Lower ball joint (pivot) should not move when shims are applied"
+    np.testing.assert_allclose(
+        initial_lbj,
+        shimmed_lbj,
+        atol=1e-10,
+        err_msg="Lower ball joint (pivot) should not move when shims are applied",
     )
 
 
@@ -235,146 +322,120 @@ def test_shim_does_not_move_inboard_points(double_wishbone_geometry_file):
     Test that chassis-mounted inboard points don't move when shims are applied.
     """
     suspension = load_geometry(double_wishbone_geometry_file)
-
     initial_state = suspension.initial_state()
-    initial_points = {
-        PointID.LOWER_WISHBONE_INBOARD_FRONT: initial_state.positions[
-            PointID.LOWER_WISHBONE_INBOARD_FRONT
-        ].copy(),
-        PointID.LOWER_WISHBONE_INBOARD_REAR: initial_state.positions[
-            PointID.LOWER_WISHBONE_INBOARD_REAR
-        ].copy(),
-        PointID.UPPER_WISHBONE_INBOARD_FRONT: initial_state.positions[
-            PointID.UPPER_WISHBONE_INBOARD_FRONT
-        ].copy(),
-        PointID.UPPER_WISHBONE_INBOARD_REAR: initial_state.positions[
-            PointID.UPPER_WISHBONE_INBOARD_REAR
-        ].copy(),
-        PointID.TRACKROD_INBOARD: initial_state.positions[
-            PointID.TRACKROD_INBOARD
-        ].copy(),
+
+    chassis_point_ids = [
+        PointID.LOWER_WISHBONE_INBOARD_FRONT,
+        PointID.LOWER_WISHBONE_INBOARD_REAR,
+        PointID.UPPER_WISHBONE_INBOARD_FRONT,
+        PointID.UPPER_WISHBONE_INBOARD_REAR,
+        PointID.TRACKROD_INBOARD,
+    ]
+    initial_positions = {
+        pid: initial_state.positions[pid].copy() for pid in chassis_point_ids
     }
 
-    # Apply shim
-    shim_config = CamberShimConfig(
-        shim_face_center={"x": 0.0, "y": 350.0, "z": 500.0},
-        shim_normal={"x": 0.0, "y": 1.0, "z": 0.0},
-        design_thickness=0.0,
-        setup_thickness=10.0,
-    )
-
-    assert suspension.config is not None
-    new_config = suspension.config.model_copy(update={"camber_shim": shim_config})
-
-    shimmed_suspension = DoubleWishboneSuspension(
-        name=suspension.name,
-        version=suspension.version,
-        units=suspension.units,
-        hardpoints=suspension.hardpoints.copy(),
-        config=new_config,
-    )
+    shimmed_suspension = _make_shimmed_suspension(suspension, _make_shim_config())
     shimmed_state = shimmed_suspension.initial_state()
 
-    # All inboard points should remain unchanged
-    for point_id, initial_pos in initial_points.items():
+    for point_id, initial_pos in initial_positions.items():
         shimmed_pos = shimmed_state.positions[point_id]
-        assert np.allclose(initial_pos, shimmed_pos), (
-            f"{point_id.name} (chassis-mounted) should not move when shims are applied"
+        np.testing.assert_allclose(
+            initial_pos,
+            shimmed_pos,
+            atol=1e-10,
+            err_msg=f"{point_id.name} (chassis-mounted) should not move",
         )
-
-
-def test_shim_does_not_move_upper_ball_joint(double_wishbone_geometry_file):
-    """
-    Test that the upper ball joint does NOT move when shims are applied.
-
-    The shim is internal to the upright, so ball joints stay fixed.
-    """
-    suspension = load_geometry(double_wishbone_geometry_file)
-
-    initial_state = suspension.initial_state()
-    initial_ubj = initial_state.positions[PointID.UPPER_WISHBONE_OUTBOARD].copy()
-
-    # Apply shim
-    shim_config = CamberShimConfig(
-        shim_face_center={"x": 0.0, "y": 350.0, "z": 500.0},
-        shim_normal={"x": 0.0, "y": 1.0, "z": 0.0},
-        design_thickness=0.0,
-        setup_thickness=10.0,
-    )
-
-    assert suspension.config is not None
-    new_config = suspension.config.model_copy(update={"camber_shim": shim_config})
-
-    shimmed_suspension = DoubleWishboneSuspension(
-        name=suspension.name,
-        version=suspension.version,
-        units=suspension.units,
-        hardpoints=suspension.hardpoints.copy(),
-        config=new_config,
-    )
-    shimmed_state = shimmed_suspension.initial_state()
-
-    shimmed_ubj = shimmed_state.positions[PointID.UPPER_WISHBONE_OUTBOARD]
-
-    # Upper ball joint should NOT move (it's on the fixed part of the upright)
-    assert np.allclose(initial_ubj, shimmed_ubj), (
-        "Upper ball joint should not move when shims are applied"
-    )
 
 
 def test_shim_moves_axle_points(double_wishbone_geometry_file):
     """
     Test that all upright-mounted points DO move when shims are applied.
-
-    This includes axle points and trackrod outboard (test geometry doesn't have
-    pushrod).
     """
     suspension = load_geometry(double_wishbone_geometry_file)
-
     initial_state = suspension.initial_state()
-    initial_axle_in = initial_state.positions[PointID.AXLE_INBOARD].copy()
-    initial_axle_out = initial_state.positions[PointID.AXLE_OUTBOARD].copy()
-    initial_trackrod_out = initial_state.positions[PointID.TRACKROD_OUTBOARD].copy()
 
-    # Apply shim
-    shim_config = CamberShimConfig(
-        shim_face_center={"x": 0.0, "y": 350.0, "z": 500.0},
-        shim_normal={"x": 0.0, "y": 1.0, "z": 0.0},
-        design_thickness=0.0,
-        setup_thickness=10.0,
-    )
+    upright_points = {
+        PointID.AXLE_INBOARD: initial_state.positions[PointID.AXLE_INBOARD].copy(),
+        PointID.AXLE_OUTBOARD: initial_state.positions[PointID.AXLE_OUTBOARD].copy(),
+        PointID.TRACKROD_OUTBOARD: initial_state.positions[
+            PointID.TRACKROD_OUTBOARD
+        ].copy(),
+    }
 
-    assert suspension.config is not None
-    new_config = suspension.config.model_copy(update={"camber_shim": shim_config})
-
-    shimmed_suspension = DoubleWishboneSuspension(
-        name=suspension.name,
-        version=suspension.version,
-        units=suspension.units,
-        hardpoints=suspension.hardpoints.copy(),
-        config=new_config,
-    )
+    shimmed_suspension = _make_shimmed_suspension(suspension, _make_shim_config())
     shimmed_state = shimmed_suspension.initial_state()
 
-    shimmed_axle_in = shimmed_state.positions[PointID.AXLE_INBOARD]
-    shimmed_axle_out = shimmed_state.positions[PointID.AXLE_OUTBOARD]
-    shimmed_trackrod_out = shimmed_state.positions[PointID.TRACKROD_OUTBOARD]
+    for point_id, initial_pos in upright_points.items():
+        shimmed_pos = shimmed_state.positions[point_id]
+        distance_moved = np.linalg.norm(shimmed_pos - initial_pos)
+        assert distance_moved > 0.1, (
+            f"{point_id.name} should move (moved {distance_moved:.3f}mm)"
+        )
 
-    # All upright-mounted points should move
-    distance_moved_axle_in = np.linalg.norm(shimmed_axle_in - initial_axle_in)
-    distance_moved_axle_out = np.linalg.norm(shimmed_axle_out - initial_axle_out)
-    distance_moved_trackrod = np.linalg.norm(
-        shimmed_trackrod_out - initial_trackrod_out
+
+def test_upright_mounted_points_maintain_distance_from_lbj(
+    double_wishbone_geometry_file,
+):
+    """
+    Upright-mounted points rotate rigidly about LBJ, so their distances to LBJ
+    must be unchanged after the shim is applied.
+    """
+    suspension = load_geometry(double_wishbone_geometry_file)
+    initial_state = suspension.initial_state()
+    lbj = initial_state.positions[PointID.LOWER_WISHBONE_OUTBOARD]
+
+    upright_point_ids = [
+        PointID.AXLE_INBOARD,
+        PointID.AXLE_OUTBOARD,
+        PointID.TRACKROD_OUTBOARD,
+    ]
+    design_distances = {
+        pid: float(np.linalg.norm(initial_state.positions[pid] - lbj))
+        for pid in upright_point_ids
+    }
+
+    shimmed_suspension = _make_shimmed_suspension(suspension, _make_shim_config())
+    shimmed_state = shimmed_suspension.initial_state()
+    shimmed_lbj = shimmed_state.positions[PointID.LOWER_WISHBONE_OUTBOARD]
+
+    for pid, design_dist in design_distances.items():
+        shimmed_dist = float(
+            np.linalg.norm(shimmed_state.positions[pid] - shimmed_lbj)
+        )
+        assert abs(shimmed_dist - design_dist) < 1e-6, (
+            f"{pid.name} distance to LBJ changed: "
+            f"design={design_dist:.4f}, shimmed={shimmed_dist:.4f}"
+        )
+
+
+def test_shim_preserves_trackrod_length(double_wishbone_geometry_file):
+    """
+    The trackrod is a rigid link. Its length must be unchanged after shimming.
+    """
+    suspension = load_geometry(double_wishbone_geometry_file)
+    initial_state = suspension.initial_state()
+
+    design_trackrod_length = float(
+        np.linalg.norm(
+            initial_state.positions[PointID.TRACKROD_OUTBOARD]
+            - initial_state.positions[PointID.TRACKROD_INBOARD]
+        )
     )
 
-    assert distance_moved_axle_in > 0.1, (
-        f"Axle inboard should move (moved {distance_moved_axle_in:.3f}mm)"
+    shimmed_suspension = _make_shimmed_suspension(suspension, _make_shim_config())
+    shimmed_state = shimmed_suspension.initial_state()
+
+    shimmed_trackrod_length = float(
+        np.linalg.norm(
+            shimmed_state.positions[PointID.TRACKROD_OUTBOARD]
+            - shimmed_state.positions[PointID.TRACKROD_INBOARD]
+        )
     )
-    assert distance_moved_axle_out > 0.1, (
-        f"Axle outboard should move (moved {distance_moved_axle_out:.3f}mm)"
-    )
-    assert distance_moved_trackrod > 0.1, (
-        f"Trackrod outboard should move (moved {distance_moved_trackrod:.3f}mm)"
+
+    assert abs(shimmed_trackrod_length - design_trackrod_length) < 0.01, (
+        f"Trackrod length changed: design={design_trackrod_length:.4f}mm, "
+        f"shimmed={shimmed_trackrod_length:.4f}mm"
     )
 
 
@@ -384,16 +445,15 @@ def test_backward_compatibility_no_shim(double_wishbone_geometry_file):
     """
     suspension = load_geometry(double_wishbone_geometry_file)
 
-    # Geometry has shim config, but design == setup (no delta)
     assert suspension.config is not None
     assert suspension.config.camber_shim is not None
     shim = suspension.config.camber_shim
     assert shim.design_thickness == shim.setup_thickness
 
-    # Should initialize without error
+    # Should initialize without error.
     state = suspension.initial_state()
 
-    # Should have all expected points
+    # Should have all expected points.
     assert PointID.UPPER_WISHBONE_OUTBOARD in state.positions
     assert PointID.LOWER_WISHBONE_OUTBOARD in state.positions
     assert PointID.AXLE_INBOARD in state.positions

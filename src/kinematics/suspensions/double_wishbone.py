@@ -39,7 +39,10 @@ from kinematics.points.derived.definitions import (
 from kinematics.points.derived.manager import DerivedPointsManager, DerivedPointsSpec
 from kinematics.state import SuspensionState
 from kinematics.suspensions.base import Suspension
-from kinematics.suspensions.config.shims import solve_camber_shim_assembly
+from kinematics.suspensions.config.shims import (
+    rotate_point_about_axis,
+    solve_camber_shim_assembly,
+)
 
 if TYPE_CHECKING:
     from kinematics.visualization.main import LinkVisualization
@@ -343,29 +346,52 @@ class DoubleWishboneSuspension(Suspension):
 
     def apply_camber_shim(self, positions: dict[PointID, np.ndarray]) -> None:
         """
-        Apply camber shim transformation to attachment positions.
+        Apply camber shim transformation to the suspension geometry.
 
-        The local shim assembly solve rotates both the UBJ-side shim block and the
-        lower upright body, but only the solved lower-body rotation is applied to
-        the suspension state. Hardpoints remain fixed; only configured upright-
-        mounted points rotate about the lower ball joint.
+        Solves the local split-body shim assembly to find how the upper shim block
+        and lower upright body rotate when the shim thickness changes. Then:
+        1. Writes the solved UBJ position back (it moves along the upper wishbone arc).
+        2. Rotates configured upright-mounted points about the fixed LBJ using the
+           solved lower-body rotation.
+        3. Leaves all chassis-mounted points unchanged.
         """
         if self.config is None or self.config.camber_shim is None:
             return
 
         shim_config = self.config.camber_shim
-        upper_ball_joint = make_vec3(positions[PointID.UPPER_WISHBONE_OUTBOARD])
-        lower_ball_joint = make_vec3(positions[PointID.LOWER_WISHBONE_OUTBOARD])
+        lbj = make_vec3(positions[PointID.LOWER_WISHBONE_OUTBOARD])
 
         assembly_solution = solve_camber_shim_assembly(
-            upper_ball_joint=upper_ball_joint,
-            lower_ball_joint=lower_ball_joint,
-            shim_face_center=shim_config.shim_face_center,
-            shim_normal=shim_config.shim_normal,
+            upper_ball_joint=positions[PointID.UPPER_WISHBONE_OUTBOARD],
+            lower_ball_joint=lbj,
+            upper_wishbone_inboard_front=positions[
+                PointID.UPPER_WISHBONE_INBOARD_FRONT
+            ],
+            upper_wishbone_inboard_rear=positions[
+                PointID.UPPER_WISHBONE_INBOARD_REAR
+            ],
+            trackrod_outboard=positions[PointID.TRACKROD_OUTBOARD],
+            trackrod_inboard=positions[PointID.TRACKROD_INBOARD],
+            shim_face_point_a=shim_config.shim_face_point_a,
+            shim_face_point_b=shim_config.shim_face_point_b,
+            shim_face_normal=shim_config.shim_face_normal,
             design_thickness=shim_config.design_thickness,
             setup_thickness=shim_config.setup_thickness,
         )
 
-        # for point_name in self.config.upright_mounted_points:
-        # Rotate each of these points about the LBJ so they
-        # land where the shim demands.
+        # Write the solved UBJ position back. The upper wishbone arc constraint
+        # means UBJ may shift slightly to accommodate the new shim thickness.
+        positions[PointID.UPPER_WISHBONE_OUTBOARD] = assembly_solution.solved_ubj
+
+        # Rotate each configured upright-mounted point about LBJ using the solved
+        # lower-body rotation axis and angle.
+        if assembly_solution.lower_rotation_angle_rad > 1e-15:
+            for point_name in self.config.upright_mounted_points:
+                point_id = self.UPRIGHT_MOUNTED_POINT_IDS.get(point_name)
+                if point_id is not None and point_id in positions:
+                    positions[point_id] = rotate_point_about_axis(
+                        positions[point_id],
+                        lbj,
+                        assembly_solution.lower_rotation_axis,
+                        assembly_solution.lower_rotation_angle_rad,
+                    )
