@@ -106,10 +106,12 @@ class CamberShimConfig(BaseModel):
     def check_normal_nonzero(self) -> "CamberShimConfig":
         import numpy as np
 
+        from kinematics.core.constants import EPS_GEOMETRIC
+
         magnitude = float(
             np.linalg.norm(np.asarray(self.shim_face_normal, dtype=np.float64))
         )
-        if magnitude < 1e-6:
+        if magnitude < EPS_GEOMETRIC:
             raise ValueError("shim_face_normal vector is near-zero")
         return self
 

@@ -19,6 +19,7 @@ from kinematics.constraints import (
     DistanceConstraint,
     PointOnLineConstraint,
 )
+from kinematics.core.constants import EPS_GEOMETRIC
 from kinematics.core.enums import PointID, ShimType
 from kinematics.core.types import Vec3, WorldAxisSystem, make_vec3
 from kinematics.core.vector_utils.geometric import (
@@ -383,7 +384,7 @@ class DoubleWishboneSuspension(Suspension):
 
         # Rotate each configured upright-mounted point about LBJ using the solved
         # lower-body rotation axis and angle.
-        if assembly_solution.lower_rotation_angle_rad > 1e-15:
+        if assembly_solution.lower_rotation_angle_rad > EPS_GEOMETRIC:
             for point_name in self.config.upright_mounted_points:
                 point_id = self.UPRIGHT_MOUNTED_POINT_IDS.get(point_name)
                 if point_id is not None and point_id in positions:

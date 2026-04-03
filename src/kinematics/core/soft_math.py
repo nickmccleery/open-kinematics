@@ -8,10 +8,12 @@ while returning exactly zero at the solution.
 
 import math
 
-# EPS = 1e-6; EPS_SQ = EPS² = 1e-12.  Large enough to give the solver a
-# useful gradient near degeneracies, small enough that the residual bias
-# (~1e-6) is invisible for suspension geometry.
-EPS: float = 1e-6
+from kinematics.core.constants import EPS_GEOMETRIC
+
+# EPS_SQ = EPS_GEOMETRIC^2 = 1e-12. Large enough to give the solver a useful
+# gradient near degeneracies, small enough that the residual bias (~1e-6) is
+# invisible for suspension geometry.
+EPS: float = EPS_GEOMETRIC
 EPS_SQ: float = EPS**2
 
 

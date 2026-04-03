@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, NamedTuple, Optional, TypeVar, overload
 import numpy as np
 from numpy.typing import NDArray
 
-from kinematics.core.constants import EPSILON
+from kinematics.core.constants import EPS_GEOMETRIC
 
 if TYPE_CHECKING:
     from kinematics.core.dual import DualVec3
@@ -53,7 +53,7 @@ def compute_2d_vector_vector_intersection(
         - Any line is degenerate (zero length)
         - segments_only=True and the intersection lies outside either segment
     Notes:
-        - Parallel test is scale-aware: |den| < EPSILON * |d1| * |d2|
+        - Parallel test is scale-aware: |den| < EPS_GEOMETRIC * |d1| * |d2|
         - Endpoints are accepted with a small tolerance when segments_only=True
     """
     # Ensure dtype and finiteness.
@@ -83,13 +83,13 @@ def compute_2d_vector_vector_intersection(
     d2y = y4 - y3
     len1 = np.hypot(d1x, d1y)
     len2 = np.hypot(d2x, d2y)
-    if len1 < EPSILON or len2 < EPSILON:
+    if len1 < EPS_GEOMETRIC or len2 < EPS_GEOMETRIC:
         # Degenerate line segment.
         return None
 
     # Denominator (2D cross of directions) with scale-aware parallel test.
     denominator = d1x * d2y - d1y * d2x
-    if abs(denominator) < (EPSILON * len1 * len2):
+    if abs(denominator) < (EPS_GEOMETRIC * len1 * len2):
         # Parallel or colinear: no unique intersection point.
         return None
 
@@ -105,7 +105,7 @@ def compute_2d_vector_vector_intersection(
     # Segment check with endpoint tolerance.
     if segments_only:
         # Tolerance scaled by segment size to catch endpoint hits.
-        tol = EPSILON / max(max(len1, len2), 1.0)
+        tol = EPS_GEOMETRIC / max(max(len1, len2), 1.0)
         t1c = min(max(t1, 0.0), 1.0)
         t2c = min(max(t2, 0.0), 1.0)
         if abs(t1 - t1c) > tol or abs(t2 - t2c) > tol:
@@ -138,7 +138,7 @@ def normalize_vector(v: NDArray[FloatingT] | DualVec3) -> NDArray[FloatingT] | D
         Unit vector in the same direction as the input.
 
     Raises:
-        ValueError: If the input vector has zero length (magnitude < EPSILON).
+        ValueError: If the input vector has zero length (magnitude < EPS_GEOMETRIC).
     """
     # Import here to avoid circular dependency at module level.
     from kinematics.core.dual import DualVec3
@@ -147,12 +147,12 @@ def normalize_vector(v: NDArray[FloatingT] | DualVec3) -> NDArray[FloatingT] | D
     if isinstance(v, DualVec3):
         # Use dual-aware norm to propagate derivatives through the quotient rule.
         n = dual_norm(v)
-        if n.val < EPSILON:
+        if n.val < EPS_GEOMETRIC:
             raise ValueError("Cannot normalize zero-length vector")
         return v / n
 
     norm = np.linalg.norm(v)
-    if norm < EPSILON:
+    if norm < EPS_GEOMETRIC:
         raise ValueError("Cannot normalize zero-length vector")
     return (v / norm).astype(v.dtype)
 
@@ -172,7 +172,7 @@ def project_coordinate(position: np.ndarray, direction: np.ndarray) -> float:
     Raises:
         ValueError: If direction is not a unit vector.
     """
-    if not np.isclose(np.linalg.norm(direction), 1.0, atol=EPSILON):
+    if not np.isclose(np.linalg.norm(direction), 1.0, atol=EPS_GEOMETRIC):
         raise ValueError(
             f"Direction vector not normalized; magnitude {np.linalg.norm(direction)}"
         )

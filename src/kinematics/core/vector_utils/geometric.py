@@ -8,7 +8,7 @@ kinematic analysis and constraint evaluation.
 
 import numpy as np
 
-from kinematics.core.constants import EPSILON
+from kinematics.core.constants import EPS_GEOMETRIC, EPS_NUMERICAL
 from kinematics.core.enums import Axis
 from kinematics.core.types import Vec3, make_vec3
 from kinematics.core.vector_utils.generic import normalize_vector
@@ -59,7 +59,7 @@ def compute_vector_vector_angle(v1: Vec3, v2: Vec3) -> float:
         The angle between the vectors in radians (0 to π).
 
     Raises:
-        ValueError: If either input vector has zero length (magnitude < EPSILON).
+        ValueError: If either input vector has zero length (magnitude < EPS_GEOMETRIC).
 
     References:
         Ericson, C. "Real-Time Collision Detection" (2004), Section 3.3.2, p. 39
@@ -93,7 +93,7 @@ def compute_vectors_cross_product_magnitude(v1: Vec3, v2: Vec3) -> float:
         Magnitude of the cross product between normalized vectors (0 to 1).
 
     Raises:
-        ValueError: If either input vector has zero length (magnitude < EPSILON).
+        ValueError: If either input vector has zero length (magnitude < EPS_GEOMETRIC).
     """
     v1_norm = normalize_vector(v1)
     v2_norm = normalize_vector(v2)
@@ -117,7 +117,7 @@ def compute_vectors_dot_product(v1: Vec3, v2: Vec3) -> float:
         Dot product between normalized vectors (-1 to 1).
 
     Raises:
-        ValueError: If either input vector has zero length (magnitude < EPSILON).
+        ValueError: If either input vector has zero length (magnitude < EPS_GEOMETRIC).
     """
     v1_norm = normalize_vector(v1)
     v2_norm = normalize_vector(v2)
@@ -143,7 +143,7 @@ def compute_point_to_line_distance(
         Perpendicular distance from the point to the line (always non-negative).
 
     Raises:
-        ValueError: If line_direction has zero length (magnitude < EPSILON).
+        ValueError: If line_direction has zero length (magnitude < EPS_GEOMETRIC).
     """
     line_dir_norm = normalize_vector(line_direction)
     point_to_line = point - line_point
@@ -171,7 +171,7 @@ def compute_point_to_plane_distance(
         Signed distance from the point to the plane.
 
     Raises:
-        ValueError: If plane_normal has zero length (magnitude < EPSILON).
+        ValueError: If plane_normal has zero length (magnitude < EPS_GEOMETRIC).
     """
     plane_norm = normalize_vector(plane_normal)
     point_to_plane = point - plane_point
@@ -225,7 +225,7 @@ def plane_from_three_points(
     normal_magnitude = np.linalg.norm(normal)
 
     # If the magnitude of the normal is near zero, the points are collinear.
-    if normal_magnitude < EPSILON:
+    if normal_magnitude < EPS_GEOMETRIC:
         return None
 
     # Normalize the normal vector for a consistent plane representation.
@@ -261,7 +261,7 @@ def intersect_two_planes(
     direction_magnitude_squared = float(np.dot(direction, direction))
 
     # If the magnitude is near zero, the normals are parallel, so the planes are.
-    if direction_magnitude_squared < EPSILON * EPSILON:
+    if direction_magnitude_squared < EPS_GEOMETRIC * EPS_GEOMETRIC:
         return None
 
     # Find a specific point on the intersection line. This formula derives from
@@ -292,7 +292,7 @@ def intersect_line_with_vertical_plane(
     direction_y = float(line_direction[Axis.Y])
 
     # If the line's direction in Y is near zero, it is parallel to the plane.
-    if abs(direction_y) < EPSILON:
+    if abs(direction_y) < EPS_GEOMETRIC:
         return None
 
     # Solve for the parameter t where the line's Y-coordinate equals the plane's.
@@ -318,7 +318,7 @@ def rodrigues_rotate_vector(v: np.ndarray, rotvec: np.ndarray) -> np.ndarray:
         The rotated vector. Returns a copy of v if the rotation angle is near zero.
     """
     angle = np.linalg.norm(rotvec)
-    if angle < 1e-15:
+    if angle < EPS_NUMERICAL:
         return v.copy()
 
     k = rotvec / angle

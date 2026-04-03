@@ -9,6 +9,7 @@ upright-mounted points.
 
 import numpy as np
 
+from kinematics.core.constants import TEST_TOLERANCE
 from kinematics.core.enums import Axis, PointID
 from kinematics.core.types import make_vec3
 from kinematics.core.vector_utils.geometric import rotate_point_about_axis
@@ -126,8 +127,8 @@ def test_upper_arm_lengths_preserved():
         np.linalg.norm(sol.solved_ubj - geo["upper_wishbone_inboard_rear"])
     )
 
-    assert abs(solved_front - design_front) < 1e-6
-    assert abs(solved_rear - design_rear) < 1e-6
+    assert abs(solved_front - design_front) < TEST_TOLERANCE
+    assert abs(solved_rear - design_rear) < TEST_TOLERANCE
 
 
 def test_face_normals_parallel_at_solution():

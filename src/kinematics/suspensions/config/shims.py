@@ -25,6 +25,13 @@ from dataclasses import dataclass
 import numpy as np
 from scipy.optimize import least_squares
 
+from kinematics.core.constants import (
+    EPS_GEOMETRIC,
+    EPS_NUMERICAL,
+    SOLVE_TOLERANCE_GRAD,
+    SOLVE_TOLERANCE_STEP,
+    SOLVE_TOLERANCE_VALUE,
+)
 from kinematics.core.types import Vec3, make_vec3
 from kinematics.core.vector_utils.generic import normalize_vector
 from kinematics.core.vector_utils.geometric import rodrigues_rotate_vector
@@ -104,7 +111,7 @@ def solve_camber_shim_assembly(
     normal = normalize_vector(coerce_vec3(shim_face_normal))
 
     # Early exit when there is no shim thickness change.
-    if abs(setup_thickness - design_thickness) < 1e-10:
+    if abs(setup_thickness - design_thickness) < EPS_GEOMETRIC:
         return CamberShimAssemblySolution(
             solved_ubj=make_vec3(ubj.copy()),
             upper_rotation_vector=make_vec3(np.zeros(3)),
@@ -217,15 +224,14 @@ def solve_camber_shim_assembly(
         residuals,
         x0,
         method="lm",
-        ftol=1e-12,
-        xtol=1e-12,
-        gtol=1e-12,
+        ftol=SOLVE_TOLERANCE_VALUE,
+        xtol=SOLVE_TOLERANCE_STEP,
+        gtol=SOLVE_TOLERANCE_GRAD,
     )
 
     if not result.success:
         raise RuntimeError(
-            f"Camber shim assembly solve failed to converge.\n"
-            f"Message: {result.message}"
+            f"Camber shim assembly solve failed to converge.\nMessage: {result.message}"
         )
 
     # Extract solution.
@@ -239,7 +245,7 @@ def solve_camber_shim_assembly(
 
     # Extract lower rotation axis and angle for suspension integration.
     lower_angle = float(np.linalg.norm(lower_rv))
-    if lower_angle > 1e-15:
+    if lower_angle > EPS_NUMERICAL:
         lower_axis = make_vec3(lower_rv / lower_angle)
     else:
         lower_axis = make_vec3(np.array([0.0, 0.0, 1.0]))
