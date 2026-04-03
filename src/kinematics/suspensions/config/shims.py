@@ -14,7 +14,7 @@ with 12 residuals:
     - 2 scalar upper-arm distance constraints (UBJ to each inboard pickup)
     - 3 scalar datum A closure (lower face A - upper face A = thickness * normal)
     - 3 scalar datum B closure (lower face B - upper face B = thickness * normal)
-    - 3 scalar parallelism (cross product of upper and lower face normals)
+    - 3 scalar normal alignment (upper and lower face normals must match)
     - 1 scalar trackrod length (preserves design trackrod length through shim change)
 """
 
@@ -166,7 +166,7 @@ def solve_camber_shim_assembly(
             [1]    - |UBJ - UWB_IR| - L_rear
             [2:5]  - datum A closure: p_lA - p_uA - t * n_u
             [5:8]  - datum B closure: p_lB - p_uB - t * n_u
-            [8:11] - parallelism: cross(n_u, n_l)
+            [8:11] - normal alignment: n_l - n_u
             [11]   - trackrod length: |rotated_tro - tri| - L_trackrod
         """
         ubj_pos = x[:3]
@@ -196,8 +196,10 @@ def solve_camber_shim_assembly(
         closure_a = p_lower_a - p_upper_a - setup_thickness * n_u
         closure_b = p_lower_b - p_upper_b - setup_thickness * n_u
 
-        # Parallelism: upper and lower face normals must remain parallel.
-        parallel = np.cross(n_u, n_l)
+        # Face normals must align in the same direction, not just be parallel.
+        # Using the vector difference rejects the anti-parallel branch that a pure
+        # cross-product residual would still admit.
+        normal_alignment = n_l - n_u
 
         # Trackrod length: the trackrod outboard pickup rotates with the lower body
         # about LBJ, but the trackrod is a rigid link so its length must match the
@@ -211,7 +213,7 @@ def solve_camber_shim_assembly(
                 np.array([dist_front, dist_rear]),
                 closure_a,
                 closure_b,
-                parallel,
+                normal_alignment,
                 np.array([trackrod_residual]),
             ]
         )

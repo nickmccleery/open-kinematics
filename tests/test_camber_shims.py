@@ -133,13 +133,14 @@ def test_upper_arm_lengths_preserved():
 
 def test_face_normals_parallel_at_solution():
     """
-    At the solved state the upper and lower face normals must be parallel.
+    At the solved state the upper and lower face normals must align.
     """
     geo = _make_simple_geometry()
     sol = solve_camber_shim_assembly(**geo, design_thickness=30.0, setup_thickness=40.0)
 
     cross = np.cross(sol.upper_face_normal, sol.lower_face_normal)
     assert np.linalg.norm(cross) < 1e-8
+    assert float(np.dot(sol.upper_face_normal, sol.lower_face_normal)) > 1.0 - 1e-8
 
 
 def test_lbj_stays_fixed():

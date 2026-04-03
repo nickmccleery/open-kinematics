@@ -103,7 +103,7 @@ class CamberShimConfig(BaseModel):
     setup_thickness: float
 
     @model_validator(mode="after")
-    def check_normal_nonzero(self) -> "CamberShimConfig":
+    def validate_face_definition(self) -> "CamberShimConfig":
         import numpy as np
 
         from kinematics.core.constants import EPS_GEOMETRIC
@@ -113,6 +113,18 @@ class CamberShimConfig(BaseModel):
         )
         if magnitude < EPS_GEOMETRIC:
             raise ValueError("shim_face_normal vector is near-zero")
+
+        datum_separation = float(
+            np.linalg.norm(
+                np.asarray(self.shim_face_point_b, dtype=np.float64)
+                - np.asarray(self.shim_face_point_a, dtype=np.float64)
+            )
+        )
+        if datum_separation < EPS_GEOMETRIC:
+            raise ValueError(
+                "shim_face_point_a and shim_face_point_b must be distinct"
+            )
+
         return self
 
 

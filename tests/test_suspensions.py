@@ -235,6 +235,25 @@ class TestDoubleWishboneSuspension:
         assert "Lower Wishbone" in labels
 
 
+class TestCamberShimConfig:
+    """
+    Tests for camber shim configuration validation.
+    """
+
+    def test_rejects_coincident_face_datums(self):
+        """
+        Ordered A/B shim datums must be distinct so they carry interface clocking.
+        """
+        with pytest.raises(ValueError, match="must be distinct"):
+            CamberShimConfig(
+                shim_face_point_a={"x": -25.0, "y": 750.0, "z": 500.0},
+                shim_face_point_b={"x": -25.0, "y": 750.0, "z": 500.0},
+                shim_face_normal={"x": 0.0, "y": 1.0, "z": 0.0},
+                design_thickness=30.0,
+                setup_thickness=40.0,
+            )
+
+
 # Test registry
 
 
