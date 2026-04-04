@@ -104,11 +104,11 @@ def test_design_thickness_returns_identity():
     sol = solve_camber_shim_assembly(positions, shim_config)
 
     np.testing.assert_allclose(
-        sol.solved_ubj, positions[PointID.UPPER_WISHBONE_OUTBOARD], atol=1e-10
+        sol.ubj_position, positions[PointID.UPPER_WISHBONE_OUTBOARD], atol=1e-10
     )
-    np.testing.assert_allclose(sol.upper_rotation_vector, 0.0, atol=1e-10)
-    np.testing.assert_allclose(sol.lower_rotation_vector, 0.0, atol=1e-10)
-    assert sol.lower_rotation_angle_rad == 0.0
+    np.testing.assert_allclose(sol.camber_block_rot_vec, 0.0, atol=1e-10)
+    np.testing.assert_allclose(sol.upright_body_rot_vec, 0.0, atol=1e-10)
+    assert sol.upright_body_rot_angle_rad == 0.0
     assert sol.constraint_residual_norm == 0.0
 
 
@@ -144,10 +144,14 @@ def test_upper_arm_lengths_preserved():
     sol = solve_camber_shim_assembly(positions, shim_config)
 
     solved_front = float(
-        np.linalg.norm(sol.solved_ubj - positions[PointID.UPPER_WISHBONE_INBOARD_FRONT])
+        np.linalg.norm(
+            sol.ubj_position - positions[PointID.UPPER_WISHBONE_INBOARD_FRONT]
+        )
     )
     solved_rear = float(
-        np.linalg.norm(sol.solved_ubj - positions[PointID.UPPER_WISHBONE_INBOARD_REAR])
+        np.linalg.norm(
+            sol.ubj_position - positions[PointID.UPPER_WISHBONE_INBOARD_REAR]
+        )
     )
 
     assert abs(solved_front - design_front) < TEST_TOLERANCE
@@ -163,9 +167,12 @@ def test_face_normals_parallel_at_solution():
     )
     sol = solve_camber_shim_assembly(positions, shim_config)
 
-    cross = np.cross(sol.upper_face_normal, sol.lower_face_normal)
+    cross = np.cross(sol.camber_block_face_normal, sol.upright_body_face_normal)
     assert np.linalg.norm(cross) < 1e-8
-    assert float(np.dot(sol.upper_face_normal, sol.lower_face_normal)) > 1.0 - 1e-8
+    assert (
+        float(np.dot(sol.camber_block_face_normal, sol.upright_body_face_normal))
+        > 1.0 - 1e-8
+    )
 
 
 def test_lbj_stays_fixed():
@@ -180,22 +187,22 @@ def test_lbj_stays_fixed():
 
     # The solver doesn't move LBJ, but the lower rotation angle should be non-zero
     # (the body rotates about LBJ, LBJ itself stays put).
-    assert sol.lower_rotation_angle_rad > 1e-6
+    assert sol.upright_body_rot_angle_rad > 1e-6
 
 
-def test_nonzero_lower_body_rotation():
+def test_nonzero_upright_body_rotation():
     """
-    A shim change must produce a non-trivial lower-body rotation so that upright-
+    A shim change must produce a non-trivial upright body rotation so that upright-
     mounted points actually move. This guards against the solver finding a spurious
-    branch where the shim change is absorbed entirely by the upper block.
+    branch where the shim change is absorbed entirely by the camber block.
     """
     positions, shim_config = make_simple_geometry(
         design_thickness=30.0, setup_thickness=40.0
     )
     sol = solve_camber_shim_assembly(positions, shim_config)
 
-    assert sol.lower_rotation_angle_rad > 1e-6
-    assert np.linalg.norm(sol.lower_rotation_vector) > 1e-6
+    assert sol.upright_body_rot_angle_rad > 1e-6
+    assert np.linalg.norm(sol.upright_body_rot_vec) > 1e-6
 
 
 def test_trackrod_length_preserved():
@@ -217,8 +224,8 @@ def test_trackrod_length_preserved():
     solved_tro = rotate_point_about_axis(
         positions[PointID.TRACKROD_OUTBOARD],
         positions[PointID.LOWER_WISHBONE_OUTBOARD],
-        sol.lower_rotation_axis,
-        sol.lower_rotation_angle_rad,
+        sol.upright_body_rot_axis,
+        sol.upright_body_rot_angle_rad,
     )
     solved_length = float(
         np.linalg.norm(solved_tro - positions[PointID.TRACKROD_INBOARD])
@@ -240,7 +247,7 @@ def test_ubj_moves_for_nonzero_shim_change():
     sol = solve_camber_shim_assembly(positions, shim_config)
 
     displacement = np.linalg.norm(
-        sol.solved_ubj - positions[PointID.UPPER_WISHBONE_OUTBOARD]
+        sol.ubj_position - positions[PointID.UPPER_WISHBONE_OUTBOARD]
     )
     assert displacement > 1e-4, (
         f"UBJ should move for non-trivial shim change, moved {displacement:.6f}mm"

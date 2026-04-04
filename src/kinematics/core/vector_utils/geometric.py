@@ -303,7 +303,7 @@ def intersect_line_with_vertical_plane(
     return line_point + t * line_direction
 
 
-def rodrigues_rotate_vector(v: np.ndarray, rotvec: np.ndarray) -> np.ndarray:
+def rotate_vector_rodrigues(v: np.ndarray, rotvec: np.ndarray) -> np.ndarray:
     """
     Rotate a vector by a rotation vector using Rodrigues' formula.
 

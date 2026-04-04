@@ -400,11 +400,11 @@ class DoubleWishboneSuspension(Suspension):
 
         # Write the solved UBJ position back. The upper wishbone arc constraint
         # means UBJ may shift slightly to accommodate the new shim thickness.
-        positions[PointID.UPPER_WISHBONE_OUTBOARD] = assembly_solution.solved_ubj
+        positions[PointID.UPPER_WISHBONE_OUTBOARD] = assembly_solution.ubj_position
 
         # Rotate each configured upright-mounted point about LBJ using the solved
         # lower-body rotation axis and angle.
-        if assembly_solution.lower_rotation_angle_rad > EPS_GEOMETRIC:
+        if assembly_solution.upright_body_rot_angle_rad > EPS_GEOMETRIC:
             lbj = positions[PointID.LOWER_WISHBONE_OUTBOARD]
             for point_name in self.config.upright_mounted_points:
                 point_id = self.UPRIGHT_MOUNTED_POINT_IDS.get(point_name)
@@ -412,6 +412,6 @@ class DoubleWishboneSuspension(Suspension):
                     positions[point_id] = rotate_point_about_axis(
                         positions[point_id],
                         lbj,
-                        assembly_solution.lower_rotation_axis,
-                        assembly_solution.lower_rotation_angle_rad,
+                        assembly_solution.upright_body_rot_axis,
+                        assembly_solution.upright_body_rot_angle_rad,
                     )
