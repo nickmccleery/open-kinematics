@@ -148,8 +148,6 @@ def solve_least_squares_problem(
         )
 
     least_squares_kwargs: dict[str, Any] = {
-        "fun": residual_function,
-        "x0": x_0,
         "args": args,
         "method": method,
         "ftol": solver_config.ftol,
@@ -160,7 +158,7 @@ def solve_least_squares_problem(
     if jacobian_function is not None:
         least_squares_kwargs["jac"] = jacobian_function
 
-    return least_squares(**least_squares_kwargs)
+    return least_squares(residual_function, x_0, **least_squares_kwargs)
 
 
 class ResidualComputer:

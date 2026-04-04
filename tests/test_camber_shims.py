@@ -14,6 +14,7 @@ from kinematics.core.enums import Axis, PointID
 from kinematics.core.types import make_vec3
 from kinematics.core.vector_utils.geometric import rotate_point_about_axis
 from kinematics.io.geometry_loader import load_geometry
+from kinematics.suspensions.base import Suspension
 from kinematics.suspensions.config.settings import CamberShimConfig
 from kinematics.suspensions.config.shims import solve_camber_shim_assembly
 from kinematics.suspensions.double_wishbone import DoubleWishboneSuspension
@@ -276,12 +277,13 @@ def _make_shim_config(
 
 
 def _make_shimmed_suspension(
-    base_suspension: DoubleWishboneSuspension,
+    base_suspension: Suspension,
     shim_config: CamberShimConfig,
 ) -> DoubleWishboneSuspension:
     """
     Create a new suspension instance with the given shim config applied.
     """
+    assert isinstance(base_suspension, DoubleWishboneSuspension)
     assert base_suspension.config is not None
     new_config = base_suspension.config.model_copy(update={"camber_shim": shim_config})
     return DoubleWishboneSuspension(
