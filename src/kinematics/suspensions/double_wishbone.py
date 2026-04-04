@@ -89,6 +89,27 @@ class DoubleWishboneSuspension(Suspension):
         {ShimType.OUTBOARD_CAMBER}
     )
 
+    # Points included in solver output (CSV/Parquet), in column order.
+    # Hardpoints first, then derived points.
+    OUTPUT_POINTS: ClassVar[tuple[PointID, ...]] = (
+        PointID.LOWER_WISHBONE_INBOARD_FRONT,
+        PointID.LOWER_WISHBONE_INBOARD_REAR,
+        PointID.LOWER_WISHBONE_OUTBOARD,
+        PointID.UPPER_WISHBONE_INBOARD_FRONT,
+        PointID.UPPER_WISHBONE_INBOARD_REAR,
+        PointID.UPPER_WISHBONE_OUTBOARD,
+        PointID.TRACKROD_INBOARD,
+        PointID.TRACKROD_OUTBOARD,
+        PointID.AXLE_INBOARD,
+        PointID.AXLE_OUTBOARD,
+        PointID.AXLE_MIDPOINT,
+        PointID.WHEEL_CENTER,
+        PointID.WHEEL_INBOARD,
+        PointID.WHEEL_OUTBOARD,
+        PointID.WHEEL_CENTER_ON_GROUND,
+        PointID.CONTACT_PATCH_CENTER,
+    )
+
     # Config names for points that should rotate with the lower upright body when a
     # split camber shim is solved.
     UPRIGHT_MOUNTED_POINT_IDS: ClassVar[dict[str, PointID]] = {
@@ -358,24 +379,23 @@ class DoubleWishboneSuspension(Suspension):
             return
 
         shim_config = self.config.camber_shim
-        lbj = make_vec3(positions[PointID.LOWER_WISHBONE_OUTBOARD])
+
+        # Add shim geometry points from config so the solver can access them
+        # via PointID alongside the kinematic hardpoints. These are filtered
+        # from output by OUTPUT_POINTS.
+        positions[PointID.CAMBER_SHIM_FACE_POINT_A] = make_vec3(
+            shim_config.shim_face_point_a
+        )
+        positions[PointID.CAMBER_SHIM_FACE_POINT_B] = make_vec3(
+            shim_config.shim_face_point_b
+        )
+        positions[PointID.CAMBER_SHIM_FACE_NORMAL] = make_vec3(
+            shim_config.shim_face_normal
+        )
 
         assembly_solution = solve_camber_shim_assembly(
-            upper_ball_joint=positions[PointID.UPPER_WISHBONE_OUTBOARD],
-            lower_ball_joint=lbj,
-            upper_wishbone_inboard_front=positions[
-                PointID.UPPER_WISHBONE_INBOARD_FRONT
-            ],
-            upper_wishbone_inboard_rear=positions[
-                PointID.UPPER_WISHBONE_INBOARD_REAR
-            ],
-            trackrod_outboard=positions[PointID.TRACKROD_OUTBOARD],
-            trackrod_inboard=positions[PointID.TRACKROD_INBOARD],
-            shim_face_point_a=shim_config.shim_face_point_a,
-            shim_face_point_b=shim_config.shim_face_point_b,
-            shim_face_normal=shim_config.shim_face_normal,
-            design_thickness=shim_config.design_thickness,
-            setup_thickness=shim_config.setup_thickness,
+            positions=positions,
+            shim_config=shim_config,
         )
 
         # Write the solved UBJ position back. The upper wishbone arc constraint
@@ -385,6 +405,7 @@ class DoubleWishboneSuspension(Suspension):
         # Rotate each configured upright-mounted point about LBJ using the solved
         # lower-body rotation axis and angle.
         if assembly_solution.lower_rotation_angle_rad > EPS_GEOMETRIC:
+            lbj = positions[PointID.LOWER_WISHBONE_OUTBOARD]
             for point_name in self.config.upright_mounted_points:
                 point_id = self.UPRIGHT_MOUNTED_POINT_IDS.get(point_name)
                 if point_id is not None and point_id in positions:

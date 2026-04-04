@@ -62,24 +62,35 @@ def test_rotate_point_about_axis_with_offset_pivot():
 # ---------------------------------------------------------------------------
 
 
-def _make_simple_geometry():
+def make_simple_geometry(
+    design_thickness: float = 30.0,
+    setup_thickness: float = 30.0,
+) -> tuple[dict[PointID, np.ndarray], CamberShimConfig]:
     """
-    Return a minimal geometry dict for the shim assembly solver.
+    Return positions and shim config for the shim assembly solver.
 
     Uses positions matching the test geometry YAML: UBJ at the tip of two upper
     wishbone arms, LBJ below, trackrod connecting rack to upright.
     """
-    return dict(
-        upper_ball_joint=make_vec3([0.0, 750.0, 500.0]),
-        lower_ball_joint=make_vec3([0.0, 900.0, 200.0]),
-        upper_wishbone_inboard_front=make_vec3([225.0, 350.0, 500.0]),
-        upper_wishbone_inboard_rear=make_vec3([-275.0, 350.0, 500.0]),
-        trackrod_outboard=make_vec3([150.0, 800.0, 275.0]),
-        trackrod_inboard=make_vec3([50.0, 200.0, 250.0]),
-        shim_face_point_a=make_vec3([0.0, 750.0, 510.0]),
-        shim_face_point_b=make_vec3([0.0, 750.0, 490.0]),
-        shim_face_normal=make_vec3([0.0, 1.0, 0.0]),
+    positions = {
+        PointID.UPPER_WISHBONE_OUTBOARD: make_vec3([0.0, 750.0, 500.0]),
+        PointID.LOWER_WISHBONE_OUTBOARD: make_vec3([0.0, 900.0, 200.0]),
+        PointID.UPPER_WISHBONE_INBOARD_FRONT: make_vec3([225.0, 350.0, 500.0]),
+        PointID.UPPER_WISHBONE_INBOARD_REAR: make_vec3([-275.0, 350.0, 500.0]),
+        PointID.TRACKROD_OUTBOARD: make_vec3([150.0, 800.0, 275.0]),
+        PointID.TRACKROD_INBOARD: make_vec3([50.0, 200.0, 250.0]),
+        PointID.CAMBER_SHIM_FACE_POINT_A: make_vec3([0.0, 750.0, 510.0]),
+        PointID.CAMBER_SHIM_FACE_POINT_B: make_vec3([0.0, 750.0, 490.0]),
+        PointID.CAMBER_SHIM_FACE_NORMAL: make_vec3([0.0, 1.0, 0.0]),
+    }
+    shim_config = CamberShimConfig(
+        shim_face_point_a=[0.0, 750.0, 510.0],
+        shim_face_point_b=[0.0, 750.0, 490.0],
+        shim_face_normal=[0.0, 1.0, 0.0],
+        design_thickness=design_thickness,
+        setup_thickness=setup_thickness,
     )
+    return positions, shim_config
 
 
 def test_design_thickness_returns_identity():
@@ -87,10 +98,14 @@ def test_design_thickness_returns_identity():
     When setup_thickness == design_thickness the solver should return design state
     with zero rotation and unchanged UBJ.
     """
-    geo = _make_simple_geometry()
-    sol = solve_camber_shim_assembly(**geo, design_thickness=30.0, setup_thickness=30.0)
+    positions, shim_config = make_simple_geometry(
+        design_thickness=30.0, setup_thickness=30.0
+    )
+    sol = solve_camber_shim_assembly(positions, shim_config)
 
-    np.testing.assert_allclose(sol.solved_ubj, geo["upper_ball_joint"], atol=1e-10)
+    np.testing.assert_allclose(
+        sol.solved_ubj, positions[PointID.UPPER_WISHBONE_OUTBOARD], atol=1e-10
+    )
     np.testing.assert_allclose(sol.upper_rotation_vector, 0.0, atol=1e-10)
     np.testing.assert_allclose(sol.lower_rotation_vector, 0.0, atol=1e-10)
     assert sol.lower_rotation_angle_rad == 0.0
@@ -102,8 +117,10 @@ def test_solver_converges():
     Basic convergence check: a 10mm shim change should produce a solution with
     near-zero residual norm.
     """
-    geo = _make_simple_geometry()
-    sol = solve_camber_shim_assembly(**geo, design_thickness=30.0, setup_thickness=40.0)
+    positions, shim_config = make_simple_geometry(
+        design_thickness=30.0, setup_thickness=40.0
+    )
+    sol = solve_camber_shim_assembly(positions, shim_config)
 
     assert sol.constraint_residual_norm < 1e-5
 
@@ -113,18 +130,24 @@ def test_upper_arm_lengths_preserved():
     The solved UBJ must remain on the upper wishbone arc, so the distances to
     both inboard pickups must match their design values.
     """
-    geo = _make_simple_geometry()
-    ubj = geo["upper_ball_joint"]
-    design_front = float(np.linalg.norm(ubj - geo["upper_wishbone_inboard_front"]))
-    design_rear = float(np.linalg.norm(ubj - geo["upper_wishbone_inboard_rear"]))
+    positions, shim_config = make_simple_geometry(
+        design_thickness=30.0, setup_thickness=40.0
+    )
+    ubj = positions[PointID.UPPER_WISHBONE_OUTBOARD]
+    design_front = float(
+        np.linalg.norm(ubj - positions[PointID.UPPER_WISHBONE_INBOARD_FRONT])
+    )
+    design_rear = float(
+        np.linalg.norm(ubj - positions[PointID.UPPER_WISHBONE_INBOARD_REAR])
+    )
 
-    sol = solve_camber_shim_assembly(**geo, design_thickness=30.0, setup_thickness=40.0)
+    sol = solve_camber_shim_assembly(positions, shim_config)
 
     solved_front = float(
-        np.linalg.norm(sol.solved_ubj - geo["upper_wishbone_inboard_front"])
+        np.linalg.norm(sol.solved_ubj - positions[PointID.UPPER_WISHBONE_INBOARD_FRONT])
     )
     solved_rear = float(
-        np.linalg.norm(sol.solved_ubj - geo["upper_wishbone_inboard_rear"])
+        np.linalg.norm(sol.solved_ubj - positions[PointID.UPPER_WISHBONE_INBOARD_REAR])
     )
 
     assert abs(solved_front - design_front) < TEST_TOLERANCE
@@ -135,8 +158,10 @@ def test_face_normals_parallel_at_solution():
     """
     At the solved state the upper and lower face normals must align.
     """
-    geo = _make_simple_geometry()
-    sol = solve_camber_shim_assembly(**geo, design_thickness=30.0, setup_thickness=40.0)
+    positions, shim_config = make_simple_geometry(
+        design_thickness=30.0, setup_thickness=40.0
+    )
+    sol = solve_camber_shim_assembly(positions, shim_config)
 
     cross = np.cross(sol.upper_face_normal, sol.lower_face_normal)
     assert np.linalg.norm(cross) < 1e-8
@@ -148,8 +173,10 @@ def test_lbj_stays_fixed():
     The lower ball joint is the fixed pivot and must not appear in the solution
     as having moved.
     """
-    geo = _make_simple_geometry()
-    sol = solve_camber_shim_assembly(**geo, design_thickness=30.0, setup_thickness=40.0)
+    positions, shim_config = make_simple_geometry(
+        design_thickness=30.0, setup_thickness=40.0
+    )
+    sol = solve_camber_shim_assembly(positions, shim_config)
 
     # The solver doesn't move LBJ, but the lower rotation angle should be non-zero
     # (the body rotates about LBJ, LBJ itself stays put).
@@ -162,8 +189,10 @@ def test_nonzero_lower_body_rotation():
     mounted points actually move. This guards against the solver finding a spurious
     branch where the shim change is absorbed entirely by the upper block.
     """
-    geo = _make_simple_geometry()
-    sol = solve_camber_shim_assembly(**geo, design_thickness=30.0, setup_thickness=40.0)
+    positions, shim_config = make_simple_geometry(
+        design_thickness=30.0, setup_thickness=40.0
+    )
+    sol = solve_camber_shim_assembly(positions, shim_config)
 
     assert sol.lower_rotation_angle_rad > 1e-6
     assert np.linalg.norm(sol.lower_rotation_vector) > 1e-6
@@ -173,21 +202,27 @@ def test_trackrod_length_preserved():
     """
     The trackrod is a rigid link. Its length must be unchanged after the shim solve.
     """
-    geo = _make_simple_geometry()
+    positions, shim_config = make_simple_geometry(
+        design_thickness=30.0, setup_thickness=40.0
+    )
     design_length = float(
-        np.linalg.norm(geo["trackrod_outboard"] - geo["trackrod_inboard"])
+        np.linalg.norm(
+            positions[PointID.TRACKROD_OUTBOARD] - positions[PointID.TRACKROD_INBOARD]
+        )
     )
 
-    sol = solve_camber_shim_assembly(**geo, design_thickness=30.0, setup_thickness=40.0)
+    sol = solve_camber_shim_assembly(positions, shim_config)
 
     # Compute where trackrod outboard lands after lower-body rotation about LBJ.
     solved_tro = rotate_point_about_axis(
-        geo["trackrod_outboard"],
-        geo["lower_ball_joint"],
+        positions[PointID.TRACKROD_OUTBOARD],
+        positions[PointID.LOWER_WISHBONE_OUTBOARD],
         sol.lower_rotation_axis,
         sol.lower_rotation_angle_rad,
     )
-    solved_length = float(np.linalg.norm(solved_tro - geo["trackrod_inboard"]))
+    solved_length = float(
+        np.linalg.norm(solved_tro - positions[PointID.TRACKROD_INBOARD])
+    )
 
     assert abs(solved_length - design_length) < 1e-4, (
         f"Trackrod length changed: design={design_length:.4f}, "
@@ -199,10 +234,14 @@ def test_ubj_moves_for_nonzero_shim_change():
     """
     UBJ should move along the upper wishbone arc when the shim thickness changes.
     """
-    geo = _make_simple_geometry()
-    sol = solve_camber_shim_assembly(**geo, design_thickness=30.0, setup_thickness=40.0)
+    positions, shim_config = make_simple_geometry(
+        design_thickness=30.0, setup_thickness=40.0
+    )
+    sol = solve_camber_shim_assembly(positions, shim_config)
 
-    displacement = np.linalg.norm(sol.solved_ubj - geo["upper_ball_joint"])
+    displacement = np.linalg.norm(
+        sol.solved_ubj - positions[PointID.UPPER_WISHBONE_OUTBOARD]
+    )
     assert displacement > 1e-4, (
         f"UBJ should move for non-trivial shim change, moved {displacement:.6f}mm"
     )

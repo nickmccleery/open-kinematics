@@ -42,6 +42,7 @@ class Suspension(ABC):
     ALIASES: ClassVar[frozenset[str]] = frozenset()
     REQUIRED_POINTS: ClassVar[frozenset[PointID]] = frozenset()
     OPTIONAL_POINTS: ClassVar[frozenset[PointID]] = frozenset()
+    OUTPUT_POINTS: ClassVar[tuple[PointID, ...]] = ()
     SUPPORTED_SHIMS: ClassVar[frozenset[ShimType]] = frozenset()
 
     name: str = "unnamed"

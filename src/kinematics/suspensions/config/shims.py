@@ -1,20 +1,21 @@
 """
 Camber shim geometry calculations.
 
-This module solves the local split-body camber shim assembly. The upper shim block
-rotates about the upper ball joint, the lower upright body rotates about the lower
-ball joint, and the two shim faces remain separated by the requested setup thickness.
+This module solves suspension pose for the specified split body (outboard) camber shim.
+The upper shim block rotates about the upper ball joint, the lower upright body rotates
+about the lower ball joint, and the two shim faces remain separated by the requested
+setup thickness.
 
-The solver uses a 9-variable overdetermined least-squares formulation:
-    - UBJ_xyz (3): upper ball joint position, constrained to the upper wishbone arc
-    - upper_rotvec (3): rotation vector for the upper shim block about UBJ
-    - lower_rotvec (3): rotation vector for the lower upright body about LBJ
+The solver uses a 9 variable overdetermined least-squares formulation:
+    - UBJ_xyz (3): Upper ball joint position, constrained to the upper wishbone arc.
+    - upper_rotvec (3): Rotation vector for the upper shim block about UBJ.
+    - lower_rotvec (3): Rotation vector for the lower upright body about LBJ.
 
-with 12 residuals:
-    - 2 scalar upper-arm distance constraints (UBJ to each inboard pickup)
-    - 3 scalar datum A closure (lower face A - upper face A = thickness * normal)
-    - 3 scalar datum B closure (lower face B - upper face B = thickness * normal)
-    - 3 scalar normal alignment (upper and lower face normals must match)
+With 12 residuals:
+    - 2 scalar upper arm distance constraints (UBJ to each inboard pickup).
+    - 3 scalar datum A closure (lower face A - upper face A = thickness * normal).
+    - 3 scalar datum B closure (lower face B - upper face B = thickness * normal).
+    - 3 scalar normal alignment (upper and lower face normals must match).
     - 1 scalar trackrod length (preserves design trackrod length through shim change)
 """
 
@@ -24,15 +25,13 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from kinematics.core.constants import (
-    EPS_GEOMETRIC,
-    EPS_NUMERICAL,
-)
+from kinematics.core.constants import EPS_GEOMETRIC, EPS_NUMERICAL
+from kinematics.core.enums import PointID
 from kinematics.core.types import Vec3, make_vec3
 from kinematics.core.vector_utils.generic import normalize_vector
 from kinematics.core.vector_utils.geometric import rodrigues_rotate_vector
-from kinematics.io.validation import Vec3Like, coerce_vec3
 from kinematics.solver import SolverConfig, solve_least_squares_problem
+from kinematics.suspensions.config.settings import CamberShimConfig
 
 CAMBER_SHIM_N_VARS = 9
 CAMBER_SHIM_N_RESIDUALS = 12
@@ -199,41 +198,39 @@ def compute_camber_shim_assembly_residuals(
     )
 
 
+# These are the points we need to run the solve.
+REQUIRED_POINT_IDS = frozenset(
+    {
+        PointID.UPPER_WISHBONE_OUTBOARD,
+        PointID.LOWER_WISHBONE_OUTBOARD,
+        PointID.UPPER_WISHBONE_INBOARD_FRONT,
+        PointID.UPPER_WISHBONE_INBOARD_REAR,
+        PointID.TRACKROD_OUTBOARD,
+        PointID.TRACKROD_INBOARD,
+        PointID.CAMBER_SHIM_FACE_POINT_A,
+        PointID.CAMBER_SHIM_FACE_POINT_B,
+        PointID.CAMBER_SHIM_FACE_NORMAL,
+    }
+)
+
+
 def solve_camber_shim_assembly(
-    upper_ball_joint: Vec3Like,
-    lower_ball_joint: Vec3Like,
-    upper_wishbone_inboard_front: Vec3Like,
-    upper_wishbone_inboard_rear: Vec3Like,
-    trackrod_outboard: Vec3Like,
-    trackrod_inboard: Vec3Like,
-    shim_face_point_a: Vec3Like,
-    shim_face_point_b: Vec3Like,
-    shim_face_normal: Vec3Like,
-    design_thickness: float,
-    setup_thickness: float,
+    positions: dict[PointID, Vec3],
+    shim_config: CamberShimConfig,
     solver_config: SolverConfig = SolverConfig(),
 ) -> CamberShimAssemblySolution:
     """
-    Solve the local split-body shim assembly.
+    Solve the suspension pose for the specified split body (outboard) camber shim.
 
-    Finds the configuration where the upper shim block (rotating about UBJ) and the
-    lower upright body (rotating about LBJ) produce parallel shim faces separated by
-    the setup thickness, while UBJ remains on the upper wishbone arc and the trackrod
-    length is preserved.
+    Finds the configuration where the upper shim block (rotating about the UBJ) and the
+    lower upright body (rotating about the LBJ) produce parallel shim faces separated by
+    the setup thickness, while the UBJ remains on the upper wishbone arc, with trackrod
+    length remaining equal to design condition.
 
     Args:
-        upper_ball_joint: Design UBJ position in world coordinates.
-        lower_ball_joint: Fixed LBJ position in world coordinates.
-        upper_wishbone_inboard_front: Fixed upper wishbone front pickup.
-        upper_wishbone_inboard_rear: Fixed upper wishbone rear pickup.
-        trackrod_outboard: Design trackrod outboard position (on the upright body).
-        trackrod_inboard: Fixed trackrod inboard position (on the chassis/rack).
-        shim_face_point_a: First dowel datum on the design mid-thickness plane.
-        shim_face_point_b: Second dowel datum on the design mid-thickness plane.
-        shim_face_normal: Design shim face normal direction.
-        design_thickness: Design shim stack thickness in mm.
-        setup_thickness: Setup shim stack thickness in mm.
-        solver_config: Least-squares tolerances and verbosity.
+        positions: Dict mapping PointID to Vec3 positions.
+        shim_config: Shim thickness configuration (design and setup thicknesses).
+        solver_config: Solver configuration (tolerances, verbosity, etc.).
 
     Returns:
         Solved assembly state with UBJ position, rotation vectors, and convergence
@@ -241,19 +238,31 @@ def solve_camber_shim_assembly(
 
     Raises:
         RuntimeError: If the solver fails to converge.
+        KeyError: If a required PointID is missing from positions.
     """
-    upper_ball_joint_design = coerce_vec3(upper_ball_joint)
-    lower_ball_joint = coerce_vec3(lower_ball_joint)
-    upper_wishbone_pickup_front = coerce_vec3(upper_wishbone_inboard_front)
-    upper_wishbone_pickup_rear = coerce_vec3(upper_wishbone_inboard_rear)
-    trackrod_outboard_design = coerce_vec3(trackrod_outboard)
-    trackrod_inboard_fixed = coerce_vec3(trackrod_inboard)
-    shim_face_datum_a = coerce_vec3(shim_face_point_a)
-    shim_face_datum_b = coerce_vec3(shim_face_point_b)
-    design_face_normal = normalize_vector(coerce_vec3(shim_face_normal))
+    missing = REQUIRED_POINT_IDS - positions.keys()
+    if missing:
+        names = sorted(p.name for p in missing)
+        raise KeyError(f"Missing required PointIDs: {names}")
+
+    upper_ball_joint_design = make_vec3(positions[PointID.UPPER_WISHBONE_OUTBOARD])
+    lower_ball_joint = make_vec3(positions[PointID.LOWER_WISHBONE_OUTBOARD])
+    upper_wishbone_pickup_front = make_vec3(
+        positions[PointID.UPPER_WISHBONE_INBOARD_FRONT]
+    )
+    upper_wishbone_pickup_rear = make_vec3(
+        positions[PointID.UPPER_WISHBONE_INBOARD_REAR]
+    )
+    trackrod_outboard_design = make_vec3(positions[PointID.TRACKROD_OUTBOARD])
+    trackrod_inboard_fixed = make_vec3(positions[PointID.TRACKROD_INBOARD])
+    shim_face_datum_a = make_vec3(positions[PointID.CAMBER_SHIM_FACE_POINT_A])
+    shim_face_datum_b = make_vec3(positions[PointID.CAMBER_SHIM_FACE_POINT_B])
+    design_face_normal = normalize_vector(
+        make_vec3(positions[PointID.CAMBER_SHIM_FACE_NORMAL])
+    )
 
     # Early exit when there is no shim thickness change.
-    if abs(setup_thickness - design_thickness) < EPS_GEOMETRIC:
+    if abs(shim_config.setup_thickness - shim_config.design_thickness) < EPS_GEOMETRIC:
         return CamberShimAssemblySolution(
             solved_ubj=make_vec3(upper_ball_joint_design.copy()),
             upper_rotation_vector=make_vec3(np.zeros(3)),
@@ -265,7 +274,7 @@ def solve_camber_shim_assembly(
             constraint_residual_norm=0.0,
         )
 
-    half_design = 0.5 * design_thickness
+    half_design = 0.5 * shim_config.design_thickness
 
     # Design-state face datum positions. The upper face is on the inboard side
     # (toward UBJ), the lower face on the outboard side (toward the upright body).
@@ -311,7 +320,7 @@ def solve_camber_shim_assembly(
         lower_datum_a_offset=make_vec3(d_lower_a.copy()),
         lower_datum_b_offset=make_vec3(d_lower_b.copy()),
         trackrod_offset=make_vec3(d_trackrod.copy()),
-        setup_thickness=setup_thickness,
+        setup_thickness=shim_config.setup_thickness,
         upper_arm_length_front=arm_length_front,
         upper_arm_length_rear=arm_length_rear,
         trackrod_length=trackrod_length,
