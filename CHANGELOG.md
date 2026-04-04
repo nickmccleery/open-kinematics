@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [0.3.0] - Unreleased
 
+### Added
+- Split-body camber shim assembly solver (`suspensions/config/shims.py`): solves for the outboard camber shim configuration using a 9-variable, 12-residual overdetermined least-squares formulation. The upper ball joint position, camber block rotation, and upright body rotation are solved simultaneously to satisfy wishbone arc constraints, shim face closure, normal alignment, and trackrod length preservation.
+
 ### Changed
 - Adopted ISO/SAE wheel offset (ET) convention in `get_wheel_center`.
 - Positive `wheel.offset` now places the wheel centerline inboard of the hub face (reduced track for larger positive ET).
