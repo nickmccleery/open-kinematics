@@ -319,16 +319,16 @@ def solve_camber_shim_assembly(
     d_trackrod = trackrod_outboard_design - lower_ball_joint
 
     assembly_context = CamberShimAssemblyContext(
-        lower_ball_joint=make_vec3(lower_ball_joint.copy()),
-        upper_wishbone_inboard_front=make_vec3(upper_wishbone_pickup_front.copy()),
-        upper_wishbone_inboard_rear=make_vec3(upper_wishbone_pickup_rear.copy()),
-        trackrod_inboard=make_vec3(trackrod_inboard_fixed.copy()),
-        design_face_normal=make_vec3(design_face_normal.copy()),
-        camber_block_to_datum_a=make_vec3(d_upper_a.copy()),
-        camber_block_to_datum_b=make_vec3(d_upper_b.copy()),
-        upright_body_to_datum_a=make_vec3(d_lower_a.copy()),
-        upright_body_to_datum_b=make_vec3(d_lower_b.copy()),
-        trackrod_offset=make_vec3(d_trackrod.copy()),
+        lower_ball_joint=lower_ball_joint,
+        upper_wishbone_inboard_front=upper_wishbone_pickup_front,
+        upper_wishbone_inboard_rear=upper_wishbone_pickup_rear,
+        trackrod_inboard=trackrod_inboard_fixed,
+        design_face_normal=design_face_normal,
+        camber_block_to_datum_a=make_vec3(d_upper_a),
+        camber_block_to_datum_b=make_vec3(d_upper_b),
+        upright_body_to_datum_a=make_vec3(d_lower_a),
+        upright_body_to_datum_b=make_vec3(d_lower_b),
+        trackrod_offset=make_vec3(d_trackrod),
         setup_thickness=shim_config.setup_thickness,
         upper_arm_length_front=arm_length_front,
         upper_arm_length_rear=arm_length_rear,
@@ -354,8 +354,8 @@ def solve_camber_shim_assembly(
 
     # Extract solution.
     solved_ubj_pos = make_vec3(result.x[:3])
-    camber_block_rv = make_vec3(result.x[3:6])
-    upright_body_rv = make_vec3(result.x[6:9])
+    camber_block_rot_vec = make_vec3(result.x[3:6])
+    upright_body_rot_vec = make_vec3(result.x[6:9])
 
     # Compute solved face normals.
     solved_n_camber_block = make_vec3(
@@ -366,16 +366,16 @@ def solve_camber_shim_assembly(
     )
 
     # Extract upright body rotation axis and angle for suspension integration.
-    upright_body_angle = float(np.linalg.norm(upright_body_rv))
+    upright_body_angle = float(np.linalg.norm(upright_body_rot_vec))
     if upright_body_angle > EPS_NUMERICAL:
-        upright_body_axis = make_vec3(upright_body_rv / upright_body_angle)
+        upright_body_axis = make_vec3(upright_body_rot_vec / upright_body_angle)
     else:
         upright_body_axis = make_vec3(np.array([0.0, 0.0, 1.0]))
 
     return CamberShimAssemblySolution(
         ubj_position=solved_ubj_pos,
-        camber_block_rot_vec=camber_block_rv,
-        upright_body_rot_vec=upright_body_rv,
+        camber_block_rot_vec=camber_block_rot_vec,
+        upright_body_rot_vec=upright_body_rot_vec,
         camber_block_face_normal=solved_n_camber_block,
         upright_body_face_normal=solved_n_upright_body,
         upright_body_rot_axis=upright_body_axis,
