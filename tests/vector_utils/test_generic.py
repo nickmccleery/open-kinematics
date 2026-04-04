@@ -5,7 +5,7 @@ Tests for the generic vector utility functions.
 import numpy as np
 import pytest
 
-from kinematics.core.constants import EPSILON, TEST_TOLERANCE
+from kinematics.core.constants import EPS_NUMERICAL, TEST_TOLERANCE
 from kinematics.core.vector_utils.generic import (
     compute_2d_vector_vector_intersection,
     normalize_vector,
@@ -130,7 +130,7 @@ class TestNormalizeVector:
         """
         Test that normalizing a near-zero vector raises ValueError.
         """
-        v = np.array([EPSILON / 2, 0.0, 0.0])
+        v = np.array([EPS_NUMERICAL / 2, 0.0, 0.0])
         with pytest.raises(ValueError, match="Cannot normalize zero-length vector"):
             normalize_vector(v)
 
@@ -261,7 +261,7 @@ class TestProjectCoordinate:
         """
         position = np.array([1.0, 2.0, 3.0])
         # Create a direction vector that's almost but not exactly unit length.
-        direction = np.array([1.0 + EPSILON / 2, 0.0, 0.0])
+        direction = np.array([1.0 + EPS_NUMERICAL / 2, 0.0, 0.0])
         # This should pass since the difference is within TEST_TOLERANCE tolerance.
         result = project_coordinate(position, direction)
         # Should be close to projecting onto [1,0,0].

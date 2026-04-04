@@ -8,7 +8,7 @@ avoid code duplication.
 
 import numpy as np
 
-from kinematics.core.constants import EPSILON
+from kinematics.core.constants import EPS_GEOMETRIC
 from kinematics.core.enums import Axis, PointID
 from kinematics.core.types import Vec3, WorldAxisSystem, make_vec3
 from kinematics.core.vector_utils.generic import normalize_vector
@@ -169,7 +169,7 @@ def get_wheel_center_on_ground(
     # Find where a ray from the wheel center intersects the horizontal ground plane.
     wheel_down_z = wheel_down_normalized[Axis.Z]
 
-    if abs(wheel_down_z) < EPSILON:
+    if abs(wheel_down_z) < EPS_GEOMETRIC:
         # The projection direction is horizontal (e.g., at 90° camber).
         raise ValueError(
             "Wheel plane normal is parallel to ground plane; cannot project."

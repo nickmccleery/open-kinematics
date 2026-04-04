@@ -45,8 +45,9 @@ def load_geometry(file_path: Path) -> Suspension:
             offset: 0  # ET convention: positive is inboard.
             tire: {...}
           camber_shim:
-            shim_face_center: {x: ..., y: ..., z: ...}
-            shim_normal: {x: ..., y: ..., z: ...}
+            shim_face_point_a: {x: ..., y: ..., z: ...}
+            shim_face_point_b: {x: ..., y: ..., z: ...}
+            shim_face_normal: {x: ..., y: ..., z: ...}
             design_thickness: 30.0
             setup_thickness: 30.0
 

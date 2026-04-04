@@ -77,33 +77,54 @@ class CamberShimConfig(BaseModel):
     Configuration for a camber shim adjustment.
 
     This type of shim sits outboard of the top balljoint, effectively splitting the
-    upright in two. Modification of camber shim serves to rotate the upright body
-    (and all upright-fixed attachments) about an axis perpendicular to the shim normal
-    and passing through the lower ball joint.
+    upright in two. A local assembly solve rotates the UBJ-side shim block about the
+    upper ball joint and the lower upright body about the lower ball joint while the
+    shim faces remain parallel at the requested setup thickness.
+
+    The shim geometry is defined by two ordered dowel datum points (A, B) on the
+    nominal mid-thickness plane, plus a shared face normal. The design upper and
+    lower face positions are derived by offsetting +/- 0.5 * design_thickness
+    along the normal from each datum point.
 
     Attributes:
-        shim_face_center: Coordinates in mm of the shim face center at design condition.
-        shim_normal: Unit vector pointing outboard perpendicular to shim face.
+        shim_face_point_a: First dowel datum on the design mid-thickness plane (mm).
+        shim_face_point_b: Second dowel datum on the design mid-thickness plane (mm).
+        shim_face_normal: Unit vector perpendicular to the design shim faces.
         design_thickness: Shim stack thickness in mm at design condition.
         setup_thickness: Actual shim stack thickness in mm for this configuration.
     """
 
     model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
 
-    shim_face_center: PydanticVec3
-    shim_normal: PydanticVec3
+    shim_face_point_a: PydanticVec3
+    shim_face_point_b: PydanticVec3
+    shim_face_normal: PydanticVec3
     design_thickness: float
     setup_thickness: float
 
     @model_validator(mode="after")
-    def check_normal_nonzero(self) -> "CamberShimConfig":
+    def validate_face_definition(self) -> "CamberShimConfig":
         import numpy as np
 
+        from kinematics.core.constants import EPS_GEOMETRIC
+
         magnitude = float(
-            np.linalg.norm(np.asarray(self.shim_normal, dtype=np.float64))
+            np.linalg.norm(np.asarray(self.shim_face_normal, dtype=np.float64))
         )
-        if magnitude < 1e-6:
-            raise ValueError("shim_normal vector is near-zero")
+        if magnitude < EPS_GEOMETRIC:
+            raise ValueError("shim_face_normal vector is near-zero")
+
+        datum_separation = float(
+            np.linalg.norm(
+                np.asarray(self.shim_face_point_b, dtype=np.float64)
+                - np.asarray(self.shim_face_point_a, dtype=np.float64)
+            )
+        )
+        if datum_separation < EPS_GEOMETRIC:
+            raise ValueError(
+                "shim_face_point_a and shim_face_point_b must be distinct"
+            )
+
         return self
 
 

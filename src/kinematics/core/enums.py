@@ -43,6 +43,12 @@ class PointID(IntEnum):
     CONTACT_PATCH_CENTER = 19
     WHEEL_CENTER_ON_GROUND = 20
 
+    # Outboard camber shim geometry. Datum points A and B lie on the design
+    # mid-thickness plane; the face normal is perpendicular to that plane.
+    CAMBER_SHIM_FACE_POINT_A = 21
+    CAMBER_SHIM_FACE_POINT_B = 22
+    CAMBER_SHIM_FACE_NORMAL = 23
+
 
 class Axis(IntEnum):
     """

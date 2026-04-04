@@ -13,7 +13,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from kinematics.core.constants import EPSILON
+from kinematics.core.constants import EPS_GEOMETRIC
 from kinematics.core.types import Vec3, make_vec3
 from kinematics.core.vector_utils.generic import normalize_vector
 
@@ -123,7 +123,7 @@ class LocalCoordinateSystem:
         y_perpendicular = y_vec - y_along_z * z_axis
 
         y_magnitude = np.linalg.norm(y_perpendicular)
-        if y_magnitude < EPSILON:
+        if y_magnitude < EPS_GEOMETRIC:
             raise ValueError(
                 "Y reference is collinear with Z axis - cannot define unique plane."
             )
