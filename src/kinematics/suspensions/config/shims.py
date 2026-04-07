@@ -274,12 +274,12 @@ def solve_camber_shim_assembly(
     # Early exit when there is no shim thickness change.
     if abs(shim_config.setup_thickness - shim_config.design_thickness) < EPS_GEOMETRIC:
         return CamberShimAssemblySolution(
-            ubj_position=make_vec3(upper_ball_joint_design.copy()),
-            camber_block_rot_vec=make_vec3(np.zeros(3)),
-            upright_body_rot_vec=make_vec3(np.zeros(3)),
-            camber_block_face_normal=make_vec3(design_face_normal.copy()),
-            upright_body_face_normal=make_vec3(design_face_normal.copy()),
-            upright_body_rot_axis=make_vec3(np.array([0.0, 0.0, 1.0])),
+            ubj_position=upper_ball_joint_design.copy(),
+            camber_block_rot_vec=np.zeros(3),
+            upright_body_rot_vec=np.zeros(3),
+            camber_block_face_normal=design_face_normal.copy(),
+            upright_body_face_normal=design_face_normal.copy(),
+            upright_body_rot_axis=np.array([0.0, 0.0, 1.0]),
             upright_body_rot_angle_rad=0.0,
             constraint_residual_norm=0.0,
         )
@@ -332,17 +332,15 @@ def solve_camber_shim_assembly(
     assembly_context = CamberShimAssemblyContext(
         lbj_position=lower_ball_joint,
         uwb_inboard_front_position=upper_wishbone_pickup_front,
-        wishbone_axis=make_vec3(wishbone_axis),
-        uwb_inboard_front_to_ubj_design=make_vec3(
-            upper_wishbone_pickup_front_to_ubj_design
-        ),
+        wishbone_axis=wishbone_axis,
+        uwb_inboard_front_to_ubj_design=upper_wishbone_pickup_front_to_ubj_design,
         trackrod_inboard_position=trackrod_inboard,
         shim_face_normal_design=design_face_normal,
-        ubj_to_camber_block_datum_a=make_vec3(ubj_to_camber_block_datum_a),
-        ubj_to_camber_block_datum_b=make_vec3(ubj_to_camber_block_datum_b),
-        lbj_to_upright_body_datum_a=make_vec3(lbj_to_upright_body_datum_a),
-        lbj_to_upright_body_datum_b=make_vec3(lbj_to_upright_body_datum_b),
-        lbj_to_trackrod_outboard=make_vec3(lbj_to_trackrod_outboard),
+        ubj_to_camber_block_datum_a=ubj_to_camber_block_datum_a,
+        ubj_to_camber_block_datum_b=ubj_to_camber_block_datum_b,
+        lbj_to_upright_body_datum_a=lbj_to_upright_body_datum_a,
+        lbj_to_upright_body_datum_b=lbj_to_upright_body_datum_b,
+        lbj_to_trackrod_outboard=lbj_to_trackrod_outboard,
         shim_setup_thickness=shim_config.setup_thickness,
         trackrod_length=trackrod_length,
     )
@@ -368,7 +366,7 @@ def solve_camber_shim_assembly(
     camber_block_rot_vec = make_vec3(result.x[1:4])
     upright_body_rot_vec = make_vec3(result.x[4:7])
 
-    solved_ubj_position = make_vec3(
+    solved_ubj_position = (
         upper_wishbone_pickup_front
         + rotate_vector_rodrigues(
             upper_wishbone_pickup_front_to_ubj_design,
@@ -377,21 +375,19 @@ def solve_camber_shim_assembly(
     )
 
     # Compute solved face normals.
-    solved_camber_block_face_normal = make_vec3(
-        rotate_vector_rodrigues(design_face_normal, result.x[1:4])
+    solved_camber_block_face_normal = rotate_vector_rodrigues(
+        design_face_normal, result.x[1:4]
     )
-    solved_upright_body_face_normal = make_vec3(
-        rotate_vector_rodrigues(design_face_normal, result.x[4:7])
+    solved_upright_body_face_normal = rotate_vector_rodrigues(
+        design_face_normal, result.x[4:7]
     )
 
     # Extract upright body rotation axis and angle for suspension integration.
     upright_body_rot_angle_rad = float(np.linalg.norm(upright_body_rot_vec))
     if upright_body_rot_angle_rad > EPS_NUMERICAL:
-        upright_body_rot_axis = make_vec3(
-            upright_body_rot_vec / upright_body_rot_angle_rad
-        )
+        upright_body_rot_axis = upright_body_rot_vec / upright_body_rot_angle_rad
     else:
-        upright_body_rot_axis = make_vec3(np.array([0.0, 0.0, 1.0]))
+        upright_body_rot_axis = np.array([0.0, 0.0, 1.0])
 
     return CamberShimAssemblySolution(
         ubj_position=solved_ubj_position,

@@ -5,14 +5,14 @@ Composite type definitions for suspension kinematics.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Annotated, Final, Literal, NamedTuple, Union
+from typing import Annotated, Any, Final, Literal, NamedTuple, Union
 
 import numpy as np
 from numpy.typing import NDArray
 
 from kinematics.core.enums import Axis, PointID, TargetPositionMode
 
-Vec3 = Annotated[NDArray[np.float64], Literal[3]]
+Vec3 = Annotated[NDArray[np.floating[Any]], Literal[3]]
 NAN_VEC3: Final[Vec3] = np.array([np.nan, np.nan, np.nan], dtype=np.float64)
 
 

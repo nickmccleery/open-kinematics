@@ -10,7 +10,7 @@ import numpy as np
 
 from kinematics.core.constants import EPS_GEOMETRIC, EPS_NUMERICAL
 from kinematics.core.enums import Axis
-from kinematics.core.types import Vec3, make_vec3
+from kinematics.core.types import Vec3
 from kinematics.core.vector_utils.generic import normalize_vector
 
 
@@ -39,7 +39,7 @@ def compute_point_point_midpoint(p1: Vec3, p2: Vec3) -> Vec3:
     Returns:
         The midpoint vector between the two points.
     """
-    return make_vec3((p1 + p2) / 2.0)
+    return (p1 + p2) / 2.0
 
 
 def compute_vector_vector_angle(v1: Vec3, v2: Vec3) -> float:
@@ -344,7 +344,7 @@ def rotate_point_about_axis(
     Returns:
         Rotated point coordinates.
     """
-    k = normalize_vector(make_vec3(axis))
+    k = normalize_vector(axis)
     v = point - pivot
 
     cos_a = np.cos(angle_rad)
@@ -352,4 +352,4 @@ def rotate_point_about_axis(
 
     # Rodrigues' formula: v*cos(a) + (k x v)*sin(a) + k*(k.v)*(1-cos(a))
     rotated = v * cos_a + np.cross(k, v) * sin_a + k * np.dot(k, v) * (1.0 - cos_a)
-    return make_vec3(pivot + rotated)
+    return pivot + rotated
