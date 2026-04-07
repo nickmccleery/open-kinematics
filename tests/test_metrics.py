@@ -1,5 +1,6 @@
 import numpy as np
 
+from kinematics.core.constants import TEST_TOLERANCE
 from kinematics.core.enums import PointID
 from kinematics.io.geometry_loader import load_geometry
 from kinematics.io.sweep_loader import parse_sweep_file
@@ -99,7 +100,7 @@ def test_front_view_metrics_are_invariant_to_rigid_x_translation(
         np.testing.assert_allclose(
             original_value,
             translated_value,
-            atol=5e-4,
+            atol=TEST_TOLERANCE,
             rtol=0.0,
             err_msg=f"{column_name} changed under rigid X translation",
         )
@@ -160,9 +161,7 @@ class TestSignConventionsAndKnownValues:
 
         camber = metrics["camber_deg"]
         assert camber is not None
-        assert camber < 0, (
-            f"Expected negative camber (top tilted inward), got {camber}"
-        )
+        assert camber < 0, f"Expected negative camber (top tilted inward), got {camber}"
 
     def test_camber_known_value_at_design_position(
         self, double_wishbone_geometry_file
@@ -176,8 +175,12 @@ class TestSignConventionsAndKnownValues:
         state = suspension.initial_state()
         metrics = compute_metrics_for_state_from_suspension(state, suspension)
 
+        camber = metrics["camber_deg"]
+        assert camber is not None, "camber_deg is None"
         np.testing.assert_allclose(
-            metrics["camber_deg"], -1.909, atol=0.01,
+            camber,
+            -1.909,
+            atol=TEST_TOLERANCE,
             err_msg="Camber at design position",
         )
 
@@ -211,8 +214,12 @@ class TestSignConventionsAndKnownValues:
         state = suspension.initial_state()
         metrics = compute_metrics_for_state_from_suspension(state, suspension)
 
+        caster = metrics["caster_deg"]
+        assert caster is not None, "caster_deg is None"
         np.testing.assert_allclose(
-            metrics["caster_deg"], 4.764, atol=0.01,
+            caster,
+            4.764,
+            atol=TEST_TOLERANCE,
             err_msg="Caster at design position",
         )
 
@@ -227,8 +234,12 @@ class TestSignConventionsAndKnownValues:
         state = suspension.initial_state()
         metrics = compute_metrics_for_state_from_suspension(state, suspension)
 
+        roadwheel_angle = metrics["roadwheel_angle_deg"]
+        assert roadwheel_angle is not None, "roadwheel_angle_deg is None"
         np.testing.assert_allclose(
-            metrics["roadwheel_angle_deg"], 0.0, atol=1e-10,
+            roadwheel_angle,
+            0.0,
+            atol=TEST_TOLERANCE,
             err_msg="Roadwheel angle at design position",
         )
 
@@ -244,12 +255,8 @@ class TestSignConventionsAndKnownValues:
         sweep_config = parse_sweep_file(test_data_dir / "sweep.yaml")
         states, _ = solve_sweep(suspension, sweep_config)
 
-        first_metrics = compute_metrics_for_state_from_suspension(
-            states[0], suspension
-        )
-        last_metrics = compute_metrics_for_state_from_suspension(
-            states[-1], suspension
-        )
+        first_metrics = compute_metrics_for_state_from_suspension(states[0], suspension)
+        last_metrics = compute_metrics_for_state_from_suspension(states[-1], suspension)
 
         first_rwa = first_metrics["roadwheel_angle_deg"]
         last_rwa = last_metrics["roadwheel_angle_deg"]
@@ -258,12 +265,9 @@ class TestSignConventionsAndKnownValues:
 
         # The sweep goes from positive to negative roadwheel angle,
         # confirming both sign directions.
-        assert first_rwa > 0, (
-            "Expected positive roadwheel angle at start of sweep"
-        )
-        assert last_rwa < 0, (
-            "Expected negative roadwheel angle at end of sweep"
-        )
+        assert first_rwa > 0, "Expected positive roadwheel angle at start of sweep"
+        assert last_rwa < 0, "Expected negative roadwheel angle at end of sweep"
+
 
 def test_default_corner_metric_catalog_matches_trusted_set() -> None:
     column_names = [metric.column_name for metric in get_default_corner_metrics()]
