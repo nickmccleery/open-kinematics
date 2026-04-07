@@ -141,8 +141,142 @@ def test_parallel_wishbone_planes_produce_null_ic_metrics(
     assert metrics["fvsa_length_mm"] is None
 
 
-def test_default_corner_metric_catalog_includes_anti_metrics() -> None:
+class TestSignConventionsAndKnownValues:
+    """
+    Direct validation tests for metric sign conventions and
+    known-value cases using the test geometry.
+    """
+
+    def test_camber_sign_negative_means_top_tilted_inward(
+        self, double_wishbone_geometry_file
+    ) -> None:
+        """
+        The test geometry has the upper ball joint inboard of the lower,
+        tilting the top of the wheel inward. Camber must be negative.
+        """
+        suspension = load_geometry(double_wishbone_geometry_file)
+        state = suspension.initial_state()
+        metrics = compute_metrics_for_state_from_suspension(state, suspension)
+
+        camber = metrics["camber_deg"]
+        assert camber is not None
+        assert camber < 0, (
+            f"Expected negative camber (top tilted inward), got {camber}"
+        )
+
+    def test_camber_known_value_at_design_position(
+        self, double_wishbone_geometry_file
+    ) -> None:
+        """
+        Verify the camber value at design position against a hand-checked
+        reference. The axle vector has a small Z component over a 150 mm
+        lateral span, giving roughly -1.9 degrees.
+        """
+        suspension = load_geometry(double_wishbone_geometry_file)
+        state = suspension.initial_state()
+        metrics = compute_metrics_for_state_from_suspension(state, suspension)
+
+        np.testing.assert_allclose(
+            metrics["camber_deg"], -1.909, atol=0.01,
+            err_msg="Camber at design position",
+        )
+
+    def test_caster_sign_positive_means_top_tilted_rearward(
+        self, double_wishbone_geometry_file
+    ) -> None:
+        """
+        The test geometry has the upper ball joint behind the lower
+        (X = -25 vs X = 0), tilting the steering axis top rearward.
+        Caster must be positive.
+        """
+        suspension = load_geometry(double_wishbone_geometry_file)
+        state = suspension.initial_state()
+        metrics = compute_metrics_for_state_from_suspension(state, suspension)
+
+        caster = metrics["caster_deg"]
+        assert caster is not None
+        assert caster > 0, (
+            f"Expected positive caster (top tilted rearward), got {caster}"
+        )
+
+    def test_caster_known_value_at_design_position(
+        self, double_wishbone_geometry_file
+    ) -> None:
+        """
+        Verify the caster value at design position. The steering axis
+        from lower (0, 900, 200) to upper (-25, 750, 500) gives roughly
+        4.76 degrees.
+        """
+        suspension = load_geometry(double_wishbone_geometry_file)
+        state = suspension.initial_state()
+        metrics = compute_metrics_for_state_from_suspension(state, suspension)
+
+        np.testing.assert_allclose(
+            metrics["caster_deg"], 4.764, atol=0.01,
+            err_msg="Caster at design position",
+        )
+
+    def test_roadwheel_angle_zero_at_design_position(
+        self, double_wishbone_geometry_file
+    ) -> None:
+        """
+        At the design position with no steering input the axle is
+        purely lateral, so the roadwheel angle must be zero.
+        """
+        suspension = load_geometry(double_wishbone_geometry_file)
+        state = suspension.initial_state()
+        metrics = compute_metrics_for_state_from_suspension(state, suspension)
+
+        np.testing.assert_allclose(
+            metrics["roadwheel_angle_deg"], 0.0, atol=1e-10,
+            err_msg="Roadwheel angle at design position",
+        )
+
+    def test_roadwheel_angle_positive_means_turned_inward(
+        self, double_wishbone_geometry_file, test_data_dir
+    ) -> None:
+        """
+        During a toe-in sweep (positive roadwheel angle), the front
+        of the wheel points toward the vehicle center. Verify the first
+        sweep step produces a positive angle for the left-side suspension.
+        """
+        suspension = load_geometry(double_wishbone_geometry_file)
+        sweep_config = parse_sweep_file(test_data_dir / "sweep.yaml")
+        states, _ = solve_sweep(suspension, sweep_config)
+
+        first_metrics = compute_metrics_for_state_from_suspension(
+            states[0], suspension
+        )
+        last_metrics = compute_metrics_for_state_from_suspension(
+            states[-1], suspension
+        )
+
+        first_rwa = first_metrics["roadwheel_angle_deg"]
+        last_rwa = last_metrics["roadwheel_angle_deg"]
+        assert first_rwa is not None
+        assert last_rwa is not None
+
+        # The sweep goes from positive to negative roadwheel angle,
+        # confirming both sign directions.
+        assert first_rwa > 0, (
+            "Expected positive roadwheel angle at start of sweep"
+        )
+        assert last_rwa < 0, (
+            "Expected negative roadwheel angle at end of sweep"
+        )
+
+def test_default_corner_metric_catalog_matches_trusted_set() -> None:
     column_names = [metric.column_name for metric in get_default_corner_metrics()]
 
-    assert "anti_dive_pct" in column_names
-    assert "anti_squat_pct" in column_names
+    expected = [
+        "camber_deg",
+        "caster_deg",
+        "roadwheel_angle_deg",
+        "svic_x_mm",
+        "svic_z_mm",
+        "svsa_length_mm",
+        "fvic_y_mm",
+        "fvic_z_mm",
+        "fvsa_length_mm",
+    ]
+    assert column_names == expected
