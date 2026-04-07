@@ -136,48 +136,6 @@ def get_wheel_outboard(positions: dict[PointID, Vec3], wheel_width: float) -> Ve
     return p1 + v * (wheel_width / 2)
 
 
-def get_wheel_center_on_ground(
-    positions: dict[PointID, Vec3],
-    ground_plane_z: float = 0.0,
-) -> Vec3:
-    """
-    Computes the intersection of the ground plane with the wheel-center line in the
-    wheel plane.
-
-    Starting at `WHEEL_CENTER`, this traces the wheel-plane 'down' direction
-    (the component of global down that is perpendicular to the axle) until it
-    reaches `z = ground_plane_z`. The result is the ground intercept of the
-    wheel centerline in the wheel's central plane, so it moves with camber.
-
-    This is a geometric projection and does not use tire radius; for a
-    radius-based tire contact point, use `get_contact_patch_center`.
-
-    Args:
-        positions: Dictionary of point coordinates.
-        ground_plane_z: Z-coordinate of the ground plane in mm (default: 0.0).
-
-    Returns:
-        The 3D coordinates where the wheel center projects onto the ground plane.
-    """
-    wheel_center = positions[PointID.WHEEL_CENTER]
-    wheel_down_normalized = get_wheel_plane_down_vector(positions)
-
-    # Find where a ray from the wheel center intersects the horizontal ground plane.
-    wheel_down_z = wheel_down_normalized[Axis.Z]
-
-    if abs(wheel_down_z) < EPS_GEOMETRIC:
-        # The projection direction is horizontal (e.g., at 90° camber).
-        raise ValueError(
-            "Wheel plane normal is parallel to ground plane; cannot project."
-        )
-
-    # Solve for parameter t where the ray intersects the ground plane.
-    t = (ground_plane_z - wheel_center[Axis.Z]) / wheel_down_z
-    ground_projection = wheel_center + t * wheel_down_normalized
-
-    return ground_projection
-
-
 def get_contact_patch_center(
     positions: dict[PointID, Vec3], tire_radius: float
 ) -> Vec3:

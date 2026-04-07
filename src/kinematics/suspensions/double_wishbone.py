@@ -35,7 +35,6 @@ from kinematics.points.derived.definitions import (
     get_axle_midpoint,
     get_contact_patch_center,
     get_wheel_center,
-    get_wheel_center_on_ground,
     get_wheel_inboard,
     get_wheel_outboard,
 )
@@ -107,7 +106,6 @@ class DoubleWishboneSuspension(Suspension):
         PointID.WHEEL_CENTER,
         PointID.WHEEL_INBOARD,
         PointID.WHEEL_OUTBOARD,
-        PointID.WHEEL_CENTER_ON_GROUND,
         PointID.CONTACT_PATCH_CENTER,
     )
 
@@ -239,7 +237,6 @@ class DoubleWishboneSuspension(Suspension):
             PointID.WHEEL_OUTBOARD: partial(
                 get_wheel_outboard, wheel_width=wheel_cfg.tire.section_width
             ),
-            PointID.WHEEL_CENTER_ON_GROUND: get_wheel_center_on_ground,
             PointID.CONTACT_PATCH_CENTER: partial(
                 get_contact_patch_center, tire_radius=tire_radius
             ),
@@ -250,11 +247,6 @@ class DoubleWishboneSuspension(Suspension):
             PointID.WHEEL_CENTER: {PointID.AXLE_INBOARD, PointID.AXLE_OUTBOARD},
             PointID.WHEEL_INBOARD: {PointID.WHEEL_CENTER, PointID.AXLE_INBOARD},
             PointID.WHEEL_OUTBOARD: {PointID.WHEEL_CENTER, PointID.AXLE_INBOARD},
-            PointID.WHEEL_CENTER_ON_GROUND: {
-                PointID.WHEEL_CENTER,
-                PointID.AXLE_INBOARD,
-                PointID.AXLE_OUTBOARD,
-            },
             PointID.CONTACT_PATCH_CENTER: {
                 PointID.WHEEL_CENTER,
                 PointID.AXLE_INBOARD,
@@ -385,9 +377,9 @@ class DoubleWishboneSuspension(Suspension):
                 label="Axle",
             ),
             LinkVisualization(
-                points=[PointID.WHEEL_CENTER_ON_GROUND],
+                points=[PointID.CONTACT_PATCH_CENTER],
                 color="black",
-                label="Wheel Center on Ground",
+                label="Contact Patch Center",
                 linewidth=0.0,
                 marker="o",
                 markersize=15.0,

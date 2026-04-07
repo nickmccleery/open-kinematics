@@ -84,13 +84,26 @@ class MetricContext:
         return normalize_vector(upper - lower)
 
     @cached_property
+    def ground_z(self) -> float:
+        """
+        Ground plane Z-height in the chassis-fixed frame.
+
+        In a chassis-fixed reference frame the ground is not at Z=0; it
+        follows the tire. We define ground level as the contact patch
+        centre Z so that all ground-plane intersections (steering axis,
+        instant centres, etc.) are evaluated at the actual tire-road
+        interface.
+        """
+        return float(self.contact_patch_center[Axis.Z])
+
+    @cached_property
     def steering_axis_ground_intersection(self) -> Vec3 | None:
         """
-        Point where the steering axis line intersects the ground plane (Z=0).
+        Point where the steering axis intersects the ground plane.
 
         Parameterises the line from the lower ball joint through the upper
-        ball joint and solves for the parameter t where Z=0. Returns None
-        if the steering axis is parallel to the ground plane.
+        ball joint and solves for the parameter t where Z = ground_z.
+        Returns None if the steering axis is parallel to the ground plane.
         """
         lower = self.state.get(PointID.LOWER_WISHBONE_OUTBOARD)
         upper = self.state.get(PointID.UPPER_WISHBONE_OUTBOARD)
@@ -98,8 +111,8 @@ class MetricContext:
         dz = direction[Axis.Z]
         if abs(dz) < EPS_GEOMETRIC:
             return None
-        # t such that lower + t * direction has Z = 0
-        t = -lower[Axis.Z] / dz
+        # t such that lower + t * direction has Z = ground_z
+        t = (self.ground_z - lower[Axis.Z]) / dz
         return lower + t * direction
 
     @cached_property
