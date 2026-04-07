@@ -14,7 +14,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from kinematics.core.constants import EPS_GEOMETRIC
-from kinematics.core.types import Vec3, make_vec3
+from kinematics.core.types import Vec3
 from kinematics.core.vector_utils.generic import normalize_vector
 
 
@@ -61,7 +61,7 @@ class LocalCoordinateSystem:
         local_y = np.dot(relative, self.y_axis)
         local_z = np.dot(relative, self.z_axis)
 
-        return make_vec3(np.array([local_x, local_y, local_z]))
+        return np.array([local_x, local_y, local_z])
 
     def local_to_world(self, local_point: Vec3) -> Vec3:
         """
@@ -81,7 +81,7 @@ class LocalCoordinateSystem:
             + local_point[2] * self.z_axis
         )
 
-        return make_vec3(world_point)
+        return world_point
 
     @classmethod
     def from_three_points(
@@ -134,10 +134,10 @@ class LocalCoordinateSystem:
         x_axis = normalize_vector(np.cross(y_axis, z_axis))
 
         return cls(
-            origin=make_vec3(origin),
-            x_axis=make_vec3(x_axis),
-            y_axis=make_vec3(y_axis),
-            z_axis=make_vec3(z_axis),
+            origin=origin,
+            x_axis=x_axis,
+            y_axis=y_axis,
+            z_axis=z_axis,
         )
 
 
@@ -237,7 +237,7 @@ class RigidBody(ABC):
             attachment_name: Name of the attachment.
             local_offset: Local coordinates of the attachment.
         """
-        self.attachment_local_offsets[attachment_name] = make_vec3(local_offset)
+        self.attachment_local_offsets[attachment_name] = local_offset
 
     @abstractmethod
     def construct_lcs(self) -> LocalCoordinateSystem:

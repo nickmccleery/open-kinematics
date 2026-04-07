@@ -89,15 +89,15 @@ class Upright(RigidBody):
 
         if hardpoints is None:
             hardpoints = UprightHardpoints(
-                upper_ball_joint=make_vec3(np.zeros(3)),
-                lower_ball_joint=make_vec3(np.zeros(3)),
-                trackrod_outboard=make_vec3(np.zeros(3)),
+                upper_ball_joint=np.zeros(3),
+                lower_ball_joint=np.zeros(3),
+                trackrod_outboard=np.zeros(3),
             )
 
         if attachments is None:
             attachments = UprightAttachments(
-                axle_inboard=make_vec3(np.zeros(3)),
-                axle_outboard=make_vec3(np.zeros(3)),
+                axle_inboard=np.zeros(3),
+                axle_outboard=np.zeros(3),
             )
 
         self.hardpoints = hardpoints
@@ -257,7 +257,7 @@ class Upright(RigidBody):
         axle_inboard = self.get_world_position("axle_inboard")
         axle_outboard = self.get_world_position("axle_outboard")
         axle_vec = axle_outboard - axle_inboard
-        return normalize_vector(make_vec3(axle_vec))
+        return normalize_vector(axle_vec)
 
     def get_axle_midpoint(self) -> Vec3:
         """
@@ -268,7 +268,7 @@ class Upright(RigidBody):
         """
         axle_inboard = self.get_world_position("axle_inboard")
         axle_outboard = self.get_world_position("axle_outboard")
-        return make_vec3((axle_inboard + axle_outboard) / 2.0)
+        return (axle_inboard + axle_outboard) / 2.0
 
     # Hardpoints and attachments construction methods.
 

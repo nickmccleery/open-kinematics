@@ -10,7 +10,7 @@ import numpy as np
 
 from kinematics.core.constants import EPS_GEOMETRIC
 from kinematics.core.enums import Axis, PointID
-from kinematics.core.types import Vec3, WorldAxisSystem, make_vec3
+from kinematics.core.types import Vec3, WorldAxisSystem
 from kinematics.core.vector_utils.generic import normalize_vector
 
 
@@ -67,8 +67,7 @@ def get_axle_midpoint(positions: dict[PointID, Vec3]) -> Vec3:
     """
     p1 = positions[PointID.AXLE_INBOARD]
     p2 = positions[PointID.AXLE_OUTBOARD]
-    midpoint = make_vec3((p1 + p2) / 2)
-    return midpoint
+    return (p1 + p2) / 2
 
 
 def get_wheel_center(positions: dict[PointID, Vec3], wheel_offset: float) -> Vec3:
@@ -94,8 +93,7 @@ def get_wheel_center(positions: dict[PointID, Vec3], wheel_offset: float) -> Vec
     v = normalize_vector(v)
 
     # ISO/SAE wheel offset convention: positive offset places centerline inboard.
-    wheel_center = make_vec3(p1 - v * wheel_offset)
-    return wheel_center
+    return p1 - v * wheel_offset
 
 
 def get_wheel_inboard(positions: dict[PointID, Vec3], wheel_width: float) -> Vec3:
@@ -115,8 +113,7 @@ def get_wheel_inboard(positions: dict[PointID, Vec3], wheel_width: float) -> Vec
     p2 = positions[PointID.WHEEL_CENTER]
     v = p2 - p1  # Points outboard; from inboard to wheel center.
     v = normalize_vector(v)
-    wheel_inboard = make_vec3(p2 - v * (wheel_width / 2))
-    return wheel_inboard
+    return p2 - v * (wheel_width / 2)
 
 
 def get_wheel_outboard(positions: dict[PointID, Vec3], wheel_width: float) -> Vec3:
@@ -136,8 +133,7 @@ def get_wheel_outboard(positions: dict[PointID, Vec3], wheel_width: float) -> Ve
     p2 = positions[PointID.AXLE_INBOARD]
     v = p1 - p2  # Points outboard; from axle inboard to wheel center.
     v = normalize_vector(v)
-    wheel_outboard = make_vec3(p1 + v * (wheel_width / 2))
-    return wheel_outboard
+    return p1 + v * (wheel_width / 2)
 
 
 def get_wheel_center_on_ground(
@@ -179,7 +175,7 @@ def get_wheel_center_on_ground(
     t = (ground_plane_z - wheel_center[Axis.Z]) / wheel_down_z
     ground_projection = wheel_center + t * wheel_down_normalized
 
-    return make_vec3(ground_projection)
+    return ground_projection
 
 
 def get_contact_patch_center(
@@ -206,4 +202,4 @@ def get_contact_patch_center(
     # Calculate the contact point by moving from the wheel center by the radius.
     contact_point = wheel_center + wheel_down_normalized * tire_radius
 
-    return make_vec3(contact_point)
+    return contact_point

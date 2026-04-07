@@ -5,9 +5,10 @@ All notable changes to this project will be documented in this file.
 ## [0.3.0] - Unreleased
 
 ### Added
-- Split-body camber shim assembly solver (`suspensions/config/shims.py`): solves for the outboard camber shim configuration using a 9-variable, 12-residual overdetermined least-squares formulation. The upper ball joint position, camber block rotation, and upright body rotation are solved simultaneously to satisfy wishbone arc constraints, shim face closure, normal alignment, and trackrod length preservation.
+- Split-body camber shim assembly solver (`suspensions/config/shims.py`): solves for the outboard camber shim configuration using a least-squares formulation. The upper ball joint position, camber block rotation, and upright body rotation are solved simultaneously to satisfy wishbone arc constraints, shim face closure, normal alignment, and trackrod length preservation.
 
 ### Changed
+- Relaxed `Vec3` type alias from `NDArray[np.float64]` to `NDArray[np.floating[Any]]` so that numpy arithmetic results satisfy the type checker without wrapping. `make_vec3` is retained at system boundaries (I/O, config loading, solver output extraction, dual-number passthrough) but removed from internal arithmetic call sites where it served only as type-checker appeasement.
 - Adopted ISO/SAE wheel offset (ET) convention in `get_wheel_center`.
 - Positive `wheel.offset` now places the wheel centerline inboard of the hub face (reduced track for larger positive ET).
 - Updated wheel offset configuration docs to explicitly describe ET sign convention.

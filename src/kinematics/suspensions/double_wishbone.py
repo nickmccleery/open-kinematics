@@ -188,11 +188,11 @@ class DoubleWishboneSuspension(Suspension):
             constraints.append(DistanceConstraint(p1, p2, target_distance))
 
         # Angle constraint for upright rigidity.
-        v1 = make_vec3(
+        v1 = (
             initial_state.positions[PointID.LOWER_WISHBONE_OUTBOARD]
             - initial_state.positions[PointID.UPPER_WISHBONE_OUTBOARD]
         )
-        v2 = make_vec3(
+        v2 = (
             initial_state.positions[PointID.AXLE_OUTBOARD]
             - initial_state.positions[PointID.AXLE_INBOARD]
         )

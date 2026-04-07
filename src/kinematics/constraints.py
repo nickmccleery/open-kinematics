@@ -15,7 +15,7 @@ import numpy as np
 from kinematics.core.constants import EPS_GEOMETRIC
 from kinematics.core.enums import Axis, PointID
 from kinematics.core.soft_math import softnorm
-from kinematics.core.types import Vec3, make_vec3
+from kinematics.core.types import Vec3
 from kinematics.core.vector_utils.geometric import (
     compute_point_to_plane_distance,
     compute_scalar_triple_product,
@@ -549,8 +549,8 @@ class PointOnPlaneConstraint(Constraint):
         """
         return compute_point_to_plane_distance(
             positions[self.point_id],
-            make_vec3(self.plane_point),
-            make_vec3(self.plane_normal),
+            self.plane_point,
+            self.plane_normal,
         )
 
 
@@ -592,6 +592,4 @@ class CoplanarPointsConstraint(Constraint):
         v1 = positions[self.p2] - pos1
         v2 = positions[self.p3] - pos1
         v3 = positions[self.p4] - pos1
-        return compute_scalar_triple_product(
-            make_vec3(v1), make_vec3(v2), make_vec3(v3)
-        )
+        return compute_scalar_triple_product(v1, v2, v3)
