@@ -44,12 +44,17 @@ def main():
     # This represents the mounting face of the upright-side bracket.
     # Normal points outboard (positive Y).
     shim_config = CamberShimConfig(
-        shim_face_center={
+        shim_face_point_a={
             "x": -25.0,  # Near upper ball joint X.
-            "y": 750.0,  # Near upper ball joint Y (outboard of inboards).
-            "z": 500.0,  # At upper ball joint Z.
+            "y": 750.0,  # Near upper ball joint Y.
+            "z": 510.0,  # 10mm above mid-plane center.
         },
-        shim_normal={
+        shim_face_point_b={
+            "x": -25.0,  # Near upper ball joint X.
+            "y": 750.0,  # Near upper ball joint Y.
+            "z": 490.0,  # 10mm below mid-plane center.
+        },
+        shim_face_normal={
             "x": 0.0,
             "y": 1.0,  # Unit vector pointing outboard.
             "z": 0.0,

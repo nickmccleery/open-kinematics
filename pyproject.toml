@@ -115,6 +115,7 @@ exclude = [
     "src/kinematics/visualization/",
     "src/kinematics/core/vector_utils/visualization.py",
     "visualize_*.py",
+    "tools/",
 ]
 
 [build-system]

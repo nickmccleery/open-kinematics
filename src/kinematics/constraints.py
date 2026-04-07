@@ -12,7 +12,7 @@ from typing import Set
 
 import numpy as np
 
-from kinematics.core.constants import EPSILON
+from kinematics.core.constants import EPS_GEOMETRIC
 from kinematics.core.enums import Axis, PointID
 from kinematics.core.soft_math import softnorm
 from kinematics.core.types import Vec3, make_vec3
@@ -478,7 +478,7 @@ class PointOnLineConstraint(Constraint):
 
         # Normalize and validate direction vector.
         direction_magnitude = np.linalg.norm(line_direction)
-        if direction_magnitude < EPSILON:
+        if direction_magnitude < EPS_GEOMETRIC:
             raise ValueError("Line direction vector cannot have zero length")
 
         self.line_direction = line_direction / direction_magnitude
@@ -531,7 +531,7 @@ class PointOnPlaneConstraint(Constraint):
 
         # Normalize and validate normal vector.
         normal_magnitude = np.linalg.norm(plane_normal)
-        if normal_magnitude < EPSILON:
+        if normal_magnitude < EPS_GEOMETRIC:
             raise ValueError("Plane normal cannot have zero length")
 
         self.plane_normal = plane_normal / normal_magnitude

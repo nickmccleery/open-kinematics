@@ -1,138 +1,405 @@
 """
 Camber shim geometry calculations.
 
-This module handles the geometric transformations required when camber shims are added
-or removed from a suspension system.
+This module solves suspension pose for the specified split body (outboard) camber shim.
+The camber block rotates about the upper ball joint, the upright body rotates
+about the lower ball joint, and the two shim faces remain separated by the
+requested setup thickness.
+
+The solver uses a 7 variable overdetermined least-squares formulation:
+    - wishbone_angle (1): Rotation angle of UBJ about the upper wishbone axis.
+      UBJ position is computed exactly on the wishbone arc by construction.
+    - camber_block_rotvec (3): Rotation vector for the camber block about UBJ.
+    - upright_body_rotvec (3): Rotation vector for the upright body about LBJ.
+
+With 10 residuals:
+    - 3 scalar datum A closure
+      (upright body face A - camber block face A = thickness * normal).
+    - 3 scalar datum B closure
+      (upright body face B - camber block face B = thickness * normal).
+    - 3 scalar normal alignment
+      (camber block and upright body face normals must match).
+    - 1 scalar trackrod length (preserves design trackrod length through shim change)
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import numpy as np
 
-from kinematics.core.constants import EPSILON
+from kinematics.core.constants import EPS_GEOMETRIC, EPS_NUMERICAL
+from kinematics.core.enums import PointID
 from kinematics.core.types import Vec3, make_vec3
 from kinematics.core.vector_utils.generic import normalize_vector
-from kinematics.core.vector_utils.geometric import compute_vector_vector_angle
-from kinematics.io.validation import Vec3Like, coerce_vec3
+from kinematics.core.vector_utils.geometric import rotate_vector_rodrigues
+from kinematics.solver import SolverConfig, solve_least_squares_problem
 from kinematics.suspensions.config.settings import CamberShimConfig
 
+CAMBER_SHIM_N_VARS = 7
+CAMBER_SHIM_N_RESIDUALS = 10
 
-def compute_shim_offset(shim_config: CamberShimConfig) -> Vec3:
+
+@dataclass(frozen=True)
+class CamberShimAssemblySolution:
     """
-    Compute the offset vector caused by shim thickness change.
+    Solved split-body shim assembly state.
+
+    The local assembly solve determines how both the camber block and upright
+    body rotate to accommodate the setup shim thickness. The suspension
+    integration consumes the solved UBJ position and upright body rotation to update
+    the global suspension state.
+    """
+
+    ubj_position: Vec3
+    camber_block_rot_vec: Vec3
+    upright_body_rot_vec: Vec3
+    camber_block_face_normal: Vec3
+    upright_body_face_normal: Vec3
+    upright_body_rot_axis: Vec3
+    upright_body_rot_angle_rad: float
+    constraint_residual_norm: float
+
+
+@dataclass(frozen=True)
+class CamberShimAssemblyContext:
+    """
+    Fixed geometry and invariants for a single shim assembly solve.
+
+    This is the local equivalent of the main solver's pre-built residual context:
+    all design-state offsets and invariant lengths are computed once, then reused
+    on every residual evaluation.
+    """
+
+    shim_setup_thickness: float
+    shim_face_normal_design: Vec3
+    wishbone_axis: Vec3
+    trackrod_inboard_position: Vec3
+    trackrod_length: float
+    lbj_position: Vec3
+    uwb_inboard_front_position: Vec3
+    uwb_inboard_front_to_ubj_design: Vec3
+    ubj_to_camber_block_datum_a: Vec3
+    ubj_to_camber_block_datum_b: Vec3
+    lbj_to_upright_body_datum_a: Vec3
+    lbj_to_upright_body_datum_b: Vec3
+    lbj_to_trackrod_outboard: Vec3
+
+
+def compute_camber_shim_assembly_residuals(
+    x: np.ndarray,
+    assembly_context: CamberShimAssemblyContext,
+) -> np.ndarray:
+    """
+    Compute the residual vector for the local camber shim assembly solve.
+
+    Variables (7):
+        x[0]   - Wishbone angle: rotation of UBJ about the upper wishbone axis.
+        x[1:4] - Camber block rotation vector about UBJ.
+        x[4:7] - Upright body rotation vector about LBJ.
+
+    Residuals (10):
+        [0:3]  - Shim contact/datum A closure: p_lA - p_uA - t * n_u.
+        [3:6]  - Shim contact/datum B closure: p_lB - p_uB - t * n_u.
+        [6:9]  - Normal alignment: n_l - n_u.
+        [9]    - Trackrod length: |rotated_tro - tri| - L_trackrod.
+    """
+    wishbone_angle = x[0]
+    camber_block_rot_vec = x[1:4]
+    upright_body_rot_vec = x[4:7]
+
+    # Compute UBJ position exactly on the wishbone arc by rotating the
+    # design-state offset about the wishbone axis (front-to-rear inboard line).
+    wishbone_rot_vec = assembly_context.wishbone_axis * wishbone_angle
+    solved_ubj_position = (
+        assembly_context.uwb_inboard_front_position
+        + rotate_vector_rodrigues(
+            assembly_context.uwb_inboard_front_to_ubj_design,
+            wishbone_rot_vec,
+        )
+    )
+
+    # Rotate the design-state pivot-to-datum vectors on each rigid half of the
+    # split upright.
+    rotated_ubj_to_camber_block_datum_a = rotate_vector_rodrigues(
+        assembly_context.ubj_to_camber_block_datum_a,
+        camber_block_rot_vec,
+    )
+    rotated_ubj_to_camber_block_datum_b = rotate_vector_rodrigues(
+        assembly_context.ubj_to_camber_block_datum_b,
+        camber_block_rot_vec,
+    )
+    solved_camber_block_face_normal = rotate_vector_rodrigues(
+        assembly_context.shim_face_normal_design,
+        camber_block_rot_vec,
+    )
+
+    rotated_lbj_to_upright_body_datum_a = rotate_vector_rodrigues(
+        assembly_context.lbj_to_upright_body_datum_a,
+        upright_body_rot_vec,
+    )
+    rotated_lbj_to_upright_body_datum_b = rotate_vector_rodrigues(
+        assembly_context.lbj_to_upright_body_datum_b,
+        upright_body_rot_vec,
+    )
+
+    solved_upright_body_face_normal = rotate_vector_rodrigues(
+        assembly_context.shim_face_normal_design,
+        upright_body_rot_vec,
+    )
+
+    # Reconstruct the world positions of the A/B interface datums from the solved
+    # rigid-body pose of each half.
+    solved_camber_block_datum_a = (
+        solved_ubj_position + rotated_ubj_to_camber_block_datum_a
+    )
+    solved_camber_block_datum_b = (
+        solved_ubj_position + rotated_ubj_to_camber_block_datum_b
+    )
+    solved_upright_body_datum_a = (
+        assembly_context.lbj_position + rotated_lbj_to_upright_body_datum_a
+    )
+    solved_upright_body_datum_b = (
+        assembly_context.lbj_position + rotated_lbj_to_upright_body_datum_b
+    )
+
+    # Closure residual: the opposing datum points on each shim face must have coaxial
+    # normals (parallel with the main face normal) and separated by exactly the setup
+    # shim thickness. Two dowel datums (A, B) clock the interface orientation; no
+    # relative rotation is allowed.
+    datum_a_closure_residual = (
+        solved_upright_body_datum_a
+        - solved_camber_block_datum_a
+        - assembly_context.shim_setup_thickness * solved_camber_block_face_normal
+    )
+    datum_b_closure_residual = (
+        solved_upright_body_datum_b
+        - solved_camber_block_datum_b
+        - assembly_context.shim_setup_thickness * solved_camber_block_face_normal
+    )
+
+    # The two faces must keep the same orientation, not just be parallel up to a
+    # sign flip. Using the vector difference rejects the anti-parallel branch.
+    face_normal_alignment_residual = (
+        solved_upright_body_face_normal - solved_camber_block_face_normal
+    )
+
+    # The trackrod remains a rigid link while its outboard pickup rotates with the
+    # lower body about LBJ.
+    rotated_trackrod_offset = rotate_vector_rodrigues(
+        assembly_context.lbj_to_trackrod_outboard,
+        upright_body_rot_vec,
+    )
+    solved_trackrod_outboard = assembly_context.lbj_position + rotated_trackrod_offset
+    trackrod_length_residual = (
+        np.linalg.norm(
+            solved_trackrod_outboard - assembly_context.trackrod_inboard_position
+        )
+        - assembly_context.trackrod_length
+    )
+
+    return np.concatenate(
+        [
+            datum_a_closure_residual,
+            datum_b_closure_residual,
+            face_normal_alignment_residual,
+            np.array([trackrod_length_residual]),
+        ]
+    )
+
+
+# These are the points we need to run the solve.
+REQUIRED_POINT_IDS = frozenset(
+    {
+        PointID.UPPER_WISHBONE_OUTBOARD,
+        PointID.LOWER_WISHBONE_OUTBOARD,
+        PointID.UPPER_WISHBONE_INBOARD_FRONT,
+        PointID.UPPER_WISHBONE_INBOARD_REAR,
+        PointID.TRACKROD_OUTBOARD,
+        PointID.TRACKROD_INBOARD,
+        PointID.CAMBER_SHIM_FACE_POINT_A,
+        PointID.CAMBER_SHIM_FACE_POINT_B,
+        PointID.CAMBER_SHIM_FACE_NORMAL,
+    }
+)
+
+
+def solve_camber_shim_assembly(
+    positions: dict[PointID, Vec3],
+    shim_config: CamberShimConfig,
+    solver_config: SolverConfig = SolverConfig(),
+) -> CamberShimAssemblySolution:
+    """
+    Solve the suspension pose for the specified split body (outboard) camber shim.
+
+    Finds the configuration where the camber block (rotating about the UBJ) and
+    upright body (rotating about the LBJ) produce parallel shim faces separated
+    by the setup thickness, while the UBJ remains on the upper wishbone arc,
+    with trackrod length remaining equal to design condition.
 
     Args:
-        shim_config: Camber shim configuration.
+        positions: Dict mapping PointID to Vec3 positions.
+        shim_config: Shim thickness configuration (design and setup thicknesses).
+        solver_config: Solver configuration (tolerances, verbosity, etc.).
 
     Returns:
-        Offset vector in mm (points outboard from chassis).
+        Solved assembly state with UBJ position, rotation vectors, and convergence
+        info.
+
+    Raises:
+        RuntimeError: If the solver fails to converge.
+        KeyError: If a required PointID is missing from positions.
     """
-    # Calculate thickness delta.
-    delta_thickness = shim_config.setup_thickness - shim_config.design_thickness
+    missing = REQUIRED_POINT_IDS - positions.keys()
+    if missing:
+        names = sorted(p.name for p in missing)
+        raise KeyError(f"Missing required PointIDs: {names}")
 
-    # Get and normalize the shim normal vector.
-    normal_unit = normalize_vector(coerce_vec3(shim_config.shim_normal))
+    upper_ball_joint_design = make_vec3(positions[PointID.UPPER_WISHBONE_OUTBOARD])
+    lower_ball_joint = make_vec3(positions[PointID.LOWER_WISHBONE_OUTBOARD])
+    upper_wishbone_pickup_front = make_vec3(
+        positions[PointID.UPPER_WISHBONE_INBOARD_FRONT]
+    )
+    upper_wishbone_pickup_rear = make_vec3(
+        positions[PointID.UPPER_WISHBONE_INBOARD_REAR]
+    )
+    trackrod_outboard_design = make_vec3(positions[PointID.TRACKROD_OUTBOARD])
+    trackrod_inboard = make_vec3(positions[PointID.TRACKROD_INBOARD])
+    shim_face_datum_a = make_vec3(positions[PointID.CAMBER_SHIM_FACE_POINT_A])
+    shim_face_datum_b = make_vec3(positions[PointID.CAMBER_SHIM_FACE_POINT_B])
+    design_face_normal = normalize_vector(
+        make_vec3(positions[PointID.CAMBER_SHIM_FACE_NORMAL])
+    )
 
-    # Offset is along the normal direction.
-    offset = normal_unit * delta_thickness
+    # Early exit when there is no shim thickness change.
+    if abs(shim_config.setup_thickness - shim_config.design_thickness) < EPS_GEOMETRIC:
+        return CamberShimAssemblySolution(
+            ubj_position=make_vec3(upper_ball_joint_design.copy()),
+            camber_block_rot_vec=make_vec3(np.zeros(3)),
+            upright_body_rot_vec=make_vec3(np.zeros(3)),
+            camber_block_face_normal=make_vec3(design_face_normal.copy()),
+            upright_body_face_normal=make_vec3(design_face_normal.copy()),
+            upright_body_rot_axis=make_vec3(np.array([0.0, 0.0, 1.0])),
+            upright_body_rot_angle_rad=0.0,
+            constraint_residual_norm=0.0,
+        )
 
-    return make_vec3(offset)
+    half_design_thickness = 0.5 * shim_config.design_thickness
 
+    # Design-state face datum positions. The camber block face is on the inboard
+    # side (toward UBJ), and the upright body face is on the outboard side
+    # (toward the main upright body).
+    camber_block_datum_a_design = (
+        shim_face_datum_a - half_design_thickness * design_face_normal
+    )
+    camber_block_datum_b_design = (
+        shim_face_datum_b - half_design_thickness * design_face_normal
+    )
+    upright_body_datum_a_design = (
+        shim_face_datum_a + half_design_thickness * design_face_normal
+    )
+    upright_body_datum_b_design = (
+        shim_face_datum_b + half_design_thickness * design_face_normal
+    )
 
-def rotate_point_about_axis(
-    point: Vec3, pivot: Vec3, axis: Vec3, angle_rad: float
-) -> Vec3:
-    """
-    Rotate a point about an arbitrary axis using Rodrigues' rotation formula.
+    # Upper wishbone axis: the line through the two inboard pickups about which
+    # the wishbone rotates. UBJ traces a circular arc about this axis.
+    wishbone_axis = normalize_vector(
+        upper_wishbone_pickup_rear - upper_wishbone_pickup_front
+    )
 
-    Args:
-        point: Point to rotate.
-        pivot: Point on the rotation axis.
-        axis: Unit vector defining the rotation axis direction.
-        angle_rad: Rotation angle in radians.
+    # Design-state offset from the front inboard pickup to UBJ. Rotating this
+    # vector about the wishbone axis by the solved wishbone angle recovers the
+    # solved UBJ position exactly on the arc.
+    upper_wishbone_pickup_front_to_ubj_design = (
+        upper_ball_joint_design - upper_wishbone_pickup_front
+    )
 
-    Returns:
-        Rotated point coordinates.
-    """
-    # Translate point to origin (pivot at origin).
-    p = point - pivot
+    # Design-state trackrod length. The trackrod is a rigid link so this distance
+    # must be preserved through the shim change.
+    trackrod_length = float(np.linalg.norm(trackrod_outboard_design - trackrod_inboard))
 
-    # Rodrigues' rotation formula:
-    # v_rot = v*cos(θ) + (k × v)*sin(θ) + k*(k·v)*(1 - cos(θ)).
-    k = axis
-    cos_angle = np.cos(angle_rad)
-    sin_angle = np.sin(angle_rad)
+    # Design-state pivot-to-datum vectors. These are the local vectors rotated by
+    # the respective rotation vectors during the solve.
+    ubj_to_camber_block_datum_a = camber_block_datum_a_design - upper_ball_joint_design
+    ubj_to_camber_block_datum_b = camber_block_datum_b_design - upper_ball_joint_design
+    lbj_to_upright_body_datum_a = upright_body_datum_a_design - lower_ball_joint
+    lbj_to_upright_body_datum_b = upright_body_datum_b_design - lower_ball_joint
 
-    # Cross product k × p.
-    k_cross_p = np.cross(k, p)
+    # Trackrod outboard vector from LBJ (rotates with the upright body).
+    lbj_to_trackrod_outboard = trackrod_outboard_design - lower_ball_joint
 
-    # Dot product k · p.
-    k_dot_p = np.dot(k, p)
+    assembly_context = CamberShimAssemblyContext(
+        lbj_position=lower_ball_joint,
+        uwb_inboard_front_position=upper_wishbone_pickup_front,
+        wishbone_axis=make_vec3(wishbone_axis),
+        uwb_inboard_front_to_ubj_design=make_vec3(
+            upper_wishbone_pickup_front_to_ubj_design
+        ),
+        trackrod_inboard_position=trackrod_inboard,
+        shim_face_normal_design=design_face_normal,
+        ubj_to_camber_block_datum_a=make_vec3(ubj_to_camber_block_datum_a),
+        ubj_to_camber_block_datum_b=make_vec3(ubj_to_camber_block_datum_b),
+        lbj_to_upright_body_datum_a=make_vec3(lbj_to_upright_body_datum_a),
+        lbj_to_upright_body_datum_b=make_vec3(lbj_to_upright_body_datum_b),
+        lbj_to_trackrod_outboard=make_vec3(lbj_to_trackrod_outboard),
+        shim_setup_thickness=shim_config.setup_thickness,
+        trackrod_length=trackrod_length,
+    )
 
-    # Apply Rodrigues formula.
-    p_rot = p * cos_angle + k_cross_p * sin_angle + k * k_dot_p * (1 - cos_angle)
+    # Seed from design condition: zero wishbone angle, zero rotations.
+    x_0 = np.zeros(CAMBER_SHIM_N_VARS)
 
-    # Translate back.
-    return make_vec3(p_rot + pivot)
+    result = solve_least_squares_problem(
+        residual_function=compute_camber_shim_assembly_residuals,
+        x_0=x_0,
+        args=(assembly_context,),
+        solver_config=solver_config,
+        n_residuals=CAMBER_SHIM_N_RESIDUALS,
+    )
 
+    if not result.success:
+        raise RuntimeError(
+            f"Camber shim assembly solve failed to converge.\nMessage: {result.message}"
+        )
 
-def compute_upright_rotation_from_shim(
-    lower_ball_joint: Vec3,
-    shim_face_center_design: Vec3Like,
-    shim_offset: Vec3,
-) -> tuple[Vec3, float]:
-    """
-    Compute the rotation axis and angle for the upright given a shim offset.
+    # Extract solution. Recover UBJ position from the solved wishbone angle.
+    solved_wishbone_angle_rad = result.x[0]
+    camber_block_rot_vec = make_vec3(result.x[1:4])
+    upright_body_rot_vec = make_vec3(result.x[4:7])
 
-    The upright rotates about an axis through the lower ball joint. The rotation
-    is determined by the constraint that the shim face center must move by the
-    shim offset vector.
+    solved_ubj_position = make_vec3(
+        upper_wishbone_pickup_front
+        + rotate_vector_rodrigues(
+            upper_wishbone_pickup_front_to_ubj_design,
+            wishbone_axis * solved_wishbone_angle_rad,
+        )
+    )
 
-    The rotation axis is perpendicular to both:
-    - The radial vector from lower ball joint to shim face center
-    - The shim offset direction (parallel to shim normal)
+    # Compute solved face normals.
+    solved_camber_block_face_normal = make_vec3(
+        rotate_vector_rodrigues(design_face_normal, result.x[1:4])
+    )
+    solved_upright_body_face_normal = make_vec3(
+        rotate_vector_rodrigues(design_face_normal, result.x[4:7])
+    )
 
-    This means the axis is also perpendicular to the shim normal, which makes
-    physical sense: pushing the shim face outboard causes rotation about an axis
-    perpendicular to that push direction.
+    # Extract upright body rotation axis and angle for suspension integration.
+    upright_body_rot_angle_rad = float(np.linalg.norm(upright_body_rot_vec))
+    if upright_body_rot_angle_rad > EPS_NUMERICAL:
+        upright_body_rot_axis = make_vec3(
+            upright_body_rot_vec / upright_body_rot_angle_rad
+        )
+    else:
+        upright_body_rot_axis = make_vec3(np.array([0.0, 0.0, 1.0]))
 
-    Args:
-        lower_ball_joint: Position of the lower ball joint (rotation pivot).
-        shim_face_center_design: Design position of the shim face center.
-        shim_offset: Offset vector from shim thickness change (parallel to shim normal).
-
-    Returns:
-        Tuple of (rotation_axis, rotation_angle_rad).
-        rotation_axis is a unit vector through the lower ball joint.
-        rotation_angle_rad is the angle to rotate the upright.
-    """
-    # Coerce to Vec3 (handles Pydantic model fields which may be typed as Vec3Like).
-    shim_center = coerce_vec3(shim_face_center_design)
-
-    # The shim face must move to: shim_face_center_design + shim_offset.
-    shim_face_target = make_vec3(shim_center + shim_offset)
-
-    # Vector from lower ball joint to design shim face center.
-    r_design = make_vec3(shim_center - lower_ball_joint)
-
-    # Vector from lower ball joint to target shim face center.
-    r_target = make_vec3(shim_face_target - lower_ball_joint)
-
-    # The rotation axis is perpendicular to both r_design and r_target.
-    # Note: r_target = r_design + shim_offset, so by cross product properties:
-    #   r_design × r_target = r_design × (r_design + shim_offset)
-    #                       = r_design × shim_offset
-    # Therefore the axis is perpendicular to both the radial arm and the shim normal.
-    cross = np.cross(r_design, r_target)
-    cross_magnitude = np.linalg.norm(cross)
-
-    if cross_magnitude < EPSILON:
-        # Vectors are parallel - no rotation needed.
-        return make_vec3(np.array([0.0, 0.0, 1.0])), 0.0
-
-    rotation_axis = make_vec3(cross / cross_magnitude)
-
-    # Compute the rotation angle between the two radial vectors.
-    rotation_angle = compute_vector_vector_angle(r_design, r_target)
-
-    return rotation_axis, rotation_angle
+    return CamberShimAssemblySolution(
+        ubj_position=solved_ubj_position,
+        camber_block_rot_vec=camber_block_rot_vec,
+        upright_body_rot_vec=upright_body_rot_vec,
+        camber_block_face_normal=solved_camber_block_face_normal,
+        upright_body_face_normal=solved_upright_body_face_normal,
+        upright_body_rot_axis=upright_body_rot_axis,
+        upright_body_rot_angle_rad=upright_body_rot_angle_rad,
+        constraint_residual_norm=float(np.linalg.norm(result.fun)),
+    )

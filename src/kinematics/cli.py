@@ -2,7 +2,6 @@ from pathlib import Path
 
 import typer
 
-from kinematics.core.enums import PointID
 from kinematics.io.geometry_loader import load_geometry
 from kinematics.io.results_writer import SolutionFrame, create_writer_for_path
 from kinematics.io.sweep_loader import parse_sweep_file
@@ -36,14 +35,13 @@ def sweep(
     writer = create_writer_for_path(
         out, geometry_path=str(geometry), sweep_path=str(sweep)
     )
+    output_points = suspension.OUTPUT_POINTS
     for idx, (st, solver_info) in enumerate(zip(solution_states, solver_stats)):
+        # Filter to the suspension type's declared output points, in order.
         positions = {
-            (PointID(pid).name if isinstance(pid, PointID) else str(pid)): (
-                float(pos[0]),
-                float(pos[1]),
-                float(pos[2]),
-            )
-            for pid, pos in st.positions.items()
+            pid.name: (float(pos[0]), float(pos[1]), float(pos[2]))
+            for pid in output_points
+            if (pos := st.positions.get(pid)) is not None
         }
 
         frame = SolutionFrame(positions=positions, solver_info=solver_info)
