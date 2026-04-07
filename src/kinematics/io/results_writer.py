@@ -13,7 +13,7 @@ import hashlib
 import json
 import time
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -58,7 +58,7 @@ class SupportedFormat(Enum):
     CSV = ".csv"
 
 
-FORMAT_VERSION = "1"
+FORMAT_VERSION = "2"
 PACKAGE_NAME = "kinematics"
 METADATA_KEY = b"kinematics_meta"  # Need bytes for pyarrow.
 
@@ -87,11 +87,14 @@ class SolutionFrame:
 
     Attributes:
         positions: Dictionary mapping point IDs to (x, y, z) coordinates.
-        solver_info: Optional dictionary of solver diagnostic information.
+        solver_info: Solver diagnostic information.
+        metrics: Ordered metric column names to values. Values may be None
+            for undefined geometry (e.g. parallel links).
     """
 
     positions: dict[str, tuple[float, float, float]]
     solver_info: SolverInfo
+    metrics: dict[str, float | None] = field(default_factory=dict)
 
 
 class BaseResultsWriter(ABC):
@@ -154,6 +157,10 @@ class BaseResultsWriter(ABC):
         row[StandardColumn.SOLVER_CONVERGED.value] = frame.solver_info.converged
         row[StandardColumn.SOLVER_MAX_RESIDUAL.value] = frame.solver_info.max_residual
         row[StandardColumn.SOLVER_NFEV.value] = frame.solver_info.nfev
+
+        # Metric columns (between solver and position columns).
+        for metric_name, metric_value in frame.metrics.items():
+            row[metric_name] = metric_value
 
         # Flatten position data into separate x/y/z columns.
         for point_id, (x, y, z) in frame.positions.items():

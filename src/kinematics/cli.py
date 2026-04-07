@@ -6,6 +6,7 @@ from kinematics.io.geometry_loader import load_geometry
 from kinematics.io.results_writer import SolutionFrame, create_writer_for_path
 from kinematics.io.sweep_loader import parse_sweep_file
 from kinematics.main import solve_sweep
+from kinematics.metrics import compute_metrics_for_state
 
 app = typer.Typer(add_completion=False, no_args_is_help=True)
 
@@ -36,6 +37,7 @@ def sweep(
         out, geometry_path=str(geometry), sweep_path=str(sweep)
     )
     output_points = suspension.OUTPUT_POINTS
+    config = suspension.config
     for idx, (st, solver_info) in enumerate(zip(solution_states, solver_stats)):
         # Filter to the suspension type's declared output points, in order.
         positions = {
@@ -44,7 +46,16 @@ def sweep(
             if (pos := st.positions.get(pid)) is not None
         }
 
-        frame = SolutionFrame(positions=positions, solver_info=solver_info)
+        # Compute post-solve metrics for this state.
+        metrics: dict[str, float | None] = {}
+        if config is not None:
+            metrics = compute_metrics_for_state(st, suspension, config)
+
+        frame = SolutionFrame(
+            positions=positions,
+            solver_info=solver_info,
+            metrics=metrics,
+        )
 
         writer.add_frame(idx, frame)
     writer.write()

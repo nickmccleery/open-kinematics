@@ -123,6 +123,19 @@ class Suspension(ABC):
         ...
 
     @abstractmethod
+    def compute_front_view_instant_center(self, state: SuspensionState) -> Vec3 | None:
+        """
+        Compute the front view instant center.
+
+        Args:
+            state: Current suspension state.
+
+        Returns:
+            FVIC coordinates, or None if not applicable.
+        """
+        ...
+
+    @abstractmethod
     def get_visualization_links(self) -> list[LinkVisualization]:
         """
         Get visualization links for rendering the suspension.

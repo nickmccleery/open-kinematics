@@ -18,15 +18,16 @@ All notable changes to this project will be documented in this file.
 - Renamed Jacobian "scatter" operations to "distribute" in `ResidualComputer._build_jac_plan`.
 - Moved underdetermined-system check out of the per-step loop in `solve_suspension_sweep` (both `n_vars` and `m_res` are constant across a sweep).
 - Simplified `DoubleWishboneSuspension._apply_camber_shim` docstring.
+- Default corner-metric exports now use `roadwheel_angle_deg` as the canonical steer column and no longer export duplicate `toe_deg` or placeholder anti-dive / anti-squat metrics.
 
 ### Added
 - `ResidualComputer.validate_target_count` enforces that every evaluation receives the same number of targets configured at init time.
 - Test for Jacobian shape consistency (`test_residual_computer_rejects_target_count_changes`).
 - Front-view (Y-Z) comparison plot in `visualize_camber_shim.py` overlaying design and setup suspensions with distinct colours.
+- Direct sign and known-value tests for `camber_deg`, `caster_deg`, and `roadwheel_angle_deg`, plus catalog coverage for the trusted corner-metric export set.
 
 ### Fixed
 - Clarified `get_wheel_center_on_ground` docstring to describe the wheel-center line/ground-plane intersection behavior.
 - Clarified `get_contact_patch_center` docstring as the lowest point on an ideal tire circle in the wheel center plane.
-
 
 

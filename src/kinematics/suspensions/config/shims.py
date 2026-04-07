@@ -366,12 +366,9 @@ def solve_camber_shim_assembly(
     camber_block_rot_vec = make_vec3(result.x[1:4])
     upright_body_rot_vec = make_vec3(result.x[4:7])
 
-    solved_ubj_position = (
-        upper_wishbone_pickup_front
-        + rotate_vector_rodrigues(
-            upper_wishbone_pickup_front_to_ubj_design,
-            wishbone_axis * solved_wishbone_angle_rad,
-        )
+    solved_ubj_position = upper_wishbone_pickup_front + rotate_vector_rodrigues(
+        upper_wishbone_pickup_front_to_ubj_design,
+        wishbone_axis * solved_wishbone_angle_rad,
     )
 
     # Compute solved face normals.

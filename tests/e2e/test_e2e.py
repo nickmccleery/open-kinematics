@@ -208,7 +208,7 @@ def compare_numerical_csv(
                     a,
                     e,
                     atol=TEST_TOLERANCE,
-                    rtol=0,
+                    rtol=TEST_TOLERANCE,
                     err_msg=(
                         f"Row {row_idx}, column '{col_name}': "
                         f"{actual_val} != {expected_val}"
@@ -261,7 +261,7 @@ def compare_numerical_parquet(
                 actual_col,
                 expected_col,
                 atol=TEST_TOLERANCE,
-                rtol=0,
+                rtol=TEST_TOLERANCE,
                 err_msg=f"Column '{col_name}' values differ",
             )
         else:

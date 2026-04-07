@@ -289,16 +289,42 @@ def intersect_line_with_vertical_plane(
     Returns:
         The 3D intersection point, or None if the line is parallel to the plane.
     """
-    direction_y = float(line_direction[Axis.Y])
+    return intersect_line_with_axis_aligned_plane(
+        line_point, line_direction, Axis.Y, plane_y
+    )
 
-    # If the line's direction in Y is near zero, it is parallel to the plane.
-    if abs(direction_y) < EPS_GEOMETRIC:
+
+def intersect_line_with_axis_aligned_plane(
+    line_point: np.ndarray,
+    line_direction: np.ndarray,
+    axis: Axis,
+    coordinate: float,
+) -> np.ndarray | None:
+    """
+    Find where a 3D line intersects an axis-aligned plane.
+
+    The plane is defined by fixing one coordinate axis to a constant value.
+    For example, axis=Axis.Y with coordinate=100 gives the plane y=100
+    (side-view plane), while axis=Axis.X with coordinate=0 gives the plane
+    x=0 (front-view plane).
+
+    Args:
+        line_point: A point on the 3D line.
+        line_direction: The direction vector of the 3D line.
+        axis: Which coordinate axis the plane is aligned to (X, Y, or Z).
+        coordinate: The constant value along that axis.
+
+    Returns:
+        The 3D intersection point, or None if the line is parallel to the plane.
+    """
+    direction_component = float(line_direction[axis])
+
+    # If the line's direction along the chosen axis is near zero, it is parallel.
+    if abs(direction_component) < EPS_GEOMETRIC:
         return None
 
-    # Solve for the parameter t where the line's Y-coordinate equals the plane's.
-    # The line equation is P(t) = line_point + t * line_direction.
-    # We solve P(t).y = plane_y.
-    t = (plane_y - float(line_point[Axis.Y])) / direction_y
+    # Solve for t where line_point[axis] + t * direction[axis] = coordinate.
+    t = (coordinate - float(line_point[axis])) / direction_component
 
     return line_point + t * line_direction
 

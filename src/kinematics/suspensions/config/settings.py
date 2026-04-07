@@ -121,9 +121,7 @@ class CamberShimConfig(BaseModel):
             )
         )
         if datum_separation < EPS_GEOMETRIC:
-            raise ValueError(
-                "shim_face_point_a and shim_face_point_b must be distinct"
-            )
+            raise ValueError("shim_face_point_a and shim_face_point_b must be distinct")
 
         return self
 
