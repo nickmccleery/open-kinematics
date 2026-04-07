@@ -49,9 +49,7 @@ def sweep(
         # Compute post-solve metrics for this state.
         metrics: dict[str, float | None] = {}
         if config is not None:
-            metrics = compute_metrics_for_state(
-                st, suspension, config
-            )
+            metrics = compute_metrics_for_state(st, suspension, config)
 
         frame = SolutionFrame(
             positions=positions,

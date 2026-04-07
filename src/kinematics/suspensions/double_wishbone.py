@@ -265,25 +265,28 @@ class DoubleWishboneSuspension(Suspension):
         return DerivedPointsSpec(functions=functions, dependencies=dependencies)
 
     def compute_side_view_instant_center(self, state: SuspensionState) -> Vec3 | None:
-        """Compute side view instant center from wishbone planes."""
+        """
+        Compute side view instant center from wishbone planes.
+
+        The SVIC is found by intersecting the 3D instant axis with the
+        vertical plane that passes through the wheel center's Y position.
+        Returns None when the instant axis is undefined or runs parallel
+        to that side-view plane.
+        """
         try:
             instant_axis = self.compute_instant_axis(state)
         except ValueError:
             raise
 
         wheel_center_y = float(state.positions[PointID.WHEEL_CENTER][1])
-        wheel_center_z = float(state.positions[PointID.WHEEL_CENTER][2])
 
         if instant_axis is None:
-            return make_vec3([np.inf, wheel_center_y, wheel_center_z])
+            return None
 
         axis_point, axis_direction = instant_axis
         svic = intersect_line_with_vertical_plane(
             axis_point, axis_direction, wheel_center_y
         )
-
-        if svic is None:
-            return make_vec3([np.inf, wheel_center_y, wheel_center_z])
 
         return svic
 
@@ -312,16 +315,16 @@ class DoubleWishboneSuspension(Suspension):
             d2=lower_plane[1],
         )
 
-    def compute_front_view_instant_center(
-        self, state: SuspensionState
-    ) -> Vec3 | None:
+    def compute_front_view_instant_center(self, state: SuspensionState) -> Vec3 | None:
         """
         Compute front view instant center from wishbone planes.
 
         The FVIC is found by intersecting the 3D instant axis (the line
-        where the upper and lower wishbone planes meet) with the x=0
-        plane. Returns None if the links are parallel or the instant
-        axis runs parallel to the front-view plane.
+        where the upper and lower wishbone planes meet) with the front-view
+        plane at the wheel center's X station. Using the wheel station keeps
+        the front-view geometry invariant to rigid longitudinal translations
+        of the entire corner. Returns None if the links are parallel or the
+        instant axis runs parallel to that front-view plane.
         """
         try:
             instant_axis = self.compute_instant_axis(state)
@@ -332,9 +335,10 @@ class DoubleWishboneSuspension(Suspension):
             return None
 
         axis_point, axis_direction = instant_axis
+        wheel_center_x = float(state.positions[PointID.WHEEL_CENTER][Axis.X])
 
         return intersect_line_with_axis_aligned_plane(
-            axis_point, axis_direction, Axis.X, 0.0
+            axis_point, axis_direction, Axis.X, wheel_center_x
         )
 
     def get_visualization_links(self) -> list[LinkVisualization]:

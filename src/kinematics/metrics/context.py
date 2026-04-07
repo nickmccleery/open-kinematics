@@ -41,18 +41,14 @@ class MetricContext:
         """
         Side-view instant center from the suspension.
         """
-        return self.suspension.compute_side_view_instant_center(
-            self.state
-        )
+        return self.suspension.compute_side_view_instant_center(self.state)
 
     @cached_property
     def front_view_ic(self) -> Vec3 | None:
         """
         Front-view instant center from the suspension.
         """
-        return self.suspension.compute_front_view_instant_center(
-            self.state
-        )
+        return self.suspension.compute_front_view_instant_center(self.state)
 
     @cached_property
     def wheel_center(self) -> Vec3:

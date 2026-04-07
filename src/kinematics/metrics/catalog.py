@@ -50,14 +50,13 @@ def _build_default_corner_metrics() -> tuple[MetricDefinition, ...]:
         def extract(ctx: "MetricContext") -> float | None:
             ic = getattr(ctx, attr)
             return None if ic is None else float(ic[axis])
+
         return extract
 
     return (
         MetricDefinition("camber_deg", calculate_camber),
         MetricDefinition("caster_deg", calculate_caster),
-        MetricDefinition(
-            "roadwheel_angle_deg", calculate_roadwheel_angle
-        ),
+        MetricDefinition("roadwheel_angle_deg", calculate_roadwheel_angle),
         MetricDefinition("toe_deg", calculate_toe),
         MetricDefinition("svic_x_mm", _ic_coord("side_view_ic", Axis.X)),
         MetricDefinition("svic_z_mm", _ic_coord("side_view_ic", Axis.Z)),
@@ -65,12 +64,8 @@ def _build_default_corner_metrics() -> tuple[MetricDefinition, ...]:
         MetricDefinition("fvic_y_mm", _ic_coord("front_view_ic", Axis.Y)),
         MetricDefinition("fvic_z_mm", _ic_coord("front_view_ic", Axis.Z)),
         MetricDefinition("fvsa_length_mm", calculate_fvsa_length),
-        MetricDefinition(
-            "anti_dive_pct", calculate_geometric_anti_dive
-        ),
-        MetricDefinition(
-            "anti_squat_pct", calculate_geometric_anti_squat
-        ),
+        MetricDefinition("anti_dive_pct", calculate_geometric_anti_dive),
+        MetricDefinition("anti_squat_pct", calculate_geometric_anti_squat),
     )
 
 

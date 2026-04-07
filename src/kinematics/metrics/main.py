@@ -69,10 +69,7 @@ def compute_metrics_for_sweep(
     Returns:
         A list of ordered metric rows, one per state.
     """
-    return [
-        compute_metrics_for_state(state, suspension, config)
-        for state in states
-    ]
+    return [compute_metrics_for_state(state, suspension, config) for state in states]
 
 
 def compute_metrics_for_state_from_suspension(

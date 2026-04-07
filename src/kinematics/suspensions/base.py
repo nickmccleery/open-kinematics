@@ -123,9 +123,7 @@ class Suspension(ABC):
         ...
 
     @abstractmethod
-    def compute_front_view_instant_center(
-        self, state: SuspensionState
-    ) -> Vec3 | None:
+    def compute_front_view_instant_center(self, state: SuspensionState) -> Vec3 | None:
         """
         Compute the front view instant center.
 
