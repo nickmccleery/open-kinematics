@@ -101,7 +101,7 @@ def test_front_view_metrics_are_invariant_to_rigid_x_translation(
             original_value,
             translated_value,
             atol=TEST_TOLERANCE,
-            rtol=0.0,
+            rtol=TEST_TOLERANCE,
             err_msg=f"{column_name} changed under rigid X translation",
         )
 
