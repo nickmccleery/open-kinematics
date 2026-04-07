@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from kinematics.core.constants import EPS_GEOMETRIC
 from kinematics.core.enums import Axis, PointID
 from kinematics.core.types import Vec3
 from kinematics.core.vector_utils.generic import normalize_vector
@@ -81,6 +82,25 @@ class MetricContext:
         lower = self.state.get(PointID.LOWER_WISHBONE_OUTBOARD)
         upper = self.state.get(PointID.UPPER_WISHBONE_OUTBOARD)
         return normalize_vector(upper - lower)
+
+    @cached_property
+    def steering_axis_ground_intersection(self) -> Vec3 | None:
+        """
+        Point where the steering axis line intersects the ground plane (Z=0).
+
+        Parameterises the line from the lower ball joint through the upper
+        ball joint and solves for the parameter t where Z=0. Returns None
+        if the steering axis is parallel to the ground plane.
+        """
+        lower = self.state.get(PointID.LOWER_WISHBONE_OUTBOARD)
+        upper = self.state.get(PointID.UPPER_WISHBONE_OUTBOARD)
+        direction = upper - lower
+        dz = direction[Axis.Z]
+        if abs(dz) < EPS_GEOMETRIC:
+            return None
+        # t such that lower + t * direction has Z = 0
+        t = -lower[Axis.Z] / dz
+        return lower + t * direction
 
     @cached_property
     def side_sign(self) -> float:

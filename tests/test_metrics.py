@@ -275,6 +275,9 @@ def test_default_corner_metric_catalog_matches_trusted_set() -> None:
     expected = [
         "camber_deg",
         "caster_deg",
+        "kpi_deg",
+        "scrub_radius_mm",
+        "mechanical_trail_mm",
         "roadwheel_angle_deg",
         "svic_x_mm",
         "svic_z_mm",

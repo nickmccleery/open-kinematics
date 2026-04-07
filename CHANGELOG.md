@@ -25,6 +25,9 @@ All notable changes to this project will be documented in this file.
 - Test for Jacobian shape consistency (`test_residual_computer_rejects_target_count_changes`).
 - Front-view (Y-Z) comparison plot in `visualize_camber_shim.py` overlaying design and setup suspensions with distinct colours.
 - Direct sign and known-value tests for `camber_deg`, `caster_deg`, and `roadwheel_angle_deg`, plus catalog coverage for the trusted corner-metric export set.
+- Kingpin inclination metric (`kpi_deg`): steering axis angle in the front-view (YZ) plane.
+- Scrub radius metric (`scrub_radius_mm`): lateral offset from steering axis ground intersection to contact patch centre.
+- Mechanical trail metric (`mechanical_trail_mm`): longitudinal offset from steering axis ground intersection to contact patch centre.
 
 ### Fixed
 - Clarified `get_wheel_center_on_ground` docstring to describe the wheel-center line/ground-plane intersection behavior.

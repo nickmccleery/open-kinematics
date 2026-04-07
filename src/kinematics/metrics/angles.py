@@ -71,6 +71,29 @@ def calculate_caster(ctx: MetricContext) -> float:
     return float(np.rad2deg(caster_rad))
 
 
+def calculate_kpi(ctx: MetricContext) -> float:
+    """
+    Kingpin inclination (KPI) angle in degrees.
+
+    KPI is the angle of the steering axis with respect to the
+    vehicle's vertical axis (Z-axis), viewed from the front
+    (YZ plane). Positive KPI means the top of the steering axis
+    is tilted inward (towards vehicle centerline).
+    """
+    side = ctx.side_sign
+    steering = ctx.steering_axis
+
+    # Project onto the front view plane (YZ plane).
+    proj_y = steering[Axis.Y]
+    proj_z = steering[Axis.Z]
+
+    # Positive KPI = top tilted inward. For the left side (Y > 0),
+    # inward tilt means negative Y component relative to bottom,
+    # so negate Y. For the right side, inward tilt is positive Y.
+    kpi_rad = np.arctan2(-side * proj_y, proj_z)
+    return float(np.rad2deg(kpi_rad))
+
+
 def calculate_roadwheel_angle(ctx: MetricContext) -> float:
     """
     Roadwheel angle in degrees.
