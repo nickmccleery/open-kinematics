@@ -110,7 +110,7 @@ class DoubleWishboneSuspension(Suspension):
         PointID.CONTACT_PATCH_CENTER,
     )
 
-    # Config names for points that should rotate with the lower upright body when a
+    # Config names for points that should rotate with the upright body when a
     # split camber shim is solved.
     UPRIGHT_MOUNTED_POINT_IDS: ClassVar[dict[str, PointID]] = {
         "axle_inboard": PointID.AXLE_INBOARD,
@@ -368,11 +368,11 @@ class DoubleWishboneSuspension(Suspension):
         """
         Apply camber shim transformation to the suspension geometry.
 
-        Solves the local split-body shim assembly to find how the upper shim block
-        and lower upright body rotate when the shim thickness changes. Then:
+        Solves the local split-body shim assembly to find how the camber block
+        and upright body rotate when the shim thickness changes. Then:
         1. Writes the solved UBJ position back (it moves along the upper wishbone arc).
         2. Rotates configured upright-mounted points about the fixed LBJ using the
-           solved lower-body rotation.
+           solved upright-body rotation.
         3. Leaves all chassis-mounted points unchanged.
         """
         if self.config is None or self.config.camber_shim is None:
@@ -403,7 +403,7 @@ class DoubleWishboneSuspension(Suspension):
         positions[PointID.UPPER_WISHBONE_OUTBOARD] = assembly_solution.ubj_position
 
         # Rotate each configured upright-mounted point about LBJ using the solved
-        # lower-body rotation axis and angle.
+        # upright-body rotation axis and angle.
         if assembly_solution.upright_body_rot_angle_rad > EPS_GEOMETRIC:
             lbj = positions[PointID.LOWER_WISHBONE_OUTBOARD]
             for point_name in self.config.upright_mounted_points:

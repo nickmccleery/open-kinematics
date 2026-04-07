@@ -3,7 +3,7 @@ Tests for camber shim functionality.
 
 These tests verify that the local split-body shim assembly solver correctly finds
 a configuration where both shim faces remain parallel at the requested thickness,
-UBJ stays on the upper wishbone arc, and the lower-body rotation is applied to
+UBJ stays on the upper wishbone arc, and the upright-body rotation is applied to
 upright-mounted points.
 """
 
@@ -161,19 +161,18 @@ def test_upper_arm_lengths_preserved():
 
 def test_face_normals_parallel_at_solution():
     """
-    At the solved state the upper and lower face normals must align.
+    At the solved state the camber-block and upright-body face normals must align.
     """
     positions, shim_config = make_simple_geometry(
         design_thickness=30.0, setup_thickness=40.0
     )
     sol = solve_camber_shim_assembly(positions, shim_config)
 
-    cross = np.cross(sol.camber_block_face_normal, sol.upright_body_face_normal)
+    normal_camber_block = sol.camber_block_face_normal
+    normal_upright = sol.upright_body_face_normal
+    cross = np.cross(normal_camber_block, normal_upright)
     assert np.linalg.norm(cross) < 1e-8
-    assert (
-        float(np.dot(sol.camber_block_face_normal, sol.upright_body_face_normal))
-        > 1.0 - 1e-8
-    )
+    assert float(np.dot(normal_camber_block, normal_upright)) > 1.0 - 1e-8
 
 
 def test_lbj_stays_fixed():
@@ -221,7 +220,7 @@ def test_trackrod_length_preserved():
 
     sol = solve_camber_shim_assembly(positions, shim_config)
 
-    # Compute where trackrod outboard lands after lower-body rotation about LBJ.
+    # Compute where trackrod outboard lands after upright-body rotation about LBJ.
     solved_tro = rotate_point_about_axis(
         positions[PointID.TRACKROD_OUTBOARD],
         positions[PointID.LOWER_WISHBONE_OUTBOARD],
