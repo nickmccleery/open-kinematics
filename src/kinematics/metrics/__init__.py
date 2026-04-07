@@ -1,21 +1,22 @@
 """
-This package provides functions for calculating key suspension geometry metrics from a
-solved SuspensionState.
+Post-solve suspension metrics.
+
+This package computes kinematic metrics from solved suspension states.
+Metrics are computed after solving, never inside the solve loop.
 """
 
-from kinematics.metrics.angles import calculate_camber, calculate_caster, calculate_toe
-from kinematics.metrics.antis import (
-    calculate_geometric_anti_dive,
-    calculate_geometric_anti_squat,
+from kinematics.metrics.context import MetricContext
+from kinematics.metrics.main import (
+    MetricRow,
+    compute_metrics_for_state,
+    compute_metrics_for_state_from_suspension,
+    compute_metrics_for_sweep,
 )
-from kinematics.metrics.main import SuspensionMetrics, compute_all_metrics
 
 __all__ = [
-    "compute_all_metrics",
-    "SuspensionMetrics",
-    "calculate_camber",
-    "calculate_caster",
-    "calculate_toe",
-    "calculate_geometric_anti_dive",
-    "calculate_geometric_anti_squat",
+    "MetricContext",
+    "MetricRow",
+    "compute_metrics_for_state",
+    "compute_metrics_for_state_from_suspension",
+    "compute_metrics_for_sweep",
 ]

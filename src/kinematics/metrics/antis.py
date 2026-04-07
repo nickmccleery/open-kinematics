@@ -1,37 +1,40 @@
 """
-This module contains functions for calculating "anti" geometry metrics like anti-dive
-and anti-squat.
+Anti-geometry metrics (anti-dive, anti-squat).
+
+These metrics quantify how much the suspension geometry resists pitch
+under braking or acceleration.
 """
 
-from kinematics.io.validation import Vec3Like
-from kinematics.state import SuspensionState
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from kinematics.metrics.context import MetricContext
 
 
-def calculate_geometric_anti_dive(
-    state: SuspensionState,
-    svic: Vec3Like,
-    cg_position: Vec3Like,
-    wheelbase: float,
-    tire_radius: float,
-) -> float:
-    """Calculate geometric anti-dive percentage (stub - not yet implemented)."""
-    # TODO: Implement anti-dive calculation.
+def calculate_geometric_anti_dive(ctx: MetricContext) -> float | None:
+    """
+    Geometric anti-dive as a percentage.
+
+    Returns None if the SVIC is undefined (parallel links).
+    """
+    svic = ctx.side_view_ic
+    if svic is None:
+        return None
+    # TODO: Implement anti-dive calculation using SVIC, CG, wheelbase,
+    # and tire radius from ctx.
     return 0.0
 
 
-def calculate_geometric_anti_squat(
-    state: SuspensionState,
-    svic: Vec3Like,
-    cg_position: Vec3Like,
-    wheelbase: float,
-    tire_radius: float,
-) -> float:
-    """Calculate geometric anti-squat percentage (stub - not yet implemented)."""
+def calculate_geometric_anti_squat(ctx: MetricContext) -> float | None:
+    """
+    Geometric anti-squat as a percentage.
+
+    Returns None if the SVIC is undefined (parallel links).
+    """
+    svic = ctx.side_view_ic
+    if svic is None:
+        return None
     # TODO: Implement anti-squat calculation.
-    return calculate_geometric_anti_dive(
-        state,
-        svic,
-        cg_position,
-        wheelbase,
-        tire_radius,
-    )
+    return 0.0

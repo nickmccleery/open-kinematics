@@ -20,11 +20,12 @@ from kinematics.constraints import (
     PointOnLineConstraint,
 )
 from kinematics.core.constants import EPS_GEOMETRIC
-from kinematics.core.enums import PointID, ShimType
+from kinematics.core.enums import Axis, PointID, ShimType
 from kinematics.core.types import Vec3, WorldAxisSystem, make_vec3
 from kinematics.core.vector_utils.geometric import (
     compute_point_point_distance,
     compute_vector_vector_angle,
+    intersect_line_with_axis_aligned_plane,
     intersect_line_with_vertical_plane,
     intersect_two_planes,
     plane_from_three_points,
@@ -309,6 +310,31 @@ class DoubleWishboneSuspension(Suspension):
             d1=upper_plane[1],
             n2=lower_plane[0],
             d2=lower_plane[1],
+        )
+
+    def compute_front_view_instant_center(
+        self, state: SuspensionState
+    ) -> Vec3 | None:
+        """
+        Compute front view instant center from wishbone planes.
+
+        The FVIC is found by intersecting the 3D instant axis (the line
+        where the upper and lower wishbone planes meet) with the x=0
+        plane. Returns None if the links are parallel or the instant
+        axis runs parallel to the front-view plane.
+        """
+        try:
+            instant_axis = self.compute_instant_axis(state)
+        except ValueError:
+            raise
+
+        if instant_axis is None:
+            return None
+
+        axis_point, axis_direction = instant_axis
+
+        return intersect_line_with_axis_aligned_plane(
+            axis_point, axis_direction, Axis.X, 0.0
         )
 
     def get_visualization_links(self) -> list[LinkVisualization]:

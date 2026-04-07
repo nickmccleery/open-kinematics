@@ -1,0 +1,116 @@
+"""
+Metric computation context.
+
+Provides a single per-state object that resolves and caches shared geometry
+needed by multiple metric functions (wheel axis, contact patch, ICs, etc.).
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from functools import cached_property
+from typing import TYPE_CHECKING
+
+import numpy as np
+
+from kinematics.core.enums import Axis, PointID
+from kinematics.core.types import Vec3
+from kinematics.core.vector_utils.generic import normalize_vector
+from kinematics.state import SuspensionState
+from kinematics.suspensions.config.settings import SuspensionConfig
+
+if TYPE_CHECKING:
+    from kinematics.suspensions.base import Suspension
+
+
+@dataclass
+class MetricContext:
+    """
+    Shared context for computing metrics on a single solved state.
+
+    Caches expensive geometry (ICs, wheel axis, etc.) so that multiple
+    metric functions can share the same intermediate results.
+    """
+
+    state: SuspensionState
+    suspension: "Suspension"
+    config: SuspensionConfig
+
+    @cached_property
+    def side_view_ic(self) -> Vec3 | None:
+        """
+        Side-view instant center from the suspension.
+        """
+        return self.suspension.compute_side_view_instant_center(
+            self.state
+        )
+
+    @cached_property
+    def front_view_ic(self) -> Vec3 | None:
+        """
+        Front-view instant center from the suspension.
+        """
+        return self.suspension.compute_front_view_instant_center(
+            self.state
+        )
+
+    @cached_property
+    def wheel_center(self) -> Vec3:
+        """
+        Wheel center position.
+        """
+        return self.state.get(PointID.WHEEL_CENTER)
+
+    @cached_property
+    def contact_patch_center(self) -> Vec3:
+        """
+        Contact patch center position.
+        """
+        return self.state.get(PointID.CONTACT_PATCH_CENTER)
+
+    @cached_property
+    def wheel_axis(self) -> Vec3:
+        """
+        Unit vector along the axle from inboard to outboard.
+        """
+        axle_in = self.state.get(PointID.AXLE_INBOARD)
+        axle_out = self.state.get(PointID.AXLE_OUTBOARD)
+        return normalize_vector(axle_out - axle_in)
+
+    @cached_property
+    def steering_axis(self) -> Vec3:
+        """
+        Unit vector along the steering axis from lower to upper pivot.
+        """
+        lower = self.state.get(PointID.LOWER_WISHBONE_OUTBOARD)
+        upper = self.state.get(PointID.UPPER_WISHBONE_OUTBOARD)
+        return normalize_vector(upper - lower)
+
+    @cached_property
+    def side_sign(self) -> float:
+        """
+        Vehicle side indicator: 1.0 for left (Y > 0), -1.0 for right.
+        """
+        y_pos = self.state.get(PointID.AXLE_OUTBOARD)[Axis.Y]
+        return -1.0 if y_pos < 0 else 1.0
+
+    @cached_property
+    def tire_radius(self) -> float:
+        """
+        Nominal tire radius from configuration.
+        """
+        return self.config.wheel.tire.nominal_radius
+
+    @cached_property
+    def wheelbase(self) -> float:
+        """
+        Vehicle wheelbase from configuration.
+        """
+        return self.config.wheelbase
+
+    @cached_property
+    def cg_position(self) -> Vec3:
+        """
+        Center of gravity position from configuration.
+        """
+        return np.asarray(self.config.cg_position, dtype=float)
