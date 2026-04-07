@@ -153,5 +153,3 @@ def test_circular_dependency_detection():
 
     with pytest.raises(ValueError, match="Circular dependency detected"):
         DerivedPointsManager(spec)
-
-
