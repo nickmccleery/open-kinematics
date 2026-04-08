@@ -13,7 +13,7 @@ import pytest
 from kinematics.components.upright import Upright, UprightAttachments, UprightHardpoints
 from kinematics.core.enums import PointID
 from kinematics.core.rigid_body import LocalCoordinateSystem
-from kinematics.core.types import make_vec3
+from kinematics.core.types import Vec3, make_vec3
 
 
 class TestLocalCoordinateSystem:
@@ -355,7 +355,7 @@ class TestHardpointsArchitecture:
     """
 
     @pytest.fixture
-    def hardpoints_registry(self):
+    def hardpoints_registry(self) -> dict[PointID, Vec3]:
         """
         Create a hardpoints registry with typical double wishbone points.
 
@@ -373,7 +373,7 @@ class TestHardpointsArchitecture:
         }
 
     @pytest.fixture
-    def hardpoint_point_ids(self):
+    def hardpoint_point_ids(self) -> dict[str, PointID]:
         """
         Standard mount ID mapping for double wishbone upright.
         """
@@ -384,7 +384,7 @@ class TestHardpointsArchitecture:
         }
 
     @pytest.fixture
-    def attachments(self):
+    def attachments(self) -> dict[str, Vec3]:
         """
         Attachment positions (axle) in global coordinates at design.
         """
@@ -486,7 +486,7 @@ class TestHardpointsArchitecture:
         """
         Test that missing attachments raise ValueError.
         """
-        incomplete_attachments = {
+        incomplete_attachments: dict[str, Vec3] = {
             "axle_inboard": make_vec3([-20, 800, 308.426]),
             # Missing axle_outboard
         }
