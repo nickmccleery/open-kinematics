@@ -8,8 +8,7 @@ avoid code duplication.
 
 import numpy as np
 
-from kinematics.core.constants import EPS_GEOMETRIC
-from kinematics.core.enums import Axis, PointID
+from kinematics.core.enums import PointID
 from kinematics.core.types import Vec3, WorldAxisSystem
 from kinematics.core.vector_utils.generic import normalize_vector
 

@@ -23,6 +23,9 @@ OUTPUT_DIR = Path("scripts/plots")
 
 
 def main() -> None:
+    """
+    Run an unsteered bump sweep and produce validation plots.
+    """
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     suspension = load_geometry(GEOMETRY)
@@ -33,16 +36,16 @@ def main() -> None:
 
     # Extract data from each solved state.
     wheel_center_z: list[float] = []
-    camber: list[float] = []
-    caster: list[float] = []
-    roadwheel_angle: list[float] = []
+    camber: list[float | None] = []
+    caster: list[float | None] = []
+    roadwheel_angle: list[float | None] = []
     svic_x: list[float | None] = []
     svic_z: list[float | None] = []
     fvic_y: list[float | None] = []
     fvic_z: list[float | None] = []
     svsa: list[float | None] = []
     fvsa: list[float | None] = []
-    kpi: list[float] = []
+    kpi: list[float | None] = []
     mechanical_trail: list[float | None] = []
     scrub_radius: list[float | None] = []
 
@@ -84,6 +87,10 @@ def main() -> None:
         arr = np.array([v if v is not None else np.nan for v in data])
         return np.ma.masked_where(np.isnan(arr) | (np.abs(arr) > threshold), arr)
 
+    camber_m = to_masked(camber)
+    caster_m = to_masked(caster)
+    rwa_m = to_masked(roadwheel_angle)
+    kpi_m = to_masked(kpi)
     svic_x_m = to_masked(svic_x)
     svic_z_m = to_masked(svic_z)
     fvic_y_m = to_masked(fvic_y)
@@ -146,7 +153,7 @@ def main() -> None:
     fig4, axes4 = plt.subplots(2, 3, figsize=(15, 8))
     fig4.suptitle("Pure Bump Sweep Metrics", fontsize=14)
 
-    axes4[0, 0].plot(bump, camber, "b-", linewidth=1.5)
+    axes4[0, 0].plot(bump, camber_m, "b-", linewidth=1.5)
     axes4[0, 0].set_ylabel("Camber [deg]")
     axes4[0, 0].set_title("Camber Angle")
     axes4[0, 0].set_xlabel(x_label)
@@ -154,20 +161,20 @@ def main() -> None:
     axes4[0, 0].grid(True, alpha=0.3)
     axes4[0, 0].axhline(0, color="k", linewidth=0.5)
 
-    axes4[0, 1].plot(bump, caster, "r-", linewidth=1.5)
+    axes4[0, 1].plot(bump, caster_m, "r-", linewidth=1.5)
     axes4[0, 1].set_ylabel("Caster [deg]")
     axes4[0, 1].set_title("Caster Angle")
     axes4[0, 1].set_xlabel(x_label)
     axes4[0, 1].grid(True, alpha=0.3)
 
-    axes4[0, 2].plot(bump, roadwheel_angle, "g-", linewidth=1.5)
+    axes4[0, 2].plot(bump, rwa_m, "g-", linewidth=1.5)
     axes4[0, 2].set_ylabel("RWA [deg]")
     axes4[0, 2].set_title("Roadwheel Angle")
     axes4[0, 2].set_xlabel(x_label)
     axes4[0, 2].grid(True, alpha=0.3)
     axes4[0, 2].axhline(0, color="k", linewidth=0.5)
 
-    axes4[1, 0].plot(bump, kpi, "m-", linewidth=1.5)
+    axes4[1, 0].plot(bump, kpi_m, "m-", linewidth=1.5)
     axes4[1, 0].set_ylabel("KPI [deg]")
     axes4[1, 0].set_title("Kingpin Inclination")
     axes4[1, 0].set_xlabel(x_label)

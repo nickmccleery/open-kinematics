@@ -6,6 +6,7 @@ from kinematics.io.geometry_loader import load_geometry
 from kinematics.io.sweep_loader import parse_sweep_file
 from kinematics.main import solve_sweep
 from kinematics.metrics.catalog import get_default_corner_metrics
+from kinematics.metrics.context import MetricContext
 from kinematics.metrics.main import compute_metrics_for_state_from_suspension
 from kinematics.suspensions.double_wishbone import DoubleWishboneSuspension
 
@@ -140,6 +141,42 @@ def test_parallel_wishbone_planes_produce_null_ic_metrics(
     assert metrics["fvic_y_mm"] is None
     assert metrics["fvic_z_mm"] is None
     assert metrics["fvsa_length_mm"] is None
+
+
+def test_steering_axis_ground_intersection_uses_contact_patch_height(
+    double_wishbone_geometry_file,
+) -> None:
+    """
+    The steering-axis ground intersection should be evaluated on the
+    horizontal plane through the contact patch, not on world Z = 0.
+    """
+    suspension = load_geometry(double_wishbone_geometry_file)
+    assert isinstance(suspension, DoubleWishboneSuspension)
+    assert suspension.config is not None
+
+    state = suspension.initial_state().copy()
+
+    lower = state.get(PointID.LOWER_WISHBONE_OUTBOARD).copy()
+    upper = state.get(PointID.UPPER_WISHBONE_OUTBOARD).copy()
+    direction = upper - lower
+
+    contact_patch = state.get(PointID.CONTACT_PATCH_CENTER).copy()
+    contact_patch[2] = 123.456
+    state[PointID.CONTACT_PATCH_CENTER] = contact_patch
+
+    expected_t = (contact_patch[2] - lower[2]) / direction[2]
+    expected_intersection = lower + expected_t * direction
+
+    ctx = MetricContext(state=state, suspension=suspension, config=suspension.config)
+    actual_intersection = ctx.steering_axis_ground_intersection
+
+    assert actual_intersection is not None
+    np.testing.assert_allclose(
+        actual_intersection,
+        expected_intersection,
+        atol=TEST_TOLERANCE,
+        err_msg="Steering-axis intersection should use contact patch Z height",
+    )
 
 
 class TestSignConventionsAndKnownValues:

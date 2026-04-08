@@ -2,8 +2,8 @@
 Steering axis geometry metrics.
 
 Scrub radius and mechanical trail are measured from the point where the
-steering axis (kingpin axis) intersects the ground plane (Z=0) to the
-contact patch centre.
+steering axis (kingpin axis) intersects the local ground reference plane
+through the contact patch centre to the contact patch centre itself.
 
 Coordinate System Assumption: ISO 8855 (X-Forward, Y-Left, Z-Up).
 """
@@ -28,7 +28,10 @@ def calculate_scrub_radius(ctx: MetricContext) -> float | None:
     patch (the common case for a double-wishbone layout with positive
     KPI).
 
-    Returns None if the steering axis is parallel to the ground.
+    The steering-axis intersection is evaluated on the horizontal plane
+    at the contact patch Z-height, not at world Z = 0.
+
+    Returns None if the steering axis is parallel to that plane.
     """
     ground_pt = ctx.steering_axis_ground_intersection
     if ground_pt is None:
@@ -51,7 +54,10 @@ def calculate_mechanical_trail(ctx: MetricContext) -> float | None:
     trail means the contact patch is behind (rearward of) the steering
     axis ground intersection, which produces a self-centring moment.
 
-    Returns None if the steering axis is parallel to the ground.
+    The steering-axis intersection is evaluated on the horizontal plane
+    at the contact patch Z-height, not at world Z = 0.
+
+    Returns None if the steering axis is parallel to that plane.
     """
     ground_pt = ctx.steering_axis_ground_intersection
     if ground_pt is None:
