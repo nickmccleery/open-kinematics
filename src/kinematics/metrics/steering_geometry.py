@@ -2,8 +2,8 @@
 Steering axis geometry metrics.
 
 Scrub radius and mechanical trail are measured from the point where the
-steering axis (kingpin axis) intersects the ground plane (Z=0) to the
-contact patch centre.
+steering axis (kingpin axis) intersects the local ground reference plane
+through the contact patch centre to the contact patch centre itself.
 
 Coordinate System Assumption: ISO 8855 (X-Forward, Y-Left, Z-Up).
 """
@@ -12,7 +12,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import numpy as np
+
 from kinematics.core.enums import Axis
+from kinematics.core.vector_utils.generic import normalize_vector
 
 if TYPE_CHECKING:
     from kinematics.metrics.context import MetricContext
@@ -22,24 +25,37 @@ def calculate_scrub_radius(ctx: MetricContext) -> float | None:
     """
     Scrub radius in mm.
 
-    The lateral (Y-axis) distance from the steering axis ground
-    intersection to the contact patch centre. Positive scrub radius
-    means the steering axis meets the ground inboard of the contact
-    patch (the common case for a double-wishbone layout with positive
-    KPI).
+    The distance from the steering axis ground intersection to the
+    contact patch centre, measured along the wheel's lateral direction
+    in the ground plane. Projecting the wheel axis into the ground
+    plane keeps the measurement correct when the wheel is both steered
+    and cambered.
 
-    Returns None if the steering axis is parallel to the ground.
+    Positive scrub radius means the steering axis meets the ground
+    inboard of the contact patch (the common case for a double-
+    wishbone layout with positive KPI).
+
+    The steering-axis intersection is evaluated on the horizontal plane
+    at the contact patch Z-height, not at world Z = 0.
+
+    Returns None if the steering axis is parallel to that plane.
     """
     ground_pt = ctx.steering_axis_ground_intersection
     if ground_pt is None:
         return None
     cp = ctx.contact_patch_center
-    # Positive when the ground intersection is inboard of the contact
-    # patch. For a left-side corner (side_sign > 0, Y > 0), inboard
-    # means ground_pt_Y < cp_Y, so negate. For a right-side corner
-    # it is the opposite.
-    dy = float(ground_pt[Axis.Y] - cp[Axis.Y])
-    return float(-ctx.side_sign * dy)
+    # Scrub radius lives in the road plane, so remove the camber-driven
+    # Z component from the wheel axis before measuring the lateral offset.
+    # Negate so that positive scrub means the ground intersection is
+    # inboard of the contact patch. The projected wheel axis already
+    # encodes left/right handedness, so no explicit side_sign is needed.
+    displacement = ground_pt - cp
+    wheel_lateral_ground = np.array(
+        [ctx.wheel_axis[Axis.X], ctx.wheel_axis[Axis.Y], 0.0],
+        dtype=np.float64,
+    )
+    wheel_lateral_ground = normalize_vector(wheel_lateral_ground)
+    return -float(np.dot(displacement, wheel_lateral_ground))
 
 
 def calculate_mechanical_trail(ctx: MetricContext) -> float | None:
@@ -51,7 +67,10 @@ def calculate_mechanical_trail(ctx: MetricContext) -> float | None:
     trail means the contact patch is behind (rearward of) the steering
     axis ground intersection, which produces a self-centring moment.
 
-    Returns None if the steering axis is parallel to the ground.
+    The steering-axis intersection is evaluated on the horizontal plane
+    at the contact patch Z-height, not at world Z = 0.
+
+    Returns None if the steering axis is parallel to that plane.
     """
     ground_pt = ctx.steering_axis_ground_intersection
     if ground_pt is None:

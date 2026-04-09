@@ -29,8 +29,13 @@ All notable changes to this project will be documented in this file.
 - Scrub radius metric (`scrub_radius_mm`): lateral offset from steering axis ground intersection to contact patch centre.
 - Mechanical trail metric (`mechanical_trail_mm`): longitudinal offset from steering axis ground intersection to contact patch centre.
 
+### Removed
+- `WHEEL_CENTER_ON_GROUND` point and `get_wheel_center_on_ground` derived point function. The Z=0 ground plane assumption was incorrect in a chassis-fixed frame; ground-plane intersections now use the contact patch Z via `MetricContext.ground_z`.
+
 ### Fixed
-- Clarified `get_wheel_center_on_ground` docstring to describe the wheel-center line/ground-plane intersection behavior.
+- Scrub radius now projects along the wheel axle direction in the ground plane instead of the global Y axis, giving correct values when the wheel is steered or cambered.
+- Scrub radius and mechanical trail now intersect the steering axis at the contact patch Z rather than Z=0, giving correct values through bump travel.
 - Clarified `get_contact_patch_center` docstring as the lowest point on an ideal tire circle in the wheel center plane.
+- Dashboard plots now show KPI, mechanical trail, and scrub radius instead of swing arm lengths and FVIC height. Camber plot Y-axis tuned to [-2.5, -1.5] degrees.
 
 

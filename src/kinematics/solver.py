@@ -203,7 +203,7 @@ class ResidualComputer:
         }
         self.n_vars = len(state_buffer.free_points_order) * 3
         self.jac_buffer = np.zeros((self.n_residuals, self.n_vars), dtype=np.float64)
-        self.jac_plan = [self._build_jac_plan(c) for c in constraints]
+        self.jac_plan = [self.build_jac_plan(c) for c in constraints]
 
     def validate_target_count(self, step_targets: list[PointTarget]) -> None:
         """
@@ -270,7 +270,7 @@ class ResidualComputer:
     # Analytical Jacobian
     # ------------------------------------------------------------------
 
-    def _build_jac_plan(self, constraint: Constraint):
+    def build_jac_plan(self, constraint: Constraint):
         """
         Pre-compute the Jacobian function and distribution mapping for constraint.
 

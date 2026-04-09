@@ -6,7 +6,9 @@ from kinematics.io.geometry_loader import load_geometry
 from kinematics.io.sweep_loader import parse_sweep_file
 from kinematics.main import solve_sweep
 from kinematics.metrics.catalog import get_default_corner_metrics
+from kinematics.metrics.context import MetricContext
 from kinematics.metrics.main import compute_metrics_for_state_from_suspension
+from kinematics.points.derived.manager import DerivedPointsManager
 from kinematics.suspensions.double_wishbone import DoubleWishboneSuspension
 
 
@@ -140,6 +142,101 @@ def test_parallel_wishbone_planes_produce_null_ic_metrics(
     assert metrics["fvic_y_mm"] is None
     assert metrics["fvic_z_mm"] is None
     assert metrics["fvsa_length_mm"] is None
+
+
+def test_steering_axis_ground_intersection_uses_contact_patch_height(
+    double_wishbone_geometry_file,
+) -> None:
+    """
+    The steering-axis ground intersection should be evaluated on the
+    horizontal plane through the contact patch, not on world Z = 0.
+    """
+    suspension = load_geometry(double_wishbone_geometry_file)
+    assert isinstance(suspension, DoubleWishboneSuspension)
+    assert suspension.config is not None
+
+    state = suspension.initial_state().copy()
+
+    lower = state.get(PointID.LOWER_WISHBONE_OUTBOARD).copy()
+    upper = state.get(PointID.UPPER_WISHBONE_OUTBOARD).copy()
+    direction = upper - lower
+
+    contact_patch = state.get(PointID.CONTACT_PATCH_CENTER).copy()
+    contact_patch[2] = 123.456
+    state[PointID.CONTACT_PATCH_CENTER] = contact_patch
+
+    expected_t = (contact_patch[2] - lower[2]) / direction[2]
+    expected_intersection = lower + expected_t * direction
+
+    ctx = MetricContext(state=state, suspension=suspension, config=suspension.config)
+    actual_intersection = ctx.steering_axis_ground_intersection
+
+    assert actual_intersection is not None
+    np.testing.assert_allclose(
+        actual_intersection,
+        expected_intersection,
+        atol=TEST_TOLERANCE,
+        err_msg="Steering-axis intersection should use contact patch Z height",
+    )
+
+
+def test_scrub_radius_uses_ground_plane_wheel_lateral_direction(
+    double_wishbone_geometry_file,
+) -> None:
+    """
+    Scrub radius should use the wheel lateral direction in the ground
+    plane, not the full 3D axle direction.
+    """
+    suspension = load_geometry(double_wishbone_geometry_file)
+    assert isinstance(suspension, DoubleWishboneSuspension)
+    assert suspension.config is not None
+
+    state = suspension.initial_state().copy()
+    axle_inboard = state.get(PointID.AXLE_INBOARD).copy()
+
+    # Force a state with both steer and camber so the ground-plane
+    # projection differs measurably from the raw 3D axle direction.
+    state[PointID.AXLE_OUTBOARD] = axle_inboard + np.array(
+        [120.0, 150.0, 120.0],
+        dtype=np.float64,
+    )
+    DerivedPointsManager(suspension.derived_spec()).update_in_place(state.positions)
+
+    metrics = compute_metrics_for_state_from_suspension(state, suspension)
+    scrub_radius = metrics["scrub_radius_mm"]
+    roadwheel_angle = metrics["roadwheel_angle_deg"]
+    camber = metrics["camber_deg"]
+
+    assert scrub_radius is not None
+    assert roadwheel_angle is not None
+    assert camber is not None
+    assert abs(roadwheel_angle) > 1.0
+    assert abs(camber) > 1.0
+
+    ctx = MetricContext(state=state, suspension=suspension, config=suspension.config)
+    ground_pt = ctx.steering_axis_ground_intersection
+    assert ground_pt is not None
+
+    displacement = ground_pt - ctx.contact_patch_center
+    wheel_lateral_ground = ctx.wheel_axis.copy()
+    wheel_lateral_ground[2] = 0.0
+    wheel_lateral_ground /= np.linalg.norm(wheel_lateral_ground)
+
+    expected_scrub_radius = -float(np.dot(displacement, wheel_lateral_ground))
+    old_3d_axle_projection = -float(np.dot(displacement, ctx.wheel_axis))
+
+    np.testing.assert_allclose(
+        scrub_radius,
+        expected_scrub_radius,
+        atol=TEST_TOLERANCE,
+        err_msg="Scrub radius should use wheel lateral direction"
+        " on the ground plane",
+    )
+    assert not np.isclose(
+        scrub_radius,
+        old_3d_axle_projection,
+        atol=1e-3,
+    ), "Scrub radius should not use the full 3D axle direction"
 
 
 class TestSignConventionsAndKnownValues:
