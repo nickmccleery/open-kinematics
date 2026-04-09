@@ -379,7 +379,7 @@ class DoubleWishboneSuspension(Suspension):
             LinkVisualization(
                 points=[PointID.CONTACT_PATCH_CENTER],
                 color="black",
-                label="Contact Patch Center",
+                label="Contact Patch",
                 linewidth=0.0,
                 marker="o",
                 markersize=15.0,

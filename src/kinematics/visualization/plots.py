@@ -195,19 +195,6 @@ def plot_suspension_on_axis(
     # Draw the wheel.
     visualizer.draw_wheel(ax, positions)
 
-    # Add contact patch center if it exists.
-    if PointID.CONTACT_PATCH_CENTER in positions:
-        contact_pt = positions[PointID.CONTACT_PATCH_CENTER]
-        ax.scatter(
-            contact_pt[0],
-            contact_pt[1],
-            contact_pt[2],
-            color="red",
-            s=100,
-            marker="o",
-            label="Contact Patch" if show_labels else None,
-        )
-
 
 def create_four_view_plot(
     state: SuspensionState,
