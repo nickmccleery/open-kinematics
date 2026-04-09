@@ -16,12 +16,14 @@ The tool is built around a numerical solver that determines the unique positions
 
 ## Features
 
-- **Geometric Constraint Solver**: Uses a numerical approach (Levenberg-Marquardt) to solve for the kinematic state of the system based on geometric constraints.
-- **Parametric Sweeps**: Simulate suspension motion by sweeping through a range of inputs, such as vertical wheel travel and steering rack displacement.
-- **Template-Based Suspension Models**: Define suspension geometries using templates (currently double wishbone only) with simple YAML configuration files.
-- **Derived Points System**: A dependency-aware system for calculating the position of non-kinematic points (like wheel centers) based on the solved positions of core hard points.
-- **Data Export**: Save simulation results in wide-format CSV or Apache Parquet files for further analysis.
-- **Visualization**: Generate static plots of the design condition and create MP4/GIF animations of sweep motions.
+- Geometric Constraint Solver: Uses a numerical approach (Levenberg-Marquardt) with analytical Jacobians to solve for the kinematic state of the system based on geometric constraints.
+- Parametric Sweeps: Simulate suspension motion by sweeping through a range of inputs, such as vertical wheel travel and steering rack displacement.
+- Template-Based Suspension Models: Define suspension geometries using templates (currently double wishbone only) with simple YAML configuration files.
+- Camber Shim Simulation: Model outboard camber shim configurations to simulate shimmed ball joint offsets.
+- Derived Points System: A dependency-aware system for calculating the position of non-kinematic points (like wheel centers) based on the solved positions of core hard points.
+- Suspension Metrics: Computes camber, caster, toe, kingpin inclination (KPI), scrub radius, mechanical trail, and side-view/front-view instant centres from the solved geometry.
+- Data Export: Save simulation results in wide-format CSV or Apache Parquet files for further analysis.
+- Visualization: Generate static plots of the design condition and create MP4/GIF animations of sweep motions.
 
 ## How it works
 
@@ -104,14 +106,10 @@ This command will generate both a Parquet data file and an MP4 animation of the 
 uv run kinematics sweep --geometry tests/data/geometry.yaml --sweep tests/data/sweep.yaml --out results.parquet --animation-out animation.mp4
 ```
 
-```bash
-kinematics sweep --geometry tests/data/geometry.yaml --sweep tests/data/sweep.yaml --out results.parquet --animation-out animation.mp4
-```
-
 This will produce a video like the one below, showing the suspension articulating through a range of bump, droop, and rack travel.
 
 <p align="center">
-  <img src="/images/anim.gif" alt="Kinematic Sweep Animation" width="80%">
+  <img src="/images/animation.gif" alt="Kinematic Sweep Animation" width="80%">
   <br>
   <em>Animation of a full kinematic sweep.</em>
 </p>
