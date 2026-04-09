@@ -2,7 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.3.0] - Unreleased
+## [Unreleased]
+
+## [0.3.0] - 2026-04-09
 
 ### Added
 - Split-body camber shim assembly solver (`suspensions/config/shims.py`): solves for the outboard camber shim configuration using a least-squares formulation. The upper ball joint position, camber block rotation, and upright body rotation are solved simultaneously to satisfy wishbone arc constraints, shim face closure, normal alignment, and trackrod length preservation.
