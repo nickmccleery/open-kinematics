@@ -5,9 +5,10 @@ Composite type definitions for suspension kinematics.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Final, NamedTuple, Union
+from typing import Any, Final, NamedTuple, Union
 
 import numpy as np
+from numpy.typing import NDArray
 
 from kinematics.core.enums import Axis, PointID, TargetPositionMode
 from kinematics.core.geometry import Direction3
@@ -114,7 +115,7 @@ class PointTargetAxis:
     axis: Axis
 
 
-@dataclass(slots=True, frozen=True)
+@dataclass(slots=True, frozen=True, init=False)
 class PointTargetVector:
     """
     A target direction defined by an arbitrary vector.
@@ -124,6 +125,19 @@ class PointTargetVector:
     """
 
     vector: Direction3
+
+    def __init__(
+        self,
+        vector: Direction3 | NDArray[Any] | list[float] | tuple[float, float, float],
+    ) -> None:
+        """
+        Initialize from any non-zero vector-like direction.
+
+        Programmatic callers historically passed raw numpy arrays here. Store a
+        Direction3 so downstream target resolution always receives a unit
+        direction.
+        """
+        object.__setattr__(self, "vector", Direction3(vector))
 
 
 PointTargetDirection = Union[PointTargetAxis, PointTargetVector]
