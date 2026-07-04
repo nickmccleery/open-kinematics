@@ -257,9 +257,10 @@ def intersect_two_planes(
 
     # Find a specific point on the intersection line. This formula derives from
     # solving the system of linear equations for the two planes.
-    point_data = np.cross(
-        d2 * n1.data - d1 * n2.data, direction.data
-    ) / direction_magnitude_squared
+    point_data = (
+        np.cross(d2 * n1.data - d1 * n2.data, direction.data)
+        / direction_magnitude_squared
+    )
     line_direction = direction.normalize()
 
     return Point3(point_data), line_direction
@@ -347,6 +348,55 @@ def rotate_vector_rodrigues(v: Vector3, rotvec: Vector3) -> Vector3:
 
     # Rodrigues' formula: v*cos(a) + (k x v)*sin(a) + k*(k.v)*(1-cos(a))
     return v * cos_a + k.cross(v) * sin_a + k * (k.dot(v) * (1.0 - cos_a))
+
+
+def signed_angle_about_axis(
+    p_design: Point3,
+    p_current: Point3,
+    axis_point: Point3,
+    axis_direction: Direction3,
+) -> float:
+    """
+    Signed rotation angle of a point about an axis, from design to current.
+
+    Both radius vectors ``r = p - axis_point`` are projected onto the plane
+    perpendicular to ``axis_direction``; the returned angle is the right-hand-rule
+    rotation about ``axis_direction`` that carries the design radius onto the
+    current radius:
+
+        atan2( d . (r0 x r1),  r0_perp . r1_perp )
+
+    where ``d`` is the (unit) axis direction, ``r0``/``r1`` are the design/current
+    radius vectors and ``r0_perp``/``r1_perp`` are their components perpendicular
+    to ``d``. The component of ``r0 x r1`` along ``d`` depends only on the
+    perpendicular parts, so the numerator and denominator are consistent.
+
+    A positive result means the point has rotated in the right-hand-rule positive
+    sense about ``axis_direction``. Reversing ``axis_direction`` negates the
+    result. Returns 0 when the point has not rotated.
+
+    Args:
+        p_design: The point's position at the design condition.
+        p_current: The point's current position.
+        axis_point: Any point on the rotation axis.
+        axis_direction: Unit direction of the axis (sets the positive sense).
+
+    Returns:
+        Signed rotation angle in radians.
+    """
+    d = axis_direction
+    r0 = p_design - axis_point
+    r1 = p_current - axis_point
+
+    # Components perpendicular to the axis.
+    r0_perp = r0 - d * r0.dot(d)
+    r1_perp = r1 - d * r1.dot(d)
+
+    cross = r0.cross(r1)
+    sin_term = d.dot(cross)
+    cos_term = r0_perp.dot(r1_perp)
+
+    return float(np.arctan2(sin_term, cos_term))
 
 
 def rotate_point_about_axis(

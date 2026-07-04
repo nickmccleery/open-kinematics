@@ -187,6 +187,29 @@ class Suspension(ABC):
         """
         return {pid: pos.copy() for pid, pos in self.hardpoints.items()}
 
+    def output_points(self) -> tuple[PointKey, ...]:
+        """
+        Point keys to write to the solver output, in column order.
+
+        The base implementation returns the static :attr:`OUTPUT_POINTS`.
+        Subclasses override this to append points that are only present when an
+        optional feature is configured (e.g. the pushrod/rocker group, or the
+        axle's per-side ARB droplink), so that output columns match the geometry
+        actually loaded.
+        """
+        return self.OUTPUT_POINTS
+
+    @property
+    def has_rocker(self) -> bool:
+        """
+        Whether this suspension has an inboard pushrod/rocker group.
+
+        The base implementation is ``False``. Corner models that support the
+        pushrod/rocker group override this, and metric computation keys off it to
+        emit rocker/torsion-bar angle columns.
+        """
+        return False
+
     def compute_state_metrics(self, state: SuspensionState) -> "MetricRow":
         """
         Compute the export metric row for a single solved state.

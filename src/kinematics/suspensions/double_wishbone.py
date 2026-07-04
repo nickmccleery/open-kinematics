@@ -23,6 +23,7 @@ from kinematics.core.geometry import Direction3, Point3
 from kinematics.core.types import WorldAxisSystem
 from kinematics.core.vector_utils.geometric import (
     compute_point_point_distance,
+    compute_point_to_line_distance,
     compute_vector_vector_angle,
     intersect_line_with_axis_aligned_plane,
     intersect_line_with_vertical_plane,
@@ -81,6 +82,22 @@ class DoubleWishboneSuspension(Suspension):
         {
             PointID.PUSHROD_INBOARD,
             PointID.PUSHROD_OUTBOARD,
+            PointID.ROCKER_AXIS_FRONT,
+            PointID.ROCKER_AXIS_REAR,
+            PointID.ROCKER_DROPLINK,
+        }
+    )
+
+    # The pushrod/rocker group is all-or-nothing: either the pushrod link and
+    # its inboard rocker (pivoting about the two chassis-fixed axis points) are
+    # all present, or none of them are. ROCKER_DROPLINK is an optional extra
+    # point on the same rocker body, valid only when the group is present.
+    ROCKER_GROUP: ClassVar[frozenset[PointID]] = frozenset(
+        {
+            PointID.PUSHROD_OUTBOARD,
+            PointID.PUSHROD_INBOARD,
+            PointID.ROCKER_AXIS_FRONT,
+            PointID.ROCKER_AXIS_REAR,
         }
     )
 
@@ -127,9 +144,106 @@ class DoubleWishboneSuspension(Suspension):
         PointID.TRACKROD_INBOARD,
     )
 
+    @property
+    def has_rocker(self) -> bool:
+        """True when the pushrod/rocker group is present in the hardpoints."""
+        return self.ROCKER_GROUP <= set(self.hardpoints)
+
+    @property
+    def has_rocker_droplink(self) -> bool:
+        """True when ROCKER_DROPLINK is present (implies the rocker group)."""
+        return self.has_rocker and PointID.ROCKER_DROPLINK in self.hardpoints
+
+    def validate_hardpoints(self) -> None:
+        """
+        Validate required hardpoints plus the optional pushrod/rocker group.
+
+        The rocker group (:attr:`ROCKER_GROUP`) is all-or-nothing. When present:
+
+        - the two rocker-axis points must be distinct and lie parallel to the XZ
+          plane (equal Y within ``EPS_GEOMETRIC``), since the rocker/torsion-bar
+          pivot is authored parallel to XZ;
+        - ``PUSHROD_INBOARD`` (and ``ROCKER_DROPLINK`` when given) must be off the
+          axis (non-zero perpendicular distance), else they cannot trace a circle.
+
+        ``ROCKER_DROPLINK`` may only appear together with the full group.
+        """
+        super().validate_hardpoints()
+
+        present = set(self.hardpoints)
+        group_present = self.ROCKER_GROUP & present
+        if group_present and group_present != self.ROCKER_GROUP:
+            missing = sorted(p.name for p in self.ROCKER_GROUP - present)
+            raise ValueError(
+                "Incomplete pushrod/rocker group: the points "
+                f"{sorted(p.name for p in self.ROCKER_GROUP)} are all-or-nothing; "
+                f"missing {missing}."
+            )
+
+        if PointID.ROCKER_DROPLINK in present and not self.has_rocker:
+            raise ValueError(
+                "ROCKER_DROPLINK requires the full pushrod/rocker group "
+                f"({sorted(p.name for p in self.ROCKER_GROUP)})."
+            )
+
+        if not self.has_rocker:
+            return
+
+        axis_front = self.hardpoints[PointID.ROCKER_AXIS_FRONT]
+        axis_rear = self.hardpoints[PointID.ROCKER_AXIS_REAR]
+
+        if compute_point_point_distance(axis_front, axis_rear) <= EPS_GEOMETRIC:
+            raise ValueError(
+                "ROCKER_AXIS_FRONT and ROCKER_AXIS_REAR must be distinct points."
+            )
+
+        y_extent = abs(float(axis_front[Axis.Y]) - float(axis_rear[Axis.Y]))
+        if y_extent > EPS_GEOMETRIC:
+            raise ValueError(
+                "Rocker axis must be parallel to the XZ plane (zero Y-extent): "
+                f"|Y(ROCKER_AXIS_FRONT) - Y(ROCKER_AXIS_REAR)| = {y_extent} "
+                f"exceeds {EPS_GEOMETRIC}."
+            )
+
+        axis_direction = (axis_rear - axis_front).normalize()
+        off_axis_points = [PointID.PUSHROD_INBOARD]
+        if PointID.ROCKER_DROPLINK in present:
+            off_axis_points.append(PointID.ROCKER_DROPLINK)
+        for pid in off_axis_points:
+            radius = compute_point_to_line_distance(
+                self.hardpoints[pid], axis_front, axis_direction
+            )
+            if radius <= EPS_GEOMETRIC:
+                raise ValueError(
+                    f"{pid.name} lies on the rocker axis (zero radius); it must "
+                    "be off-axis to trace a rocker circle."
+                )
+
     def free_points(self) -> Sequence[PointID]:
-        """Points that move during solving."""
-        return self.FREE_POINTS
+        """
+        Points that move during solving.
+
+        The base wishbone free points plus, when the pushrod/rocker group is
+        present, the pushrod ends and (when given) the rocker droplink. The
+        rocker-axis points are chassis-fixed and stay out of this list.
+        """
+        points: list[PointID] = list(self.FREE_POINTS)
+        if self.has_rocker:
+            points.append(PointID.PUSHROD_OUTBOARD)
+            points.append(PointID.PUSHROD_INBOARD)
+            if PointID.ROCKER_DROPLINK in self.hardpoints:
+                points.append(PointID.ROCKER_DROPLINK)
+        return points
+
+    def output_points(self) -> tuple[PointID, ...]:
+        """Static output points plus present pushrod/rocker points, in order."""
+        extra: list[PointID] = []
+        if self.has_rocker:
+            extra.append(PointID.PUSHROD_OUTBOARD)
+            extra.append(PointID.PUSHROD_INBOARD)
+            if PointID.ROCKER_DROPLINK in self.hardpoints:
+                extra.append(PointID.ROCKER_DROPLINK)
+        return self.OUTPUT_POINTS + tuple(extra)
 
     def initial_state(self) -> SuspensionState:
         """Build initial state from hardpoints, applying shims if configured."""
@@ -214,6 +328,59 @@ class DoubleWishboneSuspension(Suspension):
                 line_direction=WorldAxisSystem.Y,
             )
         )
+
+        # Pushrod / rocker group (F1-style inboard actuation), all expressed as
+        # distance constraints so no new Jacobian codegen is required.
+        if self.has_rocker:
+            constraints.extend(self._rocker_constraints(initial_state))
+
+        return constraints
+
+    def _rocker_constraints(self, initial_state: SuspensionState) -> list[Constraint]:
+        """
+        Distance constraints for the pushrod / rocker group.
+
+        - ``PUSHROD_OUTBOARD`` is rigid to the upright: 4 distances to the two
+          outboard ball joints and the two axle points.
+        - the pushrod is a fixed-length link ``PUSHROD_OUTBOARD -> PUSHROD_INBOARD``.
+        - ``PUSHROD_INBOARD`` rides the rocker circle: 2 distances to the two
+          chassis-fixed rocker-axis points.
+        - when ``ROCKER_DROPLINK`` is present it also rides the rocker circle
+          (2 distances) and is held rigid to ``PUSHROD_INBOARD`` (1 distance),
+          so the whole rocker body rotates as one about its axis.
+        """
+        pos = initial_state.positions
+        constraints: list[Constraint] = []
+
+        def add_distance(p1: PointID, p2: PointID) -> None:
+            constraints.append(
+                DistanceConstraint(
+                    p1, p2, compute_point_point_distance(pos[p1], pos[p2])
+                )
+            )
+
+        # Pushrod outboard rigidly attached to the upright body.
+        for anchor in (
+            PointID.UPPER_WISHBONE_OUTBOARD,
+            PointID.LOWER_WISHBONE_OUTBOARD,
+            PointID.AXLE_INBOARD,
+            PointID.AXLE_OUTBOARD,
+        ):
+            add_distance(PointID.PUSHROD_OUTBOARD, anchor)
+
+        # Pushrod link length.
+        add_distance(PointID.PUSHROD_OUTBOARD, PointID.PUSHROD_INBOARD)
+
+        # Pushrod inboard on the rocker circle.
+        add_distance(PointID.PUSHROD_INBOARD, PointID.ROCKER_AXIS_FRONT)
+        add_distance(PointID.PUSHROD_INBOARD, PointID.ROCKER_AXIS_REAR)
+
+        # Rocker droplink: also on the rocker circle, and rigid to the pushrod
+        # inboard so the rocker body is a single rotating link.
+        if PointID.ROCKER_DROPLINK in self.hardpoints:
+            add_distance(PointID.ROCKER_DROPLINK, PointID.ROCKER_AXIS_FRONT)
+            add_distance(PointID.ROCKER_DROPLINK, PointID.ROCKER_AXIS_REAR)
+            add_distance(PointID.PUSHROD_INBOARD, PointID.ROCKER_DROPLINK)
 
         return constraints
 
@@ -340,7 +507,7 @@ class DoubleWishboneSuspension(Suspension):
         """Visualization links for 3D rendering."""
         from kinematics.visualization.main import LinkVisualization
 
-        return [
+        links = [
             LinkVisualization(
                 points=[
                     PointID.UPPER_WISHBONE_INBOARD_FRONT,
@@ -388,6 +555,30 @@ class DoubleWishboneSuspension(Suspension):
                 markersize=15.0,
             ),
         ]
+
+        if self.has_rocker:
+            links.append(
+                LinkVisualization(
+                    points=[PointID.PUSHROD_OUTBOARD, PointID.PUSHROD_INBOARD],
+                    color="crimson",
+                    label="Pushrod",
+                )
+            )
+            # Rocker body: axis-front -> pushrod inboard -> (droplink) ->
+            # axis-rear, drawing the triangular rocker where the droplink exists.
+            rocker_points = [PointID.ROCKER_AXIS_FRONT, PointID.PUSHROD_INBOARD]
+            if PointID.ROCKER_DROPLINK in self.hardpoints:
+                rocker_points.append(PointID.ROCKER_DROPLINK)
+            rocker_points.append(PointID.ROCKER_AXIS_REAR)
+            links.append(
+                LinkVisualization(
+                    points=rocker_points,
+                    color="mediumvioletred",
+                    label="Rocker",
+                )
+            )
+
+        return links
 
     def apply_camber_shim(self, positions: dict[PointID, Point3]) -> None:
         """

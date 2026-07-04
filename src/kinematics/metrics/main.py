@@ -55,7 +55,51 @@ def compute_metrics_for_state(
     row: MetricRow = OrderedDict()
     for metric in catalog:
         row[metric.column_name] = metric.compute(ctx)
+
+    if suspension.has_rocker:
+        _append_rocker_metrics(row, ctx)
+
     return row
+
+
+def _append_rocker_metrics(row: MetricRow, ctx: MetricContext) -> None:
+    """
+    Append rocker rotation and torsion-bar twist columns for a corner.
+
+    The rocker angle is the signed rotation of ``PUSHROD_INBOARD`` about the
+    rocker axis (measured about the authored ROCKER_AXIS_FRONT -> ROCKER_AXIS_REAR
+    direction), from the design condition to the current state, then multiplied by
+    the corner's ``side_sign`` (+1 left, -1 right).
+
+    The ``side_sign`` normalisation is deliberate. Mirroring left <-> right is a
+    reflection (``y -> -y``); a reflection negates a signed angle measured about a
+    mirrored axis. Without normalisation a symmetric heave motion would report
+    equal-and-opposite rocker angles on the two sides. Multiplying by ``side_sign``
+    makes symmetric heave report EQUAL rocker angles on both sides, and antisymmetric
+    roll report equal-and-opposite ones, which is the physically intuitive reading.
+
+    ``torsion_bar_twist_deg`` is identical to ``rocker_angle_deg``: the torsion bar
+    is coaxial with the rocker pivot and grounded at its far end, so its twist is
+    exactly the rocker rotation. It is kept as its own column for clarity.
+    """
+    from math import degrees
+
+    from kinematics.core.vector_utils.geometric import signed_angle_about_axis
+
+    design = ctx.suspension.initial_state()
+    axis_front = design.positions[PointID.ROCKER_AXIS_FRONT]
+    axis_rear = design.positions[PointID.ROCKER_AXIS_REAR]
+    axis_direction = (axis_rear - axis_front).normalize()
+
+    raw = signed_angle_about_axis(
+        design.positions[PointID.PUSHROD_INBOARD],
+        ctx.state.positions[PointID.PUSHROD_INBOARD],
+        axis_front,
+        axis_direction,
+    )
+    rocker_angle_deg = degrees(raw) * ctx.side_sign
+    row["rocker_angle_deg"] = rocker_angle_deg
+    row["torsion_bar_twist_deg"] = rocker_angle_deg
 
 
 def compute_metrics_for_sweep(
@@ -241,4 +285,52 @@ def compute_metrics_for_axle_state(
     )
     row["rack_displacement_mm"] = current_rack_y - design_rack_y
 
+    if axle.has_arb:
+        _append_arb_metrics(row, state, axle)
+
     return row
+
+
+def _append_arb_metrics(
+    row: MetricRow,
+    state: SuspensionState,
+    axle: "DoubleWishboneAxleSuspension",
+) -> None:
+    """
+    Append per-side ARB arm angles and the axle-level ARB twist.
+
+    The anti-roll bar shares a single chassis-fixed axis (``ARB_AXIS_A`` ->
+    ``ARB_AXIS_B``). Unlike the rocker angle, the arm angles use RAW signed
+    angles about that single authored direction with NO side normalisation,
+    because both arms rotate about the same physical axis. Each arm angle is the
+    signed rotation of that side's ``ARB_DROPLINK`` about the axis, from design to
+    current.
+
+    ``arb_twist_deg = left - right`` is the physical relative twist of the
+    torsion element between the two arm stations (right-hand rule about A -> B).
+    For a conventional mirrored transverse-axis ARB, symmetric heave rotates both
+    arms equally (twist ~ 0) while roll rotates them oppositely (twist != 0).
+    """
+    from math import degrees
+
+    from kinematics.core.vector_utils.geometric import signed_angle_about_axis
+
+    design = axle.initial_state()
+    axis_a = design.positions[PointRef(Side.CENTER, PointID.ARB_AXIS_A)]
+    axis_b = design.positions[PointRef(Side.CENTER, PointID.ARB_AXIS_B)]
+    axis_direction = (axis_b - axis_a).normalize()
+
+    angles: dict[Side, float] = {}
+    for side in (Side.LEFT, Side.RIGHT):
+        key = PointRef(side, PointID.ARB_DROPLINK)
+        raw = signed_angle_about_axis(
+            design.positions[key],
+            state.positions[key],
+            axis_a,
+            axis_direction,
+        )
+        angles[side] = degrees(raw)
+
+    row["left_arb_arm_angle_deg"] = angles[Side.LEFT]
+    row["right_arb_arm_angle_deg"] = angles[Side.RIGHT]
+    row["arb_twist_deg"] = angles[Side.LEFT] - angles[Side.RIGHT]

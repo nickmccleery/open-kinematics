@@ -25,10 +25,14 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, ClassVar, Iterator, Mapping, Sequence
 
 from kinematics.constraints import Constraint, DistanceConstraint
+from kinematics.core.constants import EPS_GEOMETRIC
 from kinematics.core.enums import PointID
 from kinematics.core.geometry import Direction3, Point3
 from kinematics.core.point_ref import PointKey, PointRef, Side
-from kinematics.core.vector_utils.geometric import compute_point_point_distance
+from kinematics.core.vector_utils.geometric import (
+    compute_point_point_distance,
+    compute_point_to_line_distance,
+)
 from kinematics.points.derived.manager import (
     DerivedPointsSpec,
     PositionFn,
@@ -120,10 +124,69 @@ class DoubleWishboneAxleSuspension(Suspension):
 
     corners: dict[Side, DoubleWishboneSuspension] = field(default_factory=dict)
 
+    # Shared, chassis-fixed ARB axis points (ARB_AXIS_A, ARB_AXIS_B). Not
+    # mirrored -- authored once about the vehicle centreline.
+    center_points: dict[PointID, Point3] = field(default_factory=dict)
+
+    # Per-side ARB_DROPLINK design positions (on each ARB arm).
+    arb_droplinks: dict[Side, Point3] = field(default_factory=dict)
+
+    @property
+    def has_arb(self) -> bool:
+        """
+        True when a complete inboard ARB is present.
+
+        Requires both shared axis points, an ARB droplink on each side, and a
+        rocker droplink on each side (the droplink joins the two).
+        """
+        axis_ok = {PointID.ARB_AXIS_A, PointID.ARB_AXIS_B} <= set(self.center_points)
+        droplinks_ok = {Side.LEFT, Side.RIGHT} <= set(self.arb_droplinks)
+        rockers_ok = all(corner.has_rocker_droplink for corner in self.corners.values())
+        return axis_ok and droplinks_ok and rockers_ok
+
     def validate_hardpoints(self) -> None:
-        """Delegate hardpoint validation to each corner."""
+        """Delegate corner validation, then validate the ARB group as a whole."""
         for corner in self.corners.values():
             corner.validate_hardpoints()
+
+        # ARB is all-or-nothing across: both shared axis points, an ARB droplink
+        # on each side, and a rocker droplink on each side.
+        axis_points = {PointID.ARB_AXIS_A, PointID.ARB_AXIS_B} & set(self.center_points)
+        arb_sides = set(self.arb_droplinks)
+        rocker_sides = {
+            side for side, corner in self.corners.items() if corner.has_rocker_droplink
+        }
+        any_arb = bool(axis_points or arb_sides)
+        if not any_arb:
+            return
+
+        problems: list[str] = []
+        if axis_points != {PointID.ARB_AXIS_A, PointID.ARB_AXIS_B}:
+            problems.append("both center 'arb_axis_a' and 'arb_axis_b' must be given")
+        if arb_sides != {Side.LEFT, Side.RIGHT}:
+            problems.append("'arb_droplink' must be given on both sides")
+        if rocker_sides != {Side.LEFT, Side.RIGHT}:
+            problems.append("'rocker_droplink' must be present on both sides")
+        if problems:
+            raise ValueError(
+                "Incomplete ARB group (all-or-nothing): " + "; ".join(problems) + "."
+            )
+
+        # Axis points distinct.
+        axis_a = self.center_points[PointID.ARB_AXIS_A]
+        axis_b = self.center_points[PointID.ARB_AXIS_B]
+        if compute_point_point_distance(axis_a, axis_b) <= EPS_GEOMETRIC:
+            raise ValueError("ARB_AXIS_A and ARB_AXIS_B must be distinct points.")
+
+        # Each ARB droplink off-axis (non-zero radius) so it traces an arc.
+        axis_direction = (axis_b - axis_a).normalize()
+        for side, droplink in self.arb_droplinks.items():
+            radius = compute_point_to_line_distance(droplink, axis_a, axis_direction)
+            if radius <= EPS_GEOMETRIC:
+                raise ValueError(
+                    f"{side.name} ARB_DROPLINK lies on the ARB axis (zero radius); "
+                    "it must be off-axis to trace an ARB arm arc."
+                )
 
     # ------------------------------------------------------------------
     # State
@@ -145,6 +208,15 @@ class DoubleWishboneAxleSuspension(Suspension):
             for pid in corner_state.free_points:
                 free_points.add(PointRef(side, pid))
 
+        # Shared ARB axis points (chassis-fixed) and per-side ARB droplinks (free).
+        if self.has_arb:
+            for pid, pos in self.center_points.items():
+                positions[PointRef(Side.CENTER, pid)] = pos.copy()
+            for side, pos in self.arb_droplinks.items():
+                key = PointRef(side, PointID.ARB_DROPLINK)
+                positions[key] = pos.copy()
+                free_points.add(key)
+
         self._initial_state = SuspensionState(
             positions=positions,
             free_points=free_points,
@@ -152,11 +224,24 @@ class DoubleWishboneAxleSuspension(Suspension):
         return self._initial_state
 
     def free_points(self) -> Sequence[PointKey]:
-        """Each corner's free points, side-tagged."""
+        """Each corner's free points, side-tagged, plus per-side ARB droplinks."""
         result: list[PointKey] = []
         for side, corner in self.corners.items():
             result.extend(PointRef(side, pid) for pid in corner.free_points())
+        if self.has_arb:
+            for side in self.arb_droplinks:
+                result.append(PointRef(side, PointID.ARB_DROPLINK))
         return result
+
+    def output_points(self) -> tuple[PointKey, ...]:
+        """Per-side corner output points plus per-side ARB droplink."""
+        result: list[PointKey] = []
+        for side in (Side.LEFT, Side.RIGHT):
+            corner = self.corners[side]
+            result.extend(PointRef(side, pid) for pid in corner.output_points())
+            if self.has_arb:
+                result.append(PointRef(side, PointID.ARB_DROPLINK))
+        return tuple(result)
 
     # ------------------------------------------------------------------
     # Constraints
@@ -187,6 +272,61 @@ class DoubleWishboneAxleSuspension(Suspension):
                 rack_separation,
             )
         )
+
+        if self.has_arb:
+            constraints.extend(self._arb_constraints())
+
+        return constraints
+
+    def _arb_constraints(self) -> list[Constraint]:
+        """
+        Distance constraints for the inboard anti-roll bar, per side.
+
+        Each ARB arm end (``ARB_DROPLINK``) rides an arc about the shared,
+        chassis-fixed ARB axis (2 distances to the two CENTER axis points), and
+        the droplink is a fixed-length link from that side's ``ROCKER_DROPLINK``
+        to its ``ARB_DROPLINK``. The two arms are otherwise independent -- the
+        bar's torsional compliance is what the ARB *is* -- so wheel targets stay
+        independent and the twist is reported as a metric.
+        """
+        constraints: list[Constraint] = []
+        axis_a = self.center_points[PointID.ARB_AXIS_A]
+        axis_b = self.center_points[PointID.ARB_AXIS_B]
+
+        for side in (Side.LEFT, Side.RIGHT):
+            droplink = self.arb_droplinks[side]
+            arb_key = PointRef(side, PointID.ARB_DROPLINK)
+            axis_a_key = PointRef(Side.CENTER, PointID.ARB_AXIS_A)
+            axis_b_key = PointRef(Side.CENTER, PointID.ARB_AXIS_B)
+
+            # ARB arm end on the ARB circle.
+            constraints.append(
+                DistanceConstraint(
+                    arb_key,
+                    axis_a_key,
+                    compute_point_point_distance(droplink, axis_a),
+                )
+            )
+            constraints.append(
+                DistanceConstraint(
+                    arb_key,
+                    axis_b_key,
+                    compute_point_point_distance(droplink, axis_b),
+                )
+            )
+
+            # Droplink length: rocker droplink <-> ARB droplink.
+            rocker_droplink = (
+                self.corners[side].initial_state().positions[PointID.ROCKER_DROPLINK]
+            )
+            constraints.append(
+                DistanceConstraint(
+                    PointRef(side, PointID.ROCKER_DROPLINK),
+                    arb_key,
+                    compute_point_point_distance(rocker_droplink, droplink),
+                )
+            )
+
         return constraints
 
     # ------------------------------------------------------------------
@@ -316,6 +456,48 @@ class DoubleWishboneAxleSuspension(Suspension):
                 label="Steering Rack",
             )
         )
+
+        if self.has_arb:
+            # Shared ARB axis line.
+            links.append(
+                LinkVisualization(
+                    points=[
+                        PointRef(Side.CENTER, PointID.ARB_AXIS_A),
+                        PointRef(Side.CENTER, PointID.ARB_AXIS_B),
+                    ],
+                    color="teal",
+                    label="ARB Axis",
+                    linestyle="--",
+                )
+            )
+            # Per side: the ARB arm (axis end -> arm droplink) and the droplink
+            # joining the rocker to the ARB arm.
+            arm_axis = {
+                Side.LEFT: PointID.ARB_AXIS_A,
+                Side.RIGHT: PointID.ARB_AXIS_B,
+            }
+            for side in (Side.LEFT, Side.RIGHT):
+                links.append(
+                    LinkVisualization(
+                        points=[
+                            PointRef(Side.CENTER, arm_axis[side]),
+                            PointRef(side, PointID.ARB_DROPLINK),
+                        ],
+                        color="teal",
+                        label=f"{side.name.title()} ARB Arm",
+                    )
+                )
+                links.append(
+                    LinkVisualization(
+                        points=[
+                            PointRef(side, PointID.ROCKER_DROPLINK),
+                            PointRef(side, PointID.ARB_DROPLINK),
+                        ],
+                        color="goldenrod",
+                        label=f"{side.name.title()} Droplink",
+                    )
+                )
+
         return links
 
     def wheel_visualization_anchors(self) -> "list[WheelAnchors]":
@@ -376,13 +558,19 @@ class DoubleWishboneAxleSuspension(Suspension):
         except ValueError:
             raise ValueError(f"Unknown units: {units_str}")
 
-        # Resolve per-side hardpoint dicts.
+        # Resolve per-side hardpoint dicts (corner points) and the per-side ARB
+        # droplink, which is an axle-only point the corner class must not accept.
         if "left" in raw_hardpoints or "right" in raw_hardpoints:
-            side_hardpoints = _parse_explicit_hardpoints(
+            side_hardpoints, arb_droplinks = _parse_explicit_hardpoints(
                 raw_hardpoints, parse_hardpoints
             )
         else:
-            side_hardpoints = _parse_mirror_hardpoints(raw_hardpoints, parse_hardpoints)
+            side_hardpoints, arb_droplinks = _parse_mirror_hardpoints(
+                raw_hardpoints, parse_hardpoints
+            )
+
+        # Shared, non-mirrored ARB axis points.
+        center_points = _parse_center_points(raw_hardpoints.get("center"))
 
         name = yaml_data.get("name", "unnamed")
         version = yaml_data.get("version", "0.0.0")
@@ -410,6 +598,8 @@ class DoubleWishboneAxleSuspension(Suspension):
             hardpoints={},
             config=base_config,
             corners=corners,
+            center_points=center_points,
+            arb_droplinks=arb_droplinks,
         )
 
 
@@ -492,12 +682,66 @@ def _validate_side_signs(hardpoints: dict[PointKey, Point3], side: Side) -> None
         )
 
 
+def _pop_arb_droplink(points_raw: dict[str, Any]) -> tuple[dict[str, Any], Any]:
+    """
+    Split an ``arb_droplink`` entry out of a per-side points block.
+
+    ``arb_droplink`` is an axle-only point: the corner class does not accept it,
+    so it must be removed before the block is handed to ``parse_hardpoints``.
+    Returns ``(corner_points_without_arb, arb_droplink_raw_or_None)``. The lookup
+    is case-insensitive to match the rest of the loader.
+    """
+    if not isinstance(points_raw, dict):
+        return points_raw, None
+    corner_points = {}
+    arb_raw = None
+    for key, value in points_raw.items():
+        if isinstance(key, str) and key.lower() == PointID.ARB_DROPLINK.name.lower():
+            arb_raw = value
+        else:
+            corner_points[key] = value
+    return corner_points, arb_raw
+
+
+def _parse_center_points(center_raw: Any) -> dict[PointID, Point3]:
+    """
+    Parse the shared, non-mirrored ``center`` block (ARB axis points).
+
+    Accepts ``arb_axis_a`` and ``arb_axis_b`` (case-insensitive). Returns an empty
+    dict when no center block is given (no ARB). Unknown keys are rejected so that
+    typos surface at load time.
+    """
+    from kinematics.io.validation import coerce_point3
+
+    if center_raw is None:
+        return {}
+    if not isinstance(center_raw, dict):
+        raise ValueError("Axle 'center' block must be a mapping")
+
+    valid = {
+        PointID.ARB_AXIS_A.name.lower(): PointID.ARB_AXIS_A,
+        PointID.ARB_AXIS_B.name.lower(): PointID.ARB_AXIS_B,
+    }
+    result: dict[PointID, Point3] = {}
+    for key, value in center_raw.items():
+        pid = valid.get(str(key).lower())
+        if pid is None:
+            raise ValueError(
+                f"Unknown center point '{key}' (expected arb_axis_a/arb_axis_b)."
+            )
+        try:
+            result[pid] = coerce_point3(value)
+        except (ValueError, KeyError, TypeError) as e:
+            raise ValueError(f"center '{key}': {e}") from e
+    return result
+
+
 def _parse_mirror_hardpoints(
     raw_hardpoints: dict[str, Any],
     parse_hardpoints: Any,
-) -> dict[Side, dict[PointKey, Point3]]:
+) -> tuple[dict[Side, dict[PointKey, Point3]], dict[Side, Point3]]:
     """Parse mirror-mode hardpoints: one side given, the other generated."""
-    from kinematics.io.validation import coerce_enum
+    from kinematics.io.validation import coerce_enum, coerce_point3
 
     points_raw = raw_hardpoints.get("points")
     if points_raw is None:
@@ -518,37 +762,47 @@ def _parse_mirror_hardpoints(
     if source_side == Side.CENTER:
         raise ValueError("Mirror source side must be 'left' or 'right'.")
 
-    source_hp, errors = parse_hardpoints(points_raw, DoubleWishboneSuspension)
+    corner_points, arb_raw = _pop_arb_droplink(points_raw)
+    source_hp, errors = parse_hardpoints(corner_points, DoubleWishboneSuspension)
     _require_no_errors(errors, "Axle hardpoint validation failed")
     _validate_side_signs(source_hp, source_side)
 
     other_side = Side.RIGHT if source_side == Side.LEFT else Side.LEFT
-    return {
+    side_hardpoints = {
         source_side: source_hp,
         other_side: _mirror_hardpoints(source_hp),
     }
+
+    arb_droplinks: dict[Side, Point3] = {}
+    if arb_raw is not None:
+        source_arb = coerce_point3(arb_raw)
+        arb_droplinks[source_side] = source_arb
+        arb_droplinks[other_side] = _mirror_point(source_arb)
+
+    return side_hardpoints, arb_droplinks
 
 
 def _parse_explicit_hardpoints(
     raw_hardpoints: dict[str, Any],
     parse_hardpoints: Any,
-) -> dict[Side, dict[PointKey, Point3]]:
+) -> tuple[dict[Side, dict[PointKey, Point3]], dict[Side, Point3]]:
     """Parse explicit-mode hardpoints: both 'left' and 'right' given."""
+    from kinematics.io.validation import coerce_point3
+
     if "left" not in raw_hardpoints or "right" not in raw_hardpoints:
         raise ValueError(
             "Explicit-mode axle hardpoints require both 'left' and 'right' blocks."
         )
 
-    left_hp, left_errors = parse_hardpoints(
-        raw_hardpoints["left"], DoubleWishboneSuspension
-    )
-    _require_no_errors(left_errors, "Axle 'left' hardpoint validation failed")
-    right_hp, right_errors = parse_hardpoints(
-        raw_hardpoints["right"], DoubleWishboneSuspension
-    )
-    _require_no_errors(right_errors, "Axle 'right' hardpoint validation failed")
+    side_hardpoints: dict[Side, dict[PointKey, Point3]] = {}
+    arb_droplinks: dict[Side, Point3] = {}
+    for side, block_key in ((Side.LEFT, "left"), (Side.RIGHT, "right")):
+        corner_points, arb_raw = _pop_arb_droplink(raw_hardpoints[block_key])
+        hp, errors = parse_hardpoints(corner_points, DoubleWishboneSuspension)
+        _require_no_errors(errors, f"Axle '{block_key}' hardpoint validation failed")
+        _validate_side_signs(hp, side)
+        side_hardpoints[side] = hp
+        if arb_raw is not None:
+            arb_droplinks[side] = coerce_point3(arb_raw)
 
-    _validate_side_signs(left_hp, Side.LEFT)
-    _validate_side_signs(right_hp, Side.RIGHT)
-
-    return {Side.LEFT: left_hp, Side.RIGHT: right_hp}
+    return side_hardpoints, arb_droplinks

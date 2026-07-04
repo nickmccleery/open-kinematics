@@ -45,6 +45,24 @@ class PointID(IntEnum):
     CAMBER_SHIM_FACE_POINT_B = 22
     CAMBER_SHIM_FACE_NORMAL = 23
 
+    # Inboard actuation (F1-style pushrod/rocker/torsion-bar/ARB).
+    #
+    # ROCKER_AXIS_{FRONT,REAR} are the two chassis-fixed points defining the
+    # rocker pivot line. That line must lie parallel to the XZ plane (equal Y),
+    # hence the FRONT/REAR naming mirroring the wishbone convention. The torsion
+    # bar is coaxial with this pivot, so its twist equals the rocker rotation.
+    ROCKER_AXIS_FRONT = 24
+    ROCKER_AXIS_REAR = 25
+    ROCKER_DROPLINK = 26
+
+    # Anti-roll-bar axis points. Named A/B (not FRONT/REAR) because the ARB axis
+    # need not be longitudinal -- it is typically transverse. Positive rotation
+    # is right-hand-rule about the authored A -> B direction. ARB_DROPLINK is the
+    # per-side point on the ARB arm; the droplink joins ROCKER_DROPLINK to it.
+    ARB_AXIS_A = 27
+    ARB_AXIS_B = 28
+    ARB_DROPLINK = 29
+
 
 class Axis(IntEnum):
     """
