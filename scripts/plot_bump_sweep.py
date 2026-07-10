@@ -11,8 +11,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from kinematics.core.enums import PointID
-from kinematics.io.geometry_loader import load_geometry
-from kinematics.io.sweep_loader import parse_sweep_file
+from kinematics.io import load_geometry, load_sweep
 from kinematics.main import solve_sweep
 from kinematics.metrics import compute_metrics_for_state
 from kinematics.visualization.api import visualize_suspension_sweep
@@ -29,7 +28,7 @@ def main() -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     suspension = load_geometry(GEOMETRY)
-    sweep_config = parse_sweep_file(SWEEP)
+    sweep_config = load_sweep(SWEEP, suspension)
     states, stats = solve_sweep(suspension, sweep_config)
     config = suspension.config
     assert config is not None

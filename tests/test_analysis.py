@@ -43,7 +43,7 @@ class TestMetricDisplayMetadata:
         suspension = load_geometry(DATA_DIR / "corner_strut_geometry.yaml")
         sweep_config = load_sweep(DATA_DIR / "sweep.yaml", suspension)
         states, _ = solve_sweep(suspension, sweep_config)
-        rows = compute_sweep_metrics(suspension, sweep_config, states)
+        rows = compute_sweep_metrics(suspension, sweep_config, states).rows
 
         row = rows[0]
         # A corner model's row is already the flat rendering (location-less
@@ -56,7 +56,7 @@ class TestMetricDisplayMetadata:
         suspension = load_geometry(DATA_DIR / "axle_geometry_rocker.yaml")
         sweep_config = load_sweep(DATA_DIR / "axle_rocker_sweep.yaml", suspension)
         states, _ = solve_sweep(suspension, sweep_config)
-        rows = compute_sweep_metrics(suspension, sweep_config, states)
+        rows = compute_sweep_metrics(suspension, sweep_config, states).rows
 
         row = rows[0]
         assert isinstance(row, AxleMetricRows)
@@ -167,9 +167,7 @@ class TestAxleAnalysis:
             assert key in analysis.corner_metric_keys, key
         assert analysis.locations == ["left", "right"]
         covered = {display.key for display in analysis.metric_display}
-        assert covered == set(analysis.metric_keys) | set(
-            analysis.corner_metric_keys
-        )
+        assert covered == set(analysis.metric_keys) | set(analysis.corner_metric_keys)
 
     def test_frames_carry_structured_corner_metrics(self, axle_analysis):
         frame = axle_analysis.frames[0]
@@ -248,3 +246,113 @@ class TestSweepSpecSteps:
             }
         )
         assert spec.n_steps == 5
+
+
+class TestXAxisSweepExpansion:
+    """
+    An X-axis direction must survive expansion and analysis.
+
+    Axis is an IntEnum with X == 0, so a truthiness test on the resolved axis
+    would wrongly demote an X-axis target to a vector direction. Vector
+    directions carry no single principal axis and are skipped by
+    ``sweep_parameters``, which would silently drop X-axis sweeps.
+    """
+
+    def _x_axis_spec(self):
+        from kinematics import SweepSpec
+
+        return SweepSpec.model_validate(
+            {
+                "version": 1,
+                "steps": 3,
+                "targets": [
+                    {
+                        "point": "WHEEL_CENTER",
+                        "direction": {"axis": "X"},
+                        "start": -5,
+                        "stop": 5,
+                    }
+                ],
+            }
+        )
+
+    def test_x_direction_expands_to_axis_target(self):
+        from kinematics import build_sweep_config
+        from kinematics.core.enums import Axis
+        from kinematics.core.types import PointTargetAxis
+
+        sweep_config = build_sweep_config(self._x_axis_spec())
+
+        dimension = sweep_config.target_sweeps[0]
+        assert dimension, "expected one expanded X-axis dimension"
+        for target in dimension:
+            assert isinstance(target.direction, PointTargetAxis)
+            assert target.direction.axis is Axis.X
+
+    def test_x_axis_appears_in_sweep_parameters(self):
+        from kinematics import build_sweep_config
+        from kinematics.analysis import sweep_parameters
+
+        sweep_config = build_sweep_config(self._x_axis_spec())
+        parameters = {(p.point, p.axis, p.side) for p in sweep_parameters(sweep_config)}
+
+        assert ("WHEEL_CENTER", "X", None) in parameters
+
+
+class TestDerivativeDiagnostics:
+    """
+    Derivative-metric health is surfaced on SweepAnalysis, never silent.
+    """
+
+    def test_tangent_failure_yields_derivatives_diagnostic(self, monkeypatch):
+        # Force the tangent computation to fail: the analysis must still
+        # produce frames with the per-state metric columns, and must carry a
+        # warning diagnostic saying the derivative columns were omitted.
+        import kinematics.main as kin_main
+
+        def boom(*args, **kwargs):
+            raise RuntimeError("synthetic tangent failure")
+
+        monkeypatch.setattr(kin_main, "compute_sweep_tangents", boom)
+
+        suspension = load_geometry(DATA_DIR / "corner_strut_geometry.yaml")
+        sweep_config = load_sweep(DATA_DIR / "sweep.yaml", suspension)
+        analysis = analyze_sweep(suspension, sweep_config)
+
+        assert analysis.frames, "per-state metrics must survive tangent failure"
+        assert all(frame.metrics for frame in analysis.frames)
+
+        derivative_issues = [
+            issue for issue in analysis.diagnostics if issue.category == "derivatives"
+        ]
+        assert derivative_issues, "expected a derivatives diagnostic"
+        assert all(issue.severity == "warning" for issue in derivative_issues)
+        assert any(
+            "synthetic tangent failure" in issue.message for issue in derivative_issues
+        )
+
+    def test_healthy_sweep_has_no_derivatives_diagnostic(self):
+        suspension = load_geometry(DATA_DIR / "corner_strut_geometry.yaml")
+        sweep_config = load_sweep(DATA_DIR / "sweep.yaml", suspension)
+        analysis = analyze_sweep(suspension, sweep_config)
+
+        assert not [
+            issue for issue in analysis.diagnostics if issue.category == "derivatives"
+        ]
+
+    def test_rank_info_reported_per_state(self):
+        # A healthy solve reports full-rank tangent systems for every state.
+        from kinematics.main import compute_sweep_metrics, solve_sweep
+
+        suspension = load_geometry(DATA_DIR / "corner_strut_geometry.yaml")
+        sweep_config = load_sweep(DATA_DIR / "sweep.yaml", suspension)
+        states, _stats = solve_sweep(suspension, sweep_config)
+        result = compute_sweep_metrics(suspension, sweep_config, states)
+
+        assert result.derivative_error is None
+        infos = result.tangent_solve_infos
+        assert infos is not None and len(infos) == len(states)
+        for info in infos:
+            assert not info.rank_deficient
+            assert info.smallest_singular_value > 0.0
+            assert info.condition_number >= 1.0

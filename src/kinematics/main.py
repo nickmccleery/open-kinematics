@@ -6,11 +6,16 @@ geometries.
 """
 
 from collections import OrderedDict
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, List
 
 from kinematics.core.types import SweepConfig
 from kinematics.points.derived.manager import DerivedPointsManager
-from kinematics.sensitivity import TangentField, compute_state_tangents
+from kinematics.sensitivity import (
+    TangentField,
+    TangentSolveInfo,
+    compute_state_tangents,
+)
 from kinematics.solver import (
     SolverInfo,
     convert_targets_to_absolute,
@@ -55,11 +60,29 @@ def solve_sweep(
     return kinematic_states, solver_stats
 
 
+@dataclass(frozen=True)
+class SweepTangents:
+    """
+    Solution-manifold tangents for a full sweep, with solve health.
+
+    Attributes:
+        per_step: One list of TangentField per state, each ordered like the
+            sweep's target dimensions.
+        solve_infos: The numerical health of each state's tangent solve,
+            aligned with ``per_step``. Rank-deficient entries mean that
+            state's tangents (and any motion ratios derived from them) are
+            minimum-norm picks, not unique solutions.
+    """
+
+    per_step: list[list[TangentField]]
+    solve_infos: list[TangentSolveInfo]
+
+
 def compute_sweep_tangents(
     suspension: Suspension,
     sweep_config: SweepConfig,
     states: List[SuspensionState],
-) -> list[list[TangentField]]:
+) -> SweepTangents:
     """
     Compute solution-manifold tangents for every solved state of a sweep.
 
@@ -75,30 +98,55 @@ def compute_sweep_tangents(
         states: The solved states, one per sweep step.
 
     Returns:
-        One list of TangentField per state, each ordered like the sweep's
-        target dimensions.
+        The per-state tangent fields plus per-state solve health.
     """
     derived_manager = DerivedPointsManager(suspension.derived_spec())
     constraints = suspension.constraints()
     initial_state = suspension.initial_state()
 
     tangents_per_step: list[list[TangentField]] = []
+    solve_infos: list[TangentSolveInfo] = []
     for step_index, state in enumerate(states):
         step_targets = convert_targets_to_absolute(
             [sweep[step_index] for sweep in sweep_config.target_sweeps],
             initial_state,
         )
-        tangents_per_step.append(
-            compute_state_tangents(state, constraints, derived_manager, step_targets)
+        fields, info = compute_state_tangents(
+            state, constraints, derived_manager, step_targets
         )
-    return tangents_per_step
+        tangents_per_step.append(fields)
+        solve_infos.append(info)
+    return SweepTangents(per_step=tangents_per_step, solve_infos=solve_infos)
+
+
+@dataclass(frozen=True)
+class SweepMetricsResult:
+    """
+    The metric rows for a sweep, plus how the derivative columns fared.
+
+    Attributes:
+        rows: One entry per state: an ordered metric row for corner models,
+            or structured per-corner plus axle-level rows (AxleMetricRows)
+            for axle models.
+        derivative_error: ``None`` when tangents computed cleanly. Otherwise
+            a short description of the failure that made every derivative
+            column (motion ratios, camber gain, bump steer, modal rates) be
+            omitted from the rows.
+        tangent_solve_infos: Per-state tangent solve health, aligned with
+            ``rows``; ``None`` when tangents were not computed (no config,
+            or ``derivative_error`` is set).
+    """
+
+    rows: list["MetricRow | AxleMetricRows"]
+    derivative_error: str | None = None
+    tangent_solve_infos: list[TangentSolveInfo] | None = None
 
 
 def compute_sweep_metrics(
     suspension: Suspension,
     sweep_config: SweepConfig,
     states: List[SuspensionState],
-) -> list["MetricRow | AxleMetricRows"]:
+) -> SweepMetricsResult:
     """
     Compute the full metric rows for every solved state of a sweep.
 
@@ -111,7 +159,11 @@ def compute_sweep_metrics(
 
     The tangent computation is best-effort: if it fails (e.g. a pathological
     configuration), the per-state metrics are still returned and only the
-    derivative columns are omitted, consistently across all rows.
+    derivative columns are omitted, consistently across all rows. The failure
+    is never silent, though -- it is reported on the result so callers can
+    tell "absent by design" from "failed to compute", and per-state solve
+    health is reported so rank-deficient (non-unique, minimum-norm) tangents
+    can be flagged downstream.
 
     Args:
         suspension: The suspension the states were solved for.
@@ -119,23 +171,28 @@ def compute_sweep_metrics(
         states: The solved states, one per sweep step.
 
     Returns:
-        One entry per state: an ordered metric row for corner models, or
-        structured per-corner plus axle-level rows (AxleMetricRows) for axle
-        models. Empty rows when the suspension has no configuration (metrics
-        need vehicle parameters).
+        The rows plus derivative status. Rows are empty when the suspension
+        has no configuration (metrics need vehicle parameters).
     """
     if suspension.config is None:
-        return [OrderedDict() for _ in states]
+        return SweepMetricsResult(rows=[OrderedDict() for _ in states])
 
-    tangents: list[list[TangentField]] | None
+    tangents: SweepTangents | None
+    derivative_error: str | None = None
     try:
         tangents = compute_sweep_tangents(suspension, sweep_config, states)
-    except Exception:  # noqa: BLE001 - derivative metrics degrade gracefully
+    except Exception as exc:  # noqa: BLE001 - derivative metrics degrade gracefully
         tangents = None
+        derivative_error = f"{type(exc).__name__}: {exc}"
 
-    return [
+    rows: list["MetricRow | AxleMetricRows"] = [
         suspension.compute_state_metrics(
-            state, tangents[index] if tangents is not None else None
+            state, tangents.per_step[index] if tangents is not None else None
         )
         for index, state in enumerate(states)
     ]
+    return SweepMetricsResult(
+        rows=rows,
+        derivative_error=derivative_error,
+        tangent_solve_infos=tangents.solve_infos if tangents is not None else None,
+    )

@@ -289,6 +289,70 @@ class TestChiralityInRange:
         assert not [i for i in diag.issues if i.category == "chirality"]
 
 
+class TestArbChirality:
+    """A mirrored DROPLINK_ARB is flagged; healthy sweeps are not."""
+
+    @staticmethod
+    def _mirror_arb_end(state: SuspensionState, side: Side) -> SuspensionState:
+        """
+        Reflect one DROPLINK_ARB through the ARB-axis/rocker-droplink plane.
+
+        The reflection preserves both axis distances (the plane contains the
+        axis) and the droplink length (the plane contains DROPLINK_ROCKER),
+        so the mirrored state satisfies every ARB distance constraint -- it is
+        exactly the spurious assembly branch.
+        """
+        pos = state.positions
+        axis_a = pos[PointRef(Side.CENTER, PointID.ARB_AXIS_A)].data
+        axis_b = pos[PointRef(Side.CENTER, PointID.ARB_AXIS_B)].data
+        rocker_droplink = pos[PointRef(side, PointID.DROPLINK_ROCKER)].data
+        arb_key = PointRef(side, PointID.DROPLINK_ARB)
+        arb_end = pos[arb_key].data
+
+        # Unit normal of the plane spanned by the axis and the rocker
+        # droplink pickup, both taken from axis_a.
+        normal = np.cross(axis_b - axis_a, rocker_droplink - axis_a)
+        normal = normal / np.linalg.norm(normal)
+        # Householder reflection of the arm end across that plane:
+        # p' = p - 2 * dot(p - axis_a, n) * n.
+        mirrored = arb_end - 2.0 * float(np.dot(arb_end - axis_a, normal)) * normal
+
+        flipped = state.copy()
+        flipped.positions[arb_key] = Point3(mirrored)
+        return flipped
+
+    def test_mirrored_arb_end_flagged_at_right_step(
+        self, axle_rocker_file: Path
+    ) -> None:
+        axle = load_geometry(axle_rocker_file)
+        from kinematics.suspensions.axle import DoubleWishboneAxleSuspension
+
+        assert isinstance(axle, DoubleWishboneAxleSuspension) and axle.has_arb
+        heave = list(np.linspace(0.0, 10.0, 5))
+        states, stats = solve_sweep(axle, _axle_sweep(heave, heave, [0.0] * len(heave)))
+
+        flip_step = 3
+        states[flip_step] = self._mirror_arb_end(states[flip_step], Side.LEFT)
+
+        diag = diagnose_sweep(axle, states, stats)
+        arb_issues = [
+            i for i in diag.issues if i.category == "chirality" and "ARB" in i.message
+        ]
+        assert arb_issues, "expected an ARB chirality error"
+        assert all(i.severity == "error" for i in arb_issues)
+        assert {i.step for i in arb_issues} == {flip_step}
+        assert all("left" in i.message for i in arb_issues)
+
+    def test_healthy_sweep_no_arb_chirality_issue(self, axle_rocker_file: Path) -> None:
+        axle = load_geometry(axle_rocker_file)
+        heave = list(np.linspace(-20.0, 20.0, 11))
+        states, stats = solve_sweep(axle, _axle_sweep(heave, heave, [0.0] * 11))
+        diag = diagnose_sweep(axle, states, stats)
+        assert not [
+            i for i in diag.issues if i.category == "chirality" and "ARB" in i.message
+        ]
+
+
 # ----------------------------------------------------------------------
 # 4. Continuity check (synthetic states)
 # ----------------------------------------------------------------------
@@ -460,3 +524,29 @@ class TestCliDiagnostics:
         assert "WARNING:" not in captured.err
         assert "ERROR:" not in captured.err
         assert "Diagnostics:" not in captured.err
+
+    def test_cli_missing_viz_dependency_exits_nonzero(
+        self, tmp_path: Path, axle_rocker_file: Path, test_data_dir: Path, monkeypatch
+    ) -> None:
+        import sys
+
+        import typer
+
+        from kinematics.cli import sweep as cli_sweep
+
+        # Simulate the ``viz`` extra being absent: importing the visualization
+        # API raises ImportError, which the CLI must surface as a nonzero exit
+        # rather than printing an error and exiting 0.
+        monkeypatch.setitem(sys.modules, "kinematics.visualization.api", None)
+
+        out = tmp_path / "out.csv"
+        with pytest.raises(typer.Exit) as excinfo:
+            cli_sweep(
+                geometry=axle_rocker_file,
+                sweep=test_data_dir / "axle_rocker_sweep.yaml",
+                out=out,
+                animation_out=tmp_path / "anim.mp4",
+            )
+        assert excinfo.value.exit_code == 1
+        # The sweep results are still written before the animation is attempted.
+        assert out.exists()

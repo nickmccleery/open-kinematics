@@ -77,12 +77,46 @@ class TangentField:
         return vel
 
 
+@dataclass(frozen=True)
+class TangentSolveInfo:
+    """
+    Numerical health of one state's tangent (least-squares) solve.
+
+    The tangent system J * dq = e_j is solved by least squares. When the
+    Jacobian has full column rank the tangent is unique and exact; when it is
+    rank-deficient the mechanism has instantaneous freedoms the constraints
+    do not pin, and the returned tangent is only the minimum-norm choice from
+    an affine family -- downstream motion ratios computed from it may not be
+    meaningful. This record lets callers tell those situations apart instead
+    of silently trusting minimum-norm rates.
+
+    Attributes:
+        n_variables: Number of solve variables (columns of the Jacobian).
+        rank: Numerical rank of the Jacobian reported by the solve.
+        smallest_singular_value: Smallest singular value of the Jacobian;
+            near zero means the system is close to losing a rank.
+        condition_number: Ratio of largest to smallest singular value
+            (``inf`` when the smallest is zero); large values mean the
+            tangent is numerically ill-determined even at full rank.
+    """
+
+    n_variables: int
+    rank: int
+    smallest_singular_value: float
+    condition_number: float
+
+    @property
+    def rank_deficient(self) -> bool:
+        """True when the tangent system does not pin every variable."""
+        return self.rank < self.n_variables
+
+
 def compute_state_tangents(
     state: SuspensionState,
     constraints: list[Constraint],
     derived_manager: DerivedPointsManager,
     step_targets: Sequence[PointTarget],
-) -> list[TangentField]:
+) -> tuple[list[TangentField], TangentSolveInfo]:
     """
     Compute one tangent field per sweep target for a solved state.
 
@@ -95,10 +129,17 @@ def compute_state_tangents(
             does not depend on them); identities and directions matter.
 
     Returns:
-        A list of TangentField, one per target, in target order.
+        A list of TangentField, one per target, in target order, plus the
+        numerical health of the least-squares solve that produced them.
     """
     if not step_targets:
-        return []
+        # No targets: nothing to solve, trivially well posed.
+        return [], TangentSolveInfo(
+            n_variables=0,
+            rank=0,
+            smallest_singular_value=0.0,
+            condition_number=1.0,
+        )
 
     # Work on a scratch copy: ResidualComputer mutates its state buffer.
     scratch = state.copy()
@@ -134,8 +175,19 @@ def compute_state_tangents(
     # Least-squares solve of J * dq = e_j. Exact when the constraint system
     # is consistent and J has full column rank (the same condition the LM
     # solver itself needs); rank-deficient configurations yield the
-    # minimum-norm tangent.
-    dq_all, _residuals, _rank, _sv = np.linalg.lstsq(jacobian, rhs, rcond=None)
+    # minimum-norm tangent. Rank and singular values are captured so callers
+    # can tell a unique tangent from an arbitrary minimum-norm pick.
+    dq_all, _residuals, rank, singular_values = np.linalg.lstsq(
+        jacobian, rhs, rcond=None
+    )
+    smallest_sv = float(singular_values[-1]) if singular_values.size else 0.0
+    largest_sv = float(singular_values[0]) if singular_values.size else 0.0
+    solve_info = TangentSolveInfo(
+        n_variables=int(jacobian.shape[1]),
+        rank=int(rank),
+        smallest_singular_value=smallest_sv,
+        condition_number=(largest_sv / smallest_sv) if smallest_sv > 0.0 else np.inf,
+    )
 
     fields: list[TangentField] = []
     for j, target in enumerate(step_targets):
@@ -158,7 +210,7 @@ def compute_state_tangents(
             TangentField(target_index=j, target=target, velocities=velocities)
         )
 
-    return fields
+    return fields, solve_info
 
 
 def _degenerate_constraint_pins(

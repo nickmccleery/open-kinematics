@@ -33,7 +33,13 @@ from kinematics.analysis import (
     analyze_sweep,
     initial_pose,
 )
-from kinematics.main import compute_sweep_metrics, compute_sweep_tangents, solve_sweep
+from kinematics.main import (
+    SweepMetricsResult,
+    SweepTangents,
+    compute_sweep_metrics,
+    compute_sweep_tangents,
+    solve_sweep,
+)
 from kinematics.metrics.main import AxleMetricRows, flatten_metric_rows
 from kinematics.metrics.metadata import MetricDisplay, metric_display_for_keys
 from kinematics.metrics.registry import (
@@ -66,7 +72,9 @@ __all__ = [
     "SolverInfo",
     "StaticPose",
     "SweepAnalysis",
+    "SweepMetricsResult",
     "SweepSpec",
+    "SweepTangents",
     "__version__",
     "all_metric_specs",
     "analyze_sweep",

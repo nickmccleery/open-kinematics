@@ -108,9 +108,7 @@ class TestValidation:
         data = _load_yaml(corner_strut_file)
         del data["hardpoints"]["strut_top"]
         with pytest.raises(ValueError, match="Incomplete strut group"):
-            build_suspension(
-                parse_geometry_spec({"type": "double_wishbone", **data})
-            )
+            build_suspension(parse_geometry_spec({"type": "double_wishbone", **data}))
 
     def test_partial_strut_group_missing_bottom_rejected(
         self, corner_strut_file: Path
@@ -118,9 +116,7 @@ class TestValidation:
         data = _load_yaml(corner_strut_file)
         del data["hardpoints"]["strut_bottom"]
         with pytest.raises(ValueError, match="Incomplete strut group"):
-            build_suspension(
-                parse_geometry_spec({"type": "double_wishbone", **data})
-            )
+            build_suspension(parse_geometry_spec({"type": "double_wishbone", **data}))
 
     def test_has_strut_flags(
         self, corner_strut_file: Path, test_data_dir: Path

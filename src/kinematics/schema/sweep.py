@@ -184,7 +184,9 @@ def build_sweep_config(
         unit_vec = target_spec.direction.to_unit_vector()
         axis = vector_to_axis(unit_vec)
         direction: PointTargetAxis | PointTargetVector
-        if axis:
+        # Axis is an IntEnum with X == 0, so a truthiness test would wrongly
+        # demote an X-axis direction to a vector target; compare against None.
+        if axis is not None:
             direction = PointTargetAxis(axis)
         else:
             direction = PointTargetVector(Direction3(unit_vec))

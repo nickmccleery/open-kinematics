@@ -97,7 +97,7 @@ class TestCornerTangents:
         derived_manager = DerivedPointsManager(corner.derived_spec())
         field = compute_state_tangents(
             state, corner.constraints(), derived_manager, targets(z_0)
-        )[0]
+        )[0][0]
 
         # Central difference of every point position across two re-solves.
         state_minus, state_plus = _solve_states(
@@ -138,7 +138,7 @@ class TestCornerTangents:
         state = _solve_states(corner, [targets(z_0)])[0]
 
         derived_manager = DerivedPointsManager(corner.derived_spec())
-        tangents = compute_state_tangents(
+        tangents, _info = compute_state_tangents(
             state, corner.constraints(), derived_manager, targets(z_0)
         )
         rates = compute_corner_rate_metrics(state, corner, tangents)
@@ -246,7 +246,7 @@ class TestRockerMotionRatio:
         state = _solve_states(corner, [targets(z_0)])[0]
 
         derived_manager = DerivedPointsManager(corner.derived_spec())
-        tangents = compute_state_tangents(
+        tangents, _info = compute_state_tangents(
             state, corner.constraints(), derived_manager, targets(z_0)
         )
         rates = compute_corner_rate_metrics(state, corner, tangents)
@@ -295,7 +295,7 @@ class TestAxleTangents:
         state = _solve_states(axle, [targets(left_z0)])[0]
 
         derived_manager = DerivedPointsManager(axle.derived_spec())
-        fields = compute_state_tangents(
+        fields, _info = compute_state_tangents(
             state, axle.constraints(), derived_manager, targets(left_z0)
         )
         left_field = fields[0]
@@ -338,7 +338,7 @@ class TestAxleTangents:
 
         state = _solve_states(axle, [targets(0.0, 0.0)])[0]
         derived_manager = DerivedPointsManager(axle.derived_spec())
-        fields = compute_state_tangents(
+        fields, _info = compute_state_tangents(
             state, axle.constraints(), derived_manager, targets(0.0, 0.0)
         )
         _axle_rates, corner_rates = compute_axle_rate_metrics(state, axle, fields)
@@ -379,9 +379,9 @@ class TestAxleTangents:
         assert corner_rates[Side.LEFT][
             "roadwheel_angle_vs_roll_deg_per_deg"
         ] == pytest.approx(fd("roadwheel_angle_deg"), rel=5e-3, abs=1e-5)
-        assert corner_rates[Side.LEFT][
-            "camber_vs_roll_deg_per_deg"
-        ] == pytest.approx(fd("camber_deg"), rel=5e-3, abs=1e-5)
+        assert corner_rates[Side.LEFT]["camber_vs_roll_deg_per_deg"] == pytest.approx(
+            fd("camber_deg"), rel=5e-3, abs=1e-5
+        )
 
 
 class TestCombineTangents:

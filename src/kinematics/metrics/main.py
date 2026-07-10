@@ -169,33 +169,18 @@ def _append_rocker_metrics(row: MetricRow, ctx: MetricContext) -> None:
     row[registry.TORSION_BAR_TWIST.key] = rocker_angle
 
 
-def compute_metrics_for_sweep(
-    states: list[SuspensionState],
-    suspension: "Suspension",
-    config: SuspensionConfig,
-) -> list[MetricRow]:
-    """
-    Compute all corner-level metrics for a sweep of solved states.
-
-    Args:
-        states: List of solved SuspensionStates from a parametric sweep.
-        suspension: The suspension instance for type-specific geometry.
-        config: Suspension configuration with vehicle parameters.
-
-    Returns:
-        A list of ordered metric rows, one per state.
-    """
-    return [compute_metrics_for_state(state, suspension, config) for state in states]
-
-
 def compute_metrics_for_state_from_suspension(
     state: SuspensionState,
     suspension: "Suspension",
 ) -> MetricRow:
     """
-    Compute metrics using parameters from the suspension configuration.
+    Compute corner-level metrics using the suspension's own configuration.
 
     Convenience wrapper that extracts config from the suspension instance.
+    This is a corner-only path: it returns a single flat ``MetricRow``. Axle
+    suspensions have per-corner plus axle-level rows and must not be routed
+    here; pass them to :func:`compute_metrics_for_axle_state` instead (or use
+    the polymorphic :meth:`Suspension.compute_state_metrics` hook).
 
     Args:
         state: The solved SuspensionState to analyze.
@@ -205,8 +190,24 @@ def compute_metrics_for_state_from_suspension(
         An ordered mapping of metric column names to values.
 
     Raises:
+        TypeError: If handed an axle suspension (use
+            :func:`compute_metrics_for_axle_state`).
         ValueError: If the suspension has no configuration.
     """
+    # Guard against axle suspensions early: the corner-level catalog resolves
+    # instant centers via compute_*_instant_center, which the axle model raises
+    # NotImplementedError for (instant centers are per-side). Failing here with a
+    # clear message beats that confusing deep failure.
+    from kinematics.suspensions.axle import DoubleWishboneAxleSuspension
+
+    if isinstance(suspension, DoubleWishboneAxleSuspension):
+        raise TypeError(
+            "compute_metrics_for_state_from_suspension is corner-only and "
+            "returns a single MetricRow; it cannot handle an axle suspension. "
+            "Use compute_metrics_for_axle_state (or the polymorphic "
+            "Suspension.compute_state_metrics hook) for axle states."
+        )
+
     if suspension.config is None:
         raise ValueError("Suspension has no configuration")
 
@@ -317,13 +318,17 @@ def compute_metrics_for_axle_state(
     """
     axle_row: MetricRow = OrderedDict()
 
-    # Per-corner metrics, into location-keyed rows.
+    # Per-corner metrics, into location-keyed rows. Each corner is evaluated
+    # with its own config, not the shared axle config: build_suspension gives
+    # the RIGHT corner a mirrored config (see _mirror_config), which differs
+    # from the axle/LEFT config whenever a camber shim is present (its face
+    # datum/normal are Y-negated).
     side_rows: dict[Side, MetricRow] = {}
     for side in (Side.LEFT, Side.RIGHT):
+        corner = axle.corners[side]
         corner_state = axle.corner_state(state, side)
-        side_rows[side] = compute_metrics_for_state(
-            corner_state, axle.corners[side], config
-        )
+        corner_config = corner.config if corner.config is not None else config
+        side_rows[side] = compute_metrics_for_state(corner_state, corner, corner_config)
 
     # Axle-level metrics.
     roll_center_y, roll_center_z = _axle_roll_center(state, axle)

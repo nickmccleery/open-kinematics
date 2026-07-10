@@ -525,3 +525,110 @@ class TestCliSmoke:
         # Every step converged.
         assert all(r["solver_converged"] == "True" for r in rows)
         assert len(rows) == 5
+
+
+# ----------------------------------------------------------------------
+# 8. Metrics dispatch and per-corner config
+# ----------------------------------------------------------------------
+
+
+def _build_shimmed_axle(axle_geometry_file: Path) -> DoubleWishboneAxleSuspension:
+    """
+    Build an axle whose shared config carries a camber shim.
+
+    The shim datum matches the axle's LEFT upper-wishbone-outboard hardpoint
+    (-25, 750, 500). build_suspension gives the RIGHT corner a mirrored config
+    (face datum/normal Y-negated), so the two corners' configs differ.
+    """
+    import yaml
+
+    from kinematics.core.geometry import Direction3, Point3
+    from kinematics.schema.config import CamberShimConfig
+
+    data = yaml.safe_load(open(axle_geometry_file))
+    spec = parse_geometry_spec(data)
+    shim = CamberShimConfig(
+        shim_face_point_a=Point3([-25.0, 750.0, 510.0]),
+        shim_face_point_b=Point3([-25.0, 750.0, 490.0]),
+        shim_face_normal=Direction3([0.0, 1.0, 0.0]),
+        design_thickness=30.0,
+        setup_thickness=40.0,
+    )
+    shimmed_config = spec.config.model_copy(update={"camber_shim": shim})
+    shimmed_spec = spec.model_copy(update={"config": shimmed_config})
+    axle = build_suspension(shimmed_spec)
+    assert isinstance(axle, DoubleWishboneAxleSuspension)
+    return axle
+
+
+class TestMetricsDispatch:
+    """Metrics routing and per-corner config threading for the axle."""
+
+    def test_corner_only_metrics_rejects_axle_suspension(
+        self, axle_geometry_file: Path
+    ) -> None:
+        # compute_metrics_for_state_from_suspension is a corner-only path
+        # (returns a single MetricRow). Handing it an axle must fail early and
+        # clearly, not deep inside the per-side instant-center methods.
+        from kinematics.metrics.main import (
+            compute_metrics_for_state_from_suspension,
+        )
+
+        axle = load_geometry(axle_geometry_file)
+        assert isinstance(axle, DoubleWishboneAxleSuspension)
+        state = axle.initial_state()
+
+        with pytest.raises(TypeError, match="compute_metrics_for_axle_state"):
+            compute_metrics_for_state_from_suspension(state, axle)
+
+    def test_axle_state_metrics_use_per_corner_config(
+        self, axle_geometry_file: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import kinematics.metrics.main as metrics_main
+
+        axle = _build_shimmed_axle(axle_geometry_file)
+
+        # Precondition: mirroring produced a distinct RIGHT config, so "which
+        # config is threaded" is observable at all.
+        left_config = axle.corners[Side.LEFT].config
+        right_config = axle.corners[Side.RIGHT].config
+        assert axle.config is not None
+        assert left_config is not None
+        assert right_config is not None
+        assert left_config == axle.config
+        assert right_config != axle.config
+
+        state = axle.initial_state()
+
+        # Value check the fix reproduces a direct per-corner computation using
+        # each corner's own (mirrored, for RIGHT) config.
+        rows = metrics_main.compute_metrics_for_axle_state(state, axle, axle.config)
+        right_direct = metrics_main.compute_metrics_for_state(
+            axle.corner_state(state, Side.RIGHT),
+            axle.corners[Side.RIGHT],
+            right_config,
+        )
+        assert list(rows.corners["right"].keys()) == list(right_direct.keys())
+        for key, value in right_direct.items():
+            assert rows.corners["right"][key] == value or (
+                isinstance(value, float)
+                and isinstance(rows.corners["right"][key], float)
+                and np.isnan(value)
+                and np.isnan(rows.corners["right"][key])
+            )
+
+        # Regression guard: spy on the per-corner call and assert each side is
+        # handed its OWN config object, not the shared axle config. Under the
+        # old code both sides received axle.config (the LEFT/verbatim config).
+        real_compute = metrics_main.compute_metrics_for_state
+        seen: dict[int, object] = {}
+
+        def spy(corner_state, corner_susp, cfg, tangents=None):
+            seen[id(corner_susp)] = cfg
+            return real_compute(corner_state, corner_susp, cfg, tangents)
+
+        monkeypatch.setattr(metrics_main, "compute_metrics_for_state", spy)
+        metrics_main.compute_metrics_for_axle_state(state, axle, axle.config)
+
+        assert seen[id(axle.corners[Side.LEFT])] is left_config
+        assert seen[id(axle.corners[Side.RIGHT])] is right_config

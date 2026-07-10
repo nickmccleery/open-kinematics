@@ -66,7 +66,8 @@ class DiagnosticIssue:
         step: Sweep step index the issue is about, or ``None`` for a sweep-wide
             issue.
         category: One of ``"convergence"``, ``"residual"``, ``"jump"``,
-            ``"chirality"``, ``"transmission"``.
+            ``"chirality"``, ``"transmission"``, ``"derivatives"`` (the last
+            emitted by the analysis layer for tangent-solve health).
         severity: ``"error"`` or ``"warning"``.
         message: Human-readable, self-contained description.
         value: The salient numeric value (residual, displacement, margin, ...),
@@ -127,6 +128,7 @@ def diagnose_sweep(
     issues.extend(_check_convergence_and_residual(stats))
     issues.extend(_check_continuity(suspension, states))
     issues.extend(_check_chirality(suspension, states))
+    issues.extend(_check_arb_chirality(suspension, states))
     issues.extend(_check_transmission(suspension, states))
     return SweepDiagnostics(issues=issues)
 
@@ -309,6 +311,91 @@ def _rocker_triple(
         axis_rear - axis_front,
         pushrod_in - axis_front,
         droplink - axis_front,
+    )
+
+
+def _check_arb_chirality(
+    suspension: "Suspension",
+    states: list["SuspensionState"],
+) -> list[DiagnosticIssue]:
+    """
+    Flag any state whose ARB arm end has folded onto its mirror branch.
+
+    Each ARB arm end (``DROPLINK_ARB``) is located by distances alone: two to
+    the shared axis points (an arc about the ARB axis) and one droplink length
+    to that side's ``DROPLINK_ROCKER``. Those distances admit a mirror
+    solution -- reflecting the arm end through the plane containing the ARB
+    axis and the current ``DROPLINK_ROCKER`` preserves every distance.
+
+    Unlike the rocker, this ambiguity cannot be pinned with a
+    ``ScalarTripleProductConstraint`` at its design value: the mirror plane
+    moves with the rocker, so the triple product
+    ``(axis, droplink_rocker, droplink_arb)`` varies under legitimate
+    articulation and is not a rigid-body invariant. Its *sign* is invariant
+    along any continuous non-degenerate motion, though -- the two branches
+    only coincide where the arm end lies in the plane itself, which is the
+    droplink dead-centre (toggle) configuration already flagged by the
+    transmission check. A sign flip relative to design therefore means the
+    solver snapped onto the mirrored branch. Error severity.
+    """
+    issues: list[DiagnosticIssue] = []
+    if not _axle_has_arb(suspension):
+        return issues
+
+    design = suspension.initial_state()
+    for side in (Side.LEFT, Side.RIGHT):
+        design_triple = _arb_triple(design.positions, side)
+        design_sign = np.sign(design_triple)
+        if design_sign == 0.0:
+            # Degenerate design (arm end in the axis/rocker-droplink plane):
+            # the branches coincide at design and the sign carries no meaning.
+            continue
+        label = side.name.lower()
+        for step, state in enumerate(states):
+            triple = _arb_triple(state.positions, side)
+            if np.sign(triple) != design_sign and triple != 0.0:
+                issues.append(
+                    DiagnosticIssue(
+                        step=step,
+                        category="chirality",
+                        severity="error",
+                        message=(
+                            f"{label} ARB arm handedness inverted at step {step}: "
+                            f"triple product {triple:.6g} has the opposite sign to "
+                            f"the design value {design_triple:.6g} (DROPLINK_ARB "
+                            "folded onto its mirror branch across the ARB-axis/"
+                            "rocker-droplink plane)."
+                        ),
+                        value=triple,
+                    )
+                )
+    return issues
+
+
+def _arb_triple(positions: dict, side: Side) -> float:
+    """
+    Signed scalar triple product locating one ARB arm end.
+
+    Volume spanned by (axis direction, rocker droplink pickup, ARB arm end),
+    all taken from ``ARB_AXIS_A``. Its sign says which side of the plane
+    through the ARB axis and the *current* ``DROPLINK_ROCKER`` the arm end
+    sits on -- i.e. which assembly branch of the two-distances-plus-droplink
+    construction the solver selected.
+    """
+    from kinematics.core.vector_utils.geometric import compute_scalar_triple_product
+
+    axis_a_key, axis_b_key = (
+        PointRef(Side.CENTER, PointID.ARB_AXIS_A),
+        PointRef(Side.CENTER, PointID.ARB_AXIS_B),
+    )
+    axis_a = positions[axis_a_key]
+    axis_b = positions[axis_b_key]
+    rocker_droplink = positions[PointRef(side, PointID.DROPLINK_ROCKER)]
+    arb_end = positions[PointRef(side, PointID.DROPLINK_ARB)]
+    return compute_scalar_triple_product(
+        axis_b - axis_a,
+        rocker_droplink - axis_a,
+        arb_end - axis_a,
     )
 
 

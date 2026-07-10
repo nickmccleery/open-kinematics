@@ -13,8 +13,8 @@ import numpy as np
 from mpl_toolkits.mplot3d.axes3d import Axes3D
 
 from kinematics.core.enums import PointID
-from kinematics.io.geometry_loader import load_geometry
-from kinematics.suspensions.config.settings import CamberShimConfig
+from kinematics.io import load_geometry
+from kinematics.schema.config import CamberShimConfig
 from kinematics.visualization.api import visualize_geometry
 from kinematics.visualization.main import SuspensionVisualizer, WheelVisualization
 from kinematics.visualization.plots import (
@@ -127,10 +127,14 @@ def plot_front_view_comparison(
         )
         vis = SuspensionVisualizer(suspension.get_visualization_links(), wheel_config)
 
+        # Positions are Point3 wrappers; unwrap to raw (3,) ndarrays so numpy
+        # stacking and arithmetic below behave as plain float arrays.
+        positions = {pid: p.data for pid, p in state.positions.items()}
+
         # Draw links.
         first = True
         for link in vis.links:
-            pts = np.array([state.positions[pid] for pid in link.points])
+            pts = np.array([positions[pid] for pid in link.points])
             if len(link.points) > 1:
                 ax.plot(
                     pts[:, 0],
@@ -156,7 +160,6 @@ def plot_front_view_comparison(
             first = False
 
         # Draw the wheel (rim circles and cross-tyre bands) in the same colour.
-        positions = state.positions
         wheel_center = positions[PointID.WHEEL_CENTER]
         wheel_inboard = positions[PointID.WHEEL_INBOARD]
         wheel_outboard = positions[PointID.WHEEL_OUTBOARD]

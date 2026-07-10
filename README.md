@@ -1,6 +1,6 @@
 # open-kinematics
 
-> ⚠️   
+> ⚠️
 >
 > **Note that this system is both experimental and still under development. I do not recommend using it for anything important.**
 
@@ -23,8 +23,9 @@ The tool is built around a numerical solver that determines the unique positions
 - Inboard Actuation: Optional F1-style pushrod/rocker packages per corner (rocker axes parallel to the XZ plane), with torsion bars on each rocker pivot and an inboard anti-roll bar actuated via droplinks.
 - Camber Shim Simulation: Model outboard camber shim configurations to simulate shimmed ball joint offsets.
 - Derived Points System: A dependency-aware system for calculating the position of non-kinematic points (like wheel centers) based on the solved positions of core hard points.
-- Suspension Metrics: Computes camber, caster, toe, kingpin inclination (KPI), scrub radius, mechanical trail, side-view/front-view instant centres, wheel travel, track change, wheel recession, damper length, and anti-dive/anti-lift/anti-squat percentages from the solved geometry. Axle simulations add per-side metric columns plus roll centre position, total toe, track, rack displacement, rocker/torsion-bar angles, anti-roll-bar twist, heave, roll, ride height change, and Ackermann percentage.
-- Motion Ratios and Kinematic Rates: Exact derivative metrics -- damper motion ratio (installation ratio), rocker/torsion-bar motion ratios, camber gain, bump steer, caster gain, roll steer/camber, and ARB twist per degree of roll -- computed analytically per solved state via the implicit function theorem and forward-mode automatic differentiation, not by finite-differencing sweep steps.
+- Suspension Metrics: Computes camber, caster, roadwheel angle, kingpin inclination (KPI), scrub radius, mechanical trail, side-view/front-view instant centres, wheel travel, track change, wheel recession, damper length, and anti-dive/anti-lift/anti-squat percentages from the solved geometry. Axle simulations add per-side metric columns plus roll centre position, total roadwheel angle, track, rack displacement, rocker/torsion-bar angles, anti-roll-bar twist, heave, roll, ride height change, and Ackermann percentage.
+- Motion Ratios and Kinematic Rates: Exact derivative metrics -- damper motion ratio (installation ratio), rocker/torsion-bar/ARB motion ratios, camber gain, roadwheel angle gain in bump (bump steer), caster gain, roll steer/camber, and ARB twist per degree of roll -- computed analytically per solved state via the implicit function theorem and forward-mode automatic differentiation, not by finite-differencing sweep steps.
+- Sweep Diagnostics: Post-solve health checks on every sweep -- non-convergence, unacceptable residuals, branch snaps, rocker and anti-roll-bar handedness inversion, transmission (toggle) margin, and derivative-metric availability -- reported per step and printed as warnings by the CLI.
 - Spring/Damper Element: Optional coilover between a chassis point and the lower wishbone (outboard) or the rocker (inboard), enabling damper length and motion ratio outputs.
 - Data Export: Save simulation results in wide-format CSV or Apache Parquet files for further analysis.
 - Visualization: Generate static plots of the design condition and create MP4/GIF animations of sweep motions.
@@ -33,7 +34,7 @@ The tool is built around a numerical solver that determines the unique positions
 
 The core of the tool is a numerical solver that treats the suspension as a collection of rigid bodies connected by ideal spherical joints. The geometric relationships, such as the fixed length of a wishbone or a track rod, are defined as a system of nonlinear equations.
 
-For each step in a simulation sweep, the solver's objective is to find the 3D coordinates for all free-moving points that will drive the residuals of these constraint equations to zero. Though really a root-finding problem, it is approached as nonlinear least squares problem using SciPy's `least_squares` implementation of the Levenberg-Marquardt algorithm.
+For each step in a simulation sweep, the solver's objective is to find the 3D coordinates for all free-moving points that will drive the residuals of these constraint equations to zero. Though really a root-finding problem, it is approached as a nonlinear least squares problem using SciPy's `least_squares` implementation of the Levenberg-Marquardt algorithm.
 
 This numerical approach is highly flexible, allowing the system to be "driven" by various targets (e.g., wheel center height, rack position), hard or derived, without needing to derive new analytical equations for each case.
 
@@ -41,12 +42,14 @@ This numerical approach is highly flexible, allowing the system to be "driven" b
 
 Use of a virtual environment is recommended. [uv](https://github.com/astral-sh/uv) is used in the examples below.
 
+The package is not published to PyPI; install it from this repository.
+
 ### Basic Installation
 
 For core kinematics functionality without visualisation dependencies:
 
 ```bash
-uv pip install kinematics
+uv pip install "kinematics @ git+https://github.com/nickmccleery/open-kinematics.git"
 ```
 
 ### Full Installation (with Visualization)
@@ -54,7 +57,7 @@ uv pip install kinematics
 To generate plots and animations, you need to install the `[viz]` extra, which includes `matplotlib`.
 
 ```bash
-uv pip install "kinematics[viz]"
+uv pip install "kinematics[viz] @ git+https://github.com/nickmccleery/open-kinematics.git"
 ```
 
 ## Usage
@@ -97,14 +100,13 @@ targets:
 
 To run the sweep and save the results, use the `sweep` command.
 
-**Basic sweep with CSV export:**
+Basic sweep with CSV export:
 
 ```bash
 uv run kinematics sweep --geometry tests/data/geometry.yaml --sweep tests/data/sweep.yaml --out results.csv
 ```
 
-**Full sweep with parquet export and animation:**
-This command will generate both a Parquet data file and an MP4 animation of the motion.
+Full sweep with parquet export and animation. This command will generate both a Parquet data file and an MP4 animation of the motion:
 
 ```bash
 uv run kinematics sweep --geometry tests/data/geometry.yaml --sweep tests/data/sweep.yaml --out results.parquet --animation-out animation.mp4
@@ -118,4 +120,4 @@ This will produce a video like the one below, showing the suspension articulatin
   <em>Animation of a full kinematic sweep.</em>
 </p>
 
-**Note:** If you try to use visualisation features (`--animation-out` or the `visualize` command) without installing the `[viz]` extra, you will receive an error indicating that the required dependencies are not installed.
+Note: if you try to use visualisation features (`--animation-out` or the `visualize` command) without installing the `[viz]` extra, you will receive an error indicating that the required dependencies are not installed.

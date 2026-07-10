@@ -58,8 +58,17 @@ def sweep(
 
     # Full metric rows per state (per-state metrics plus derivative metrics
     # such as motion ratios and camber gain), computed by the package's single
-    # high-level metrics entry point.
-    metric_rows = compute_sweep_metrics(suspension, sweep_config, solution_states)
+    # high-level metrics entry point. A derivative failure degrades gracefully
+    # (rate columns omitted) but is reported, never silent.
+    metrics_result = compute_sweep_metrics(suspension, sweep_config, solution_states)
+    metric_rows = metrics_result.rows
+    if metrics_result.derivative_error is not None:
+        typer.echo(
+            "Warning: derivative metrics unavailable (tangent computation "
+            f"failed: {metrics_result.derivative_error}); motion-ratio and "
+            "rate columns are omitted.",
+            err=True,
+        )
 
     for idx, (st, solver_info) in enumerate(zip(solution_states, solver_stats)):
         # Filter to the suspension type's declared output points, in order.
@@ -117,7 +126,7 @@ def sweep(
                 f"Details: {e}",
                 err=True,
             )
-            typer.Exit(1)
+            raise typer.Exit(1)
 
 
 @app.command()

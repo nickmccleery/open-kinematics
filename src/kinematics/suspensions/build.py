@@ -147,9 +147,7 @@ def _copy_points(points: dict[PointID, Point3]) -> dict[PointKey, Point3]:
     return {pid: pos.copy() for pid, pos in points.items()}
 
 
-def _check_valid_points(
-    points: dict[PointKey, Point3], cls: type[Suspension]
-) -> None:
+def _check_valid_points(points: dict[PointKey, Point3], cls: type[Suspension]) -> None:
     """Reject points the suspension class does not define."""
     unknown = set(points) - set(cls.all_valid_points())
     if unknown:

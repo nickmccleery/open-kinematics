@@ -359,7 +359,7 @@ def compute_axle_rate_metrics(
             # ARB motion ratio: arm rotation about the shared chassis-fixed
             # axis per mm of this corner's bump. Evaluated on the full axle
             # state (the droplink ARB end and the axis are axle-level points),
-            # side-sign normalised like the rocker ratio so mirrored corners
+            # side-sign normalized like the rocker ratio so mirrored corners
             # report equal ratios in symmetric heave.
             if axle.has_arb:
                 full_velocities = _scaled(field.velocities, alignment)
@@ -371,9 +371,7 @@ def compute_axle_rate_metrics(
             field, alignment = rack
             velocities = _scaled(_corner_velocities(field.velocities, side), alignment)
             corner_row.update(
-                _corner_rack_rates(
-                    corner_state.positions, velocities, side_signs[side]
-                )
+                _corner_rack_rates(corner_state.positions, velocities, side_signs[side])
             )
 
     # Modal rates need both bump drivers.

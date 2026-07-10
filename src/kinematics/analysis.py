@@ -22,7 +22,7 @@ from kinematics.core.enums import TargetPositionMode
 from kinematics.core.point_ref import PointRef, Side
 from kinematics.core.types import PointTarget, SweepConfig
 from kinematics.diagnostics import DiagnosticIssue, diagnose_sweep
-from kinematics.main import compute_sweep_metrics, solve_sweep
+from kinematics.main import SweepMetricsResult, compute_sweep_metrics, solve_sweep
 from kinematics.metrics.main import AxleMetricRows, MetricRow
 from kinematics.metrics.metadata import MetricDisplay, metric_display_for_keys
 from kinematics.solver import SolverInfo
@@ -247,7 +247,7 @@ def _setup_reference(
         states, _stats = solve_sweep(suspension, hold_config)
         if not states:
             return None
-        rows = compute_sweep_metrics(suspension, hold_config, states)[0]
+        rows = compute_sweep_metrics(suspension, hold_config, states).rows[0]
     except Exception:  # noqa: BLE001 - the reference is optional
         return None
 
@@ -274,6 +274,63 @@ def _split_metric_rows(
     return rows, {}
 
 
+def _derivative_issues(metrics_result: SweepMetricsResult) -> list[DiagnosticIssue]:
+    """
+    Convert the sweep-metrics derivative status into diagnostic issues.
+
+    Two distinct situations are surfaced so rate columns are never just
+    silently absent:
+
+    - The tangent computation failed outright: every derivative column
+      (motion ratios, camber gain, bump steer, modal rates) is omitted, and
+      the caller should know that is a failure, not a modeling choice.
+    - The tangent system was rank-deficient at some steps: derivative columns
+      are present but are minimum-norm picks from a non-unique family, so
+      they may not be physically meaningful there.
+
+    Both are warnings: the per-state metrics themselves are unaffected.
+    """
+    issues: list[DiagnosticIssue] = []
+    if metrics_result.derivative_error is not None:
+        issues.append(
+            DiagnosticIssue(
+                step=None,
+                category="derivatives",
+                severity="warning",
+                message=(
+                    "Derivative metrics unavailable: tangent computation failed "
+                    f"({metrics_result.derivative_error}); motion-ratio and rate "
+                    "columns are omitted."
+                ),
+                value=None,
+            )
+        )
+
+    infos = metrics_result.tangent_solve_infos or []
+    deficient = [step for step, info in enumerate(infos) if info.rank_deficient]
+    if deficient:
+        first = deficient[0]
+        min_sv = min(infos[step].smallest_singular_value for step in deficient)
+        issues.append(
+            DiagnosticIssue(
+                step=first,
+                category="derivatives",
+                severity="warning",
+                message=(
+                    f"Tangent system rank-deficient at {len(deficient)} of "
+                    f"{len(infos)} steps (first at step {first}, rank "
+                    f"{infos[first].rank}/{infos[first].n_variables}, smallest "
+                    f"singular value {min_sv:.3g}): the mechanism has "
+                    "instantaneous freedoms the constraints do not pin, so "
+                    "motion-ratio and rate columns there are minimum-norm "
+                    "solutions and may not be unique."
+                ),
+                value=min_sv,
+            )
+        )
+    return issues
+
+
 def analyze_sweep(suspension: Suspension, sweep_config: SweepConfig) -> SweepAnalysis:
     """
     Solve a sweep and assemble the complete front-end-ready analysis.
@@ -292,7 +349,8 @@ def analyze_sweep(suspension: Suspension, sweep_config: SweepConfig) -> SweepAna
             adapters translate this into their own error type.
     """
     states, solver_stats = solve_sweep(suspension, sweep_config)
-    metric_rows = compute_sweep_metrics(suspension, sweep_config, states)
+    metrics_result = compute_sweep_metrics(suspension, sweep_config, states)
+    metric_rows = metrics_result.rows
 
     point_keys = display_point_keys(suspension)
     rocker_groups = rocker_display_groups(suspension)
@@ -341,6 +399,7 @@ def analyze_sweep(suspension: Suspension, sweep_config: SweepConfig) -> SweepAna
         diagnostics = list(diagnose_sweep(suspension, states, solver_stats).issues)
     except Exception:  # noqa: BLE001 - diagnostics must never break a solve
         diagnostics = []
+    diagnostics.extend(_derivative_issues(metrics_result))
 
     return SweepAnalysis(
         suspension=_suspension_info(suspension),

@@ -722,6 +722,16 @@ def solve_suspension_sweep(
         # travel limit, a kinematic lock-out). SciPy reports success on that
         # compromise, so guard the residual explicitly and fail loudly rather
         # than emitting silent garbage.
+        #
+        # Known coarseness: this is one raw threshold across residual families
+        # with different units -- distances in mm, angle residuals as
+        # dimensionless cosines, triple products normalized by their design
+        # scale, target residuals in mm. At the current tolerance (1e-3) every
+        # family reads as "tiny" for a mm-scale mechanism, and this check is
+        # only an infeasibility guard (convergence quality is governed by the
+        # LM ftol), so a shared threshold is acceptable. Per-family tolerances
+        # would change acceptance semantics sweep-wide and must be introduced
+        # as their own calibrated change, together with re-generated e2e refs.
         step_max_residual = (
             float(np.max(np.abs(result.fun))) if len(result.fun) > 0 else 0.0
         )
