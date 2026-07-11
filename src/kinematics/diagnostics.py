@@ -37,7 +37,7 @@ if TYPE_CHECKING:
     from kinematics.solver import SolverInfo
     from kinematics.state import SuspensionState
     from kinematics.suspensions.base import Suspension
-    from kinematics.suspensions.double_wishbone import DoubleWishboneSuspension
+    from kinematics.suspensions.corner import DoubleWishboneSuspension
 
 
 # Continuity check: a step displacement of a single free point is flagged when it
@@ -583,7 +583,7 @@ def _iter_rocker_corners(
                 corner,
             )
     else:
-        from kinematics.suspensions.double_wishbone import DoubleWishboneSuspension
+        from kinematics.suspensions.corner import DoubleWishboneSuspension
 
         if isinstance(suspension, DoubleWishboneSuspension):
             yield ("", lambda pid: pid, suspension)

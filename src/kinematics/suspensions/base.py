@@ -76,7 +76,7 @@ class Suspension(ABC):
         ...
 
     @abstractmethod
-    def free_points(self) -> Sequence[PointID]:
+    def free_points(self) -> Sequence[PointKey]:
         """
         Get the points that can move during solving.
 
@@ -165,10 +165,8 @@ class Suspension(ABC):
         Point keys to write to the solver output, in column order.
 
         The base implementation returns the static :attr:`OUTPUT_POINTS`.
-        Subclasses override this to append points that are only present when an
-        optional feature is configured (e.g. the pushrod/rocker group, or the
-        axle's per-side ARB droplink), so that output columns match the geometry
-        actually loaded.
+        Concrete topology classes override this to append their own points, so
+        output columns follow the explicitly selected suspension type.
         """
         return self.OUTPUT_POINTS
 
@@ -184,13 +182,23 @@ class Suspension(ABC):
         return False
 
     @property
+    def has_droplink(self) -> bool:
+        """Whether a rocker carries an anti-roll-bar droplink pickup."""
+        return False
+
+    @property
     def has_strut(self) -> bool:
         """
-        Whether this suspension has an optional spring/damper (coilover) element.
+        Whether this concrete topology has a spring/damper (coilover) element.
 
         The base implementation is ``False``. Corner models that support the
         strut group override this.
         """
+        return False
+
+    @property
+    def has_torsion_bar(self) -> bool:
+        """Whether this suspension has a torsion bar spring."""
         return False
 
     def compute_state_metrics(

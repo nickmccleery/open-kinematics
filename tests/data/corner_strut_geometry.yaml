@@ -1,4 +1,4 @@
-type: double_wishbone
+type: double_wishbone_coilover
 name: "corner strut (outboard)"
 version: "0.0.1"
 units: MILLIMETERS

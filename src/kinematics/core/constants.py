@@ -8,6 +8,10 @@ EPS_NUMERICAL = 1e-15
 # Appropriate for mm-scale coordinates.
 EPS_GEOMETRIC = 1e-6
 
+# Minimum absolute design signed volume required to constrain an assembly's
+# chirality. Smaller scalar triple products do not define a reliable handedness.
+MIN_CHIRALITY_VOLUME = 1e-6
+
 # Solve tolerances.
 SOLVE_TOLERANCE_VALUE = 1e-5  # 0.01um for mm units.
 SOLVE_TOLERANCE_STEP = 1e-9

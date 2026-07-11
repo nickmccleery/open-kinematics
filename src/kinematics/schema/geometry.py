@@ -10,9 +10,9 @@ structured API requests. Turn a spec into a live suspension with
 
 from __future__ import annotations
 
-from typing import Annotated, Any, Literal, Mapping, Union
+from typing import Any, Literal, Mapping
 
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from kinematics.core.enums import Units
 from kinematics.core.point_ref import Side
@@ -23,21 +23,59 @@ from kinematics.schema.config import SuspensionConfig
 HardpointMap = dict[CIPointID, PydanticPoint3]
 
 
-class _GeometrySpecBase(BaseModel):
+class GeometrySpecBase(BaseModel):
     """Fields shared by every geometry spec."""
 
-    model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
+    model_config = ConfigDict(
+        frozen=True,
+        arbitrary_types_allowed=True,
+        extra="forbid",
+    )
 
     name: str = "unnamed"
     version: str = "0.0.0"
     units: CIUnits = Units.MILLIMETERS
+    type: str
     config: SuspensionConfig
 
 
-class DoubleWishboneGeometrySpec(_GeometrySpecBase):
+class DoubleWishboneGeometrySpec(GeometrySpecBase):
     """A single double-wishbone corner: a flat hardpoint map plus config."""
 
     type: Literal["double_wishbone"] = "double_wishbone"
+    hardpoints: HardpointMap
+
+
+class DoubleWishboneCoiloverGeometrySpec(GeometrySpecBase):
+    """A double-wishbone corner with an outboard coilover."""
+
+    type: Literal["double_wishbone_coilover"] = "double_wishbone_coilover"
+    hardpoints: HardpointMap
+
+
+class RockerSpringSpec(BaseModel):
+    """The explicitly selected spring medium for a pushrod-rocker corner."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    type: Literal["torsion_bar", "coilover"]
+
+
+class DoubleWishbonePushrodRockerGeometrySpec(GeometrySpecBase):
+    """A double-wishbone corner with pushrod and rocker actuation."""
+
+    type: Literal["double_wishbone_pushrod_rocker"] = "double_wishbone_pushrod_rocker"
+    spring: RockerSpringSpec
+    hardpoints: HardpointMap
+
+
+class DoubleWishbonePushrodRockerArbGeometrySpec(GeometrySpecBase):
+    """A pushrod-rocker corner with an anti-roll-bar droplink pickup."""
+
+    type: Literal["double_wishbone_pushrod_rocker_arb"] = (
+        "double_wishbone_pushrod_rocker_arb"
+    )
+    spring: RockerSpringSpec
     hardpoints: HardpointMap
 
 
@@ -54,7 +92,11 @@ class AxleHardpointsSpec(BaseModel):
     maps may include ``DROPLINK_ARB``, the axle-only droplink ARB-end point.
     """
 
-    model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
+    model_config = ConfigDict(
+        frozen=True,
+        arbitrary_types_allowed=True,
+        extra="forbid",
+    )
 
     points: HardpointMap | None = None
     side: CISide = Side.LEFT
@@ -98,26 +140,31 @@ class AxleHardpointsSpec(BaseModel):
         return self.left is not None
 
 
-class DoubleWishboneAxleGeometrySpec(_GeometrySpecBase):
+class DoubleWishboneAxleGeometrySpec(GeometrySpecBase):
     """A full axle: two double-wishbone corners plus shared center points."""
 
     type: Literal["double_wishbone_axle"] = "double_wishbone_axle"
     hardpoints: AxleHardpointsSpec
 
 
-GeometrySpec = Annotated[
-    Union[DoubleWishboneGeometrySpec, DoubleWishboneAxleGeometrySpec],
-    Field(discriminator="type"),
-]
+class DoubleWishbonePushrodRockerAxleGeometrySpec(GeometrySpecBase):
+    """A full pushrod-rocker axle with a shared anti-roll bar."""
 
-_GEOMETRY_SPEC_ADAPTER: TypeAdapter[
-    DoubleWishboneGeometrySpec | DoubleWishboneAxleGeometrySpec
-] = TypeAdapter(GeometrySpec)
+    type: Literal["double_wishbone_pushrod_rocker_axle"] = (
+        "double_wishbone_pushrod_rocker_axle"
+    )
+    spring: RockerSpringSpec
+    hardpoints: AxleHardpointsSpec
+
+
+# Public common type for validated geometry specifications. Concrete dispatch
+# is owned by kinematics.suspensions.registry, the single type catalogue.
+GeometrySpec = GeometrySpecBase
 
 
 def parse_geometry_spec(
     data: Mapping[str, Any],
-) -> DoubleWishboneGeometrySpec | DoubleWishboneAxleGeometrySpec:
+) -> GeometrySpecBase:
     """
     Validate a raw mapping into the matching geometry spec.
 
@@ -130,8 +177,16 @@ def parse_geometry_spec(
         raise ValueError("Geometry type not specified")
 
     normalized = dict(data)
-    normalized["type"] = str(normalized["type"]).lower()
+    type_key = str(normalized["type"]).lower()
+    normalized["type"] = type_key
     try:
-        return _GEOMETRY_SPEC_ADAPTER.validate_python(normalized)
+        # Deferred import avoids a module cycle: the registry definitions refer
+        # back to the concrete schema classes declared above.
+        from kinematics.suspensions.registry import get_suspension_definition
+
+        definition = get_suspension_definition(type_key)
+        if definition is None:
+            raise ValueError(f"Unknown suspension type: {type_key}")
+        return definition.spec_type.model_validate(normalized)
     except Exception as e:
         raise ValueError(f"Invalid geometry specification: {e}") from e

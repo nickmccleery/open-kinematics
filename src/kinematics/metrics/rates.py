@@ -218,8 +218,9 @@ def _corner_bump_rates(
             )
         )
         row[registry.ROCKER_MOTION_RATIO.key] = rocker_rate
-        # Declared alias: the torsion bar is coaxial with the rocker pivot.
-        row[registry.TORSION_BAR_MOTION_RATIO.key] = rocker_rate
+        if suspension.has_torsion_bar:
+            # The torsion bar is coaxial with the rocker pivot.
+            row[registry.TORSION_BAR_MOTION_RATIO.key] = rocker_rate
 
     return row
 

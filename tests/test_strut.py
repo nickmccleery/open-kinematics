@@ -1,7 +1,7 @@
 """
-Tests for the optional spring/damper (coilover) strut element.
+Tests for the explicit spring/damper (coilover) suspension topologies.
 
-The strut is an all-or-nothing pair of hardpoints (STRUT_TOP, STRUT_BOTTOM).
+The strut topology requires both hardpoints (STRUT_TOP, STRUT_BOTTOM).
 STRUT_TOP is chassis-fixed; STRUT_BOTTOM is held rigid to whichever body carries
 the damper (the lower wishbone for an outboard layout, the rocker for an inboard
 layout). The strut length itself is left free -- it is the coilover travel.
@@ -35,6 +35,7 @@ from kinematics.core.types import (
 )
 from kinematics.io import load_geometry
 from kinematics.main import solve_sweep
+from kinematics.metrics.main import compute_metrics_for_state_from_suspension
 from kinematics.points.derived.manager import DerivedPointsManager
 from kinematics.solver import ResidualComputer, convert_targets_to_absolute
 
@@ -100,23 +101,29 @@ def _bump_sweep(corner, heave: list[float]) -> list:
 
 
 class TestValidation:
-    """The strut group is all-or-nothing."""
+    """Concrete coilover topologies require their exact point sets."""
 
     def test_partial_strut_group_missing_top_rejected(
         self, corner_strut_file: Path
     ) -> None:
         data = _load_yaml(corner_strut_file)
         del data["hardpoints"]["strut_top"]
-        with pytest.raises(ValueError, match="Incomplete strut group"):
-            build_suspension(parse_geometry_spec({"type": "double_wishbone", **data}))
+        with pytest.raises(ValueError, match="Missing required hardpoints: STRUT_TOP"):
+            build_suspension(
+                parse_geometry_spec({"type": "double_wishbone_coilover", **data})
+            )
 
     def test_partial_strut_group_missing_bottom_rejected(
         self, corner_strut_file: Path
     ) -> None:
         data = _load_yaml(corner_strut_file)
         del data["hardpoints"]["strut_bottom"]
-        with pytest.raises(ValueError, match="Incomplete strut group"):
-            build_suspension(parse_geometry_spec({"type": "double_wishbone", **data}))
+        with pytest.raises(
+            ValueError, match="Missing required hardpoints: STRUT_BOTTOM"
+        ):
+            build_suspension(
+                parse_geometry_spec({"type": "double_wishbone_coilover", **data})
+            )
 
     def test_has_strut_flags(
         self, corner_strut_file: Path, test_data_dir: Path
@@ -124,6 +131,32 @@ class TestValidation:
         assert load_geometry(corner_strut_file).has_strut
         # Plain corner geometry authors no strut.
         assert not load_geometry(test_data_dir / "geometry.yaml").has_strut
+
+    def test_basic_type_rejects_coilover_points(self, corner_strut_file: Path) -> None:
+        data = _load_yaml(corner_strut_file)
+        with pytest.raises(ValueError, match="Invalid hardpoints for double_wishbone"):
+            build_suspension(parse_geometry_spec({"type": "double_wishbone", **data}))
+
+    def test_pushrod_rocker_requires_explicit_spring(
+        self, corner_strut_rocker_file: Path
+    ) -> None:
+        data = _load_yaml(corner_strut_rocker_file)
+        del data["spring"]
+        with pytest.raises(ValueError, match="spring"):
+            parse_geometry_spec({"type": "double_wishbone_pushrod_rocker", **data})
+
+    def test_rocker_coilover_does_not_imply_torsion_bar(
+        self, corner_strut_rocker_file: Path
+    ) -> None:
+        corner = load_geometry(corner_strut_rocker_file)
+        assert corner.has_rocker
+        assert corner.has_strut
+        assert not corner.has_torsion_bar
+        metrics = compute_metrics_for_state_from_suspension(
+            corner.initial_state(), corner
+        )
+        assert "rocker_angle_deg" in metrics
+        assert "torsion_bar_twist_deg" not in metrics
 
     def test_strut_bottom_is_free_top_is_fixed(self, corner_strut_file: Path) -> None:
         corner = load_geometry(corner_strut_file)

@@ -114,15 +114,14 @@ def visualize_geometry(
             f"Original error: {e}"
         ) from e
 
-    # Check for supported suspension types.
-    supported_types = (
-        "double_wishbone",
-        "double_wishbone_front",
-        "double_wishbone_rear",
-        "double_wishbone_axle",
-    )
+    # Every currently registered topology is built on the double-wishbone
+    # corner/axle visualization contract.
+    from kinematics.suspensions.axle import DoubleWishboneAxleSuspension
+    from kinematics.suspensions.corner import DoubleWishboneSuspension
 
-    if suspension.TYPE_KEY not in supported_types:
+    if not isinstance(
+        suspension, (DoubleWishboneSuspension, DoubleWishboneAxleSuspension)
+    ):
         raise NotImplementedError(
             "Geometry visualization only supported for double wishbone suspensions."
         )
@@ -135,11 +134,9 @@ def visualize_geometry(
 
     # Ground tangency: single-corner reads the corner's contact patch directly;
     # the axle checks each side via its stripped corner state (PointRef keys).
-    if suspension.TYPE_KEY == "double_wishbone_axle":
+    if isinstance(suspension, DoubleWishboneAxleSuspension):
         from kinematics.core.point_ref import Side
-        from kinematics.suspensions.axle import DoubleWishboneAxleSuspension
 
-        assert isinstance(suspension, DoubleWishboneAxleSuspension)
         ground_checks = [
             (
                 side.name.title(),

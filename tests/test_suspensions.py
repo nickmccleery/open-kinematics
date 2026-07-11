@@ -24,8 +24,12 @@ from kinematics.schema.config import (
     WheelConfig,
 )
 from kinematics.suspensions.base import Suspension
-from kinematics.suspensions.double_wishbone import DoubleWishboneSuspension
-from kinematics.suspensions.registry import get_suspension_class, list_supported_types
+from kinematics.suspensions.corner import DoubleWishboneSuspension
+from kinematics.suspensions.registry import (
+    get_suspension_class,
+    get_suspension_definition,
+    list_supported_types,
+)
 
 # Test fixtures
 
@@ -92,8 +96,9 @@ class TestSuspensionBase:
         # Check required points are included
         assert PointID.LOWER_WISHBONE_OUTBOARD in valid
         assert PointID.UPPER_WISHBONE_OUTBOARD in valid
-        # Check optional points are included
-        assert PointID.PUSHROD_OUTBOARD in valid
+        # Variant-only points are not valid on the basic topology.
+        assert PointID.PUSHROD_OUTBOARD not in valid
+        assert PointID.STRUT_BOTTOM not in valid
 
 
 # Test DoubleWishboneSuspension
@@ -259,6 +264,10 @@ class TestRegistry:
         types = list_supported_types()
         assert "double_wishbone" in types
         assert "double_wishbone_axle" in types
+        assert "double_wishbone_coilover" in types
+        assert "double_wishbone_pushrod_rocker" in types
+        assert "double_wishbone_pushrod_rocker_arb" in types
+        assert "double_wishbone_pushrod_rocker_axle" in types
 
     def test_get_suspension_class(self):
         """
@@ -278,6 +287,15 @@ class TestRegistry:
         Test getting a non-existent suspension class.
         """
         assert get_suspension_class("nonexistent") is None
+
+    def test_every_supported_type_has_one_complete_definition(self):
+        """Parsing, building, and class lookup share one catalogue entry."""
+        for type_key in list_supported_types():
+            definition = get_suspension_definition(type_key)
+            assert definition is not None
+            assert definition.type_key == type_key
+            assert definition.suspension_type is get_suspension_class(type_key)
+            assert definition.spec_type.model_fields["type"].default == type_key
 
 
 # Test YAML loading

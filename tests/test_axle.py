@@ -226,6 +226,39 @@ class TestLoading:
         with pytest.raises(ValueError, match="requires a suspension context"):
             build_sweep_config(spec, None)
 
+    def test_center_side_rejected(self) -> None:
+        with pytest.raises(ValueError, match="left.*right"):
+            SweepSpec.model_validate(
+                {
+                    "targets": [
+                        {
+                            "point": "WHEEL_CENTER",
+                            "side": "center",
+                            "direction": {"axis": "Z"},
+                            "values": [0.0],
+                        }
+                    ]
+                }
+            )
+
+    def test_target_point_must_exist_on_selected_topology(
+        self, single_geometry_file: Path
+    ) -> None:
+        single = load_geometry(single_geometry_file)
+        spec = SweepSpec.model_validate(
+            {
+                "targets": [
+                    {
+                        "point": "STRUT_TOP",
+                        "direction": {"axis": "Z"},
+                        "values": [0.0],
+                    }
+                ]
+            }
+        )
+        with pytest.raises(ValueError, match="is not present"):
+            build_sweep_config(spec, single)
+
 
 # ----------------------------------------------------------------------
 # 2. Equivalence anchor

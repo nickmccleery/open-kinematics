@@ -54,7 +54,7 @@ from kinematics.main import solve_sweep
 from kinematics.points.derived.manager import DerivedPointsManager
 from kinematics.solver import ResidualComputer, convert_targets_to_absolute
 from kinematics.suspensions.axle import DoubleWishboneAxleSuspension
-from kinematics.suspensions.double_wishbone import DoubleWishboneSuspension
+from kinematics.suspensions.corner import DoubleWishboneSuspension
 
 TEST_TOLERANCE = 1e-4
 FD_STEP = 1e-7
@@ -105,7 +105,7 @@ def axle_rocker_file(test_data_dir: Path) -> Path:
 
 def _build_corner(data: dict) -> DoubleWishboneSuspension:
     suspension = build_suspension(
-        parse_geometry_spec({"type": "double_wishbone", **data})
+        parse_geometry_spec({"type": "double_wishbone_pushrod_rocker", **data})
     )
     assert isinstance(suspension, DoubleWishboneSuspension)
     return suspension
@@ -113,7 +113,7 @@ def _build_corner(data: dict) -> DoubleWishboneSuspension:
 
 def _build_axle(data: dict) -> DoubleWishboneAxleSuspension:
     suspension = build_suspension(
-        parse_geometry_spec({"type": "double_wishbone_axle", **data})
+        parse_geometry_spec({"type": "double_wishbone_pushrod_rocker_axle", **data})
     )
     assert isinstance(suspension, DoubleWishboneAxleSuspension)
     return suspension
@@ -208,26 +208,26 @@ class TestValidation:
     def test_partial_rocker_group_rejected(self, corner_rocker_file: Path) -> None:
         data = _load_yaml(corner_rocker_file)
         del data["hardpoints"]["rocker_axis_rear"]
-        with pytest.raises(ValueError, match="pushrod/rocker group"):
+        with pytest.raises(ValueError, match="Missing required hardpoints"):
             _build_corner(data)
 
     def test_droplink_rocker_without_group_rejected(self, test_data_dir: Path) -> None:
         # geometry.yaml has no rocker group; adding only DROPLINK_ROCKER is invalid.
         data = _load_yaml(test_data_dir / "geometry.yaml")
         data["hardpoints"]["droplink_rocker"] = {"x": 0, "y": 340, "z": 400}
-        with pytest.raises(ValueError, match="DROPLINK_ROCKER requires"):
-            _build_corner(data)
+        with pytest.raises(ValueError, match="Invalid hardpoints for double_wishbone"):
+            build_suspension(parse_geometry_spec({"type": "double_wishbone", **data}))
 
     def test_arb_missing_center_rejected(self, axle_rocker_file: Path) -> None:
         data = _load_yaml(axle_rocker_file)
         del data["hardpoints"]["center"]
-        with pytest.raises(ValueError, match="center 'arb_axis_a' and 'arb_axis_b'"):
+        with pytest.raises(ValueError, match="requires center ARB_AXIS_A"):
             _build_axle(data)
 
     def test_arb_missing_droplink_rejected(self, axle_rocker_file: Path) -> None:
         data = _load_yaml(axle_rocker_file)
         del data["hardpoints"]["points"]["droplink_arb"]
-        with pytest.raises(ValueError, match="'droplink_arb' must be given on both"):
+        with pytest.raises(ValueError, match="requires DROPLINK_ARB on both sides"):
             _build_axle(data)
 
     def test_explicit_partial_droplink_arb_rejected(self, test_data_dir: Path) -> None:
@@ -250,7 +250,10 @@ class TestValidation:
     ) -> None:
         data = _load_yaml(corner_rocker_file)
         data["hardpoints"]["droplink_arb"] = {"x": 0, "y": 150, "z": 490}
-        with pytest.raises(ValueError, match="Invalid hardpoints for double_wishbone"):
+        with pytest.raises(
+            ValueError,
+            match="Invalid hardpoints for double_wishbone_pushrod_rocker",
+        ):
             _build_corner(data)
 
 
@@ -261,6 +264,27 @@ class TestValidation:
 
 class TestCornerRocker:
     """Single-corner pushrod/rocker behavior."""
+
+    def test_explicit_arb_pickup_corner_builds(self, axle_rocker_file: Path) -> None:
+        data = _load_yaml(axle_rocker_file)
+        hardpoints = copy.deepcopy(data["hardpoints"]["points"])
+        hardpoints.pop("droplink_arb")
+        suspension = build_suspension(
+            parse_geometry_spec(
+                {
+                    "type": "double_wishbone_pushrod_rocker_arb",
+                    "name": "ARB pickup corner",
+                    "version": data["version"],
+                    "units": data["units"],
+                    "spring": data["spring"],
+                    "hardpoints": hardpoints,
+                    "config": data["config"],
+                }
+            )
+        )
+        assert suspension.TYPE_KEY == "double_wishbone_pushrod_rocker_arb"
+        assert suspension.has_rocker
+        assert suspension.has_droplink
 
     def _bump_sweep(self, corner, heave: list[float]) -> list:
         # Pin the steering DOF (trackrod inboard Y) so the rocker angle is a clean

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from kinematics.core.constants import MM_PER_INCH
 from kinematics.schema.coercion import PydanticDirection3, PydanticPoint3
@@ -25,7 +25,7 @@ class TireConfig(BaseModel):
         rim_diameter: Rim diameter in inches.
     """
 
-    model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
+    model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True, extra="forbid")
 
     aspect_ratio: float
     section_width: float
@@ -68,7 +68,7 @@ class WheelConfig(BaseModel):
         tire: Tire configuration parameters.
     """
 
-    model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
+    model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True, extra="forbid")
 
     offset: float
     tire: TireConfig
@@ -96,7 +96,7 @@ class CamberShimConfig(BaseModel):
         setup_thickness: Actual shim stack thickness in mm for this configuration.
     """
 
-    model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
+    model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True, extra="forbid")
 
     shim_face_point_a: PydanticPoint3
     shim_face_point_b: PydanticPoint3
@@ -141,19 +141,21 @@ class SuspensionConfig(BaseModel):
             anti-squat.
     """
 
-    model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
+    model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True, extra="forbid")
 
     steered: bool
     wheel: WheelConfig
     cg_position: PydanticPoint3
     wheelbase: float
     camber_shim: CamberShimConfig | None = None
-    upright_mounted_points: list[str] = [
-        "axle_inboard",
-        "axle_outboard",
-        "pushrod_outboard",
-        "trackrod_outboard",
-    ]
+    upright_mounted_points: list[str] = Field(
+        default_factory=lambda: [
+            "axle_inboard",
+            "axle_outboard",
+            "pushrod_outboard",
+            "trackrod_outboard",
+        ]
+    )
     # All optional so existing YAML (which omits them) keeps loading; the
     # anti-geometry metrics simply return None when the fields they need are unset.
     axle_position: Literal["front", "rear"] | None = None

@@ -108,3 +108,16 @@ def test_load_geometry_yaml_error(tmp_path: Path):
 
     with pytest.raises(ValueError, match="Error parsing Geometry file"):
         load_geometry(file_path)
+
+
+def test_load_geometry_rejects_unknown_config_field(
+    double_wishbone_geometry_file: Path, tmp_path: Path
+) -> None:
+    """Configuration typos fail at the external schema boundary."""
+    data = yaml.safe_load(double_wishbone_geometry_file.read_text())
+    data["config"]["front_brake_bais"] = 0.6
+    file_path = tmp_path / "config_typo.yaml"
+    file_path.write_text(yaml.safe_dump(data))
+
+    with pytest.raises(ValueError, match="front_brake_bais"):
+        load_geometry(file_path)

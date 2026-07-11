@@ -1,7 +1,10 @@
-type: double_wishbone_axle
+type: double_wishbone_pushrod_rocker_axle
 name: "test axle rocker"
 version: "0.0.1"
 units: MILLIMETERS
+
+spring:
+  type: torsion_bar
 
 # Mirror-mode axle with the full inboard actuation: pushrod, rocker (+ droplink),
 # torsion bar (coaxial with the rocker pivot), and an inboard anti-roll bar. The

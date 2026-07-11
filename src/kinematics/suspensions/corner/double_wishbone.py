@@ -1,5 +1,5 @@
 """
-Double wishbone suspension implementation.
+Double-wishbone corner suspension implementation.
 
 This module defines the DoubleWishboneSuspension class which combines topology
 definition, geometry storage, and kinematic behavior in a single unified class.
@@ -16,7 +16,6 @@ from kinematics.constraints import (
     Constraint,
     DistanceConstraint,
     PointOnLineConstraint,
-    ScalarTripleProductConstraint,
 )
 from kinematics.core.constants import EPS_GEOMETRIC
 from kinematics.core.enums import Axis, PointID, ShimType
@@ -24,8 +23,6 @@ from kinematics.core.geometry import Direction3, Point3
 from kinematics.core.types import WorldAxisSystem
 from kinematics.core.vector_utils.geometric import (
     compute_point_point_distance,
-    compute_point_to_line_distance,
-    compute_scalar_triple_product,
     compute_vector_vector_angle,
     intersect_line_with_axis_aligned_plane,
     intersect_line_with_vertical_plane,
@@ -77,41 +74,7 @@ class DoubleWishboneSuspension(Suspension):
         }
     )
 
-    OPTIONAL_POINTS: ClassVar[frozenset[PointID]] = frozenset(
-        {
-            PointID.PUSHROD_INBOARD,
-            PointID.PUSHROD_OUTBOARD,
-            PointID.ROCKER_AXIS_FRONT,
-            PointID.ROCKER_AXIS_REAR,
-            PointID.DROPLINK_ROCKER,
-            PointID.STRUT_TOP,
-            PointID.STRUT_BOTTOM,
-        }
-    )
-
-    # The pushrod/rocker group is all-or-nothing: either the pushrod link and
-    # its inboard rocker (pivoting about the two chassis-fixed axis points) are
-    # all present, or none of them are. DROPLINK_ROCKER is an optional extra
-    # point on the same rocker body, valid only when the group is present.
-    ROCKER_GROUP: ClassVar[frozenset[PointID]] = frozenset(
-        {
-            PointID.PUSHROD_OUTBOARD,
-            PointID.PUSHROD_INBOARD,
-            PointID.ROCKER_AXIS_FRONT,
-            PointID.ROCKER_AXIS_REAR,
-        }
-    )
-
-    # The spring/damper (coilover) group is all-or-nothing: either both ends of
-    # the strut are authored or neither is. STRUT_TOP is chassis-fixed; the strut
-    # is a variable-length spring/damper element (no distance constraint pins its
-    # length), so its extension is free to change over the sweep.
-    STRUT_GROUP: ClassVar[frozenset[PointID]] = frozenset(
-        {
-            PointID.STRUT_TOP,
-            PointID.STRUT_BOTTOM,
-        }
-    )
+    OPTIONAL_POINTS: ClassVar[frozenset[PointID]] = frozenset()
 
     SUPPORTED_SHIMS: ClassVar[frozenset[ShimType]] = frozenset(
         {ShimType.OUTBOARD_CAMBER}
@@ -156,130 +119,9 @@ class DoubleWishboneSuspension(Suspension):
         PointID.TRACKROD_INBOARD,
     )
 
-    @property
-    def has_rocker(self) -> bool:
-        """True when the pushrod/rocker group is present in the hardpoints."""
-        return self.ROCKER_GROUP <= set(self.hardpoints)
-
-    @property
-    def has_droplink(self) -> bool:
-        """True when DROPLINK_ROCKER is present (implies the rocker group)."""
-        return self.has_rocker and PointID.DROPLINK_ROCKER in self.hardpoints
-
-    @property
-    def has_strut(self) -> bool:
-        """True when both spring/damper (coilover) ends are authored."""
-        return self.STRUT_GROUP <= set(self.hardpoints)
-
-    def validate_hardpoints(self) -> None:
-        """
-        Validate required hardpoints plus the optional pushrod/rocker group.
-
-        The rocker group (:attr:`ROCKER_GROUP`) is all-or-nothing. When present:
-
-        - the two rocker-axis points must be distinct and lie parallel to the XZ
-          plane (equal Y within ``EPS_GEOMETRIC``), since the rocker/torsion-bar
-          pivot is authored parallel to XZ;
-        - ``PUSHROD_INBOARD`` (and ``DROPLINK_ROCKER`` when given) must be off the
-          axis (non-zero perpendicular distance), else they cannot trace a circle.
-
-        ``DROPLINK_ROCKER`` may only appear together with the full group.
-        """
-        super().validate_hardpoints()
-
-        present = set(self.hardpoints)
-        group_present = self.ROCKER_GROUP & present
-        if group_present and group_present != self.ROCKER_GROUP:
-            missing = sorted(p.name for p in self.ROCKER_GROUP - present)
-            raise ValueError(
-                "Incomplete pushrod/rocker group: the points "
-                f"{sorted(p.name for p in self.ROCKER_GROUP)} are all-or-nothing; "
-                f"missing {missing}."
-            )
-
-        if PointID.DROPLINK_ROCKER in present and not self.has_rocker:
-            raise ValueError(
-                "DROPLINK_ROCKER requires the full pushrod/rocker group "
-                f"({sorted(p.name for p in self.ROCKER_GROUP)})."
-            )
-
-        # The spring/damper (coilover) group is all-or-nothing, validated the same
-        # way as the rocker group: a partial specification (only one strut end) is
-        # a clear authoring error.
-        strut_present = self.STRUT_GROUP & present
-        if strut_present and strut_present != self.STRUT_GROUP:
-            missing = sorted(p.name for p in self.STRUT_GROUP - present)
-            raise ValueError(
-                "Incomplete strut group: the points "
-                f"{sorted(p.name for p in self.STRUT_GROUP)} are all-or-nothing; "
-                f"missing {missing}."
-            )
-
-        if not self.has_rocker:
-            return
-
-        axis_front = self.hardpoints[PointID.ROCKER_AXIS_FRONT]
-        axis_rear = self.hardpoints[PointID.ROCKER_AXIS_REAR]
-
-        if compute_point_point_distance(axis_front, axis_rear) <= EPS_GEOMETRIC:
-            raise ValueError(
-                "ROCKER_AXIS_FRONT and ROCKER_AXIS_REAR must be distinct points."
-            )
-
-        y_extent = abs(float(axis_front[Axis.Y]) - float(axis_rear[Axis.Y]))
-        if y_extent > EPS_GEOMETRIC:
-            raise ValueError(
-                "Rocker axis must be parallel to the XZ plane (zero Y-extent): "
-                f"|Y(ROCKER_AXIS_FRONT) - Y(ROCKER_AXIS_REAR)| = {y_extent} "
-                f"exceeds {EPS_GEOMETRIC}."
-            )
-
-        axis_direction = (axis_rear - axis_front).normalize()
-        off_axis_points = [PointID.PUSHROD_INBOARD]
-        if PointID.DROPLINK_ROCKER in present:
-            off_axis_points.append(PointID.DROPLINK_ROCKER)
-        for pid in off_axis_points:
-            radius = compute_point_to_line_distance(
-                self.hardpoints[pid], axis_front, axis_direction
-            )
-            if radius <= EPS_GEOMETRIC:
-                raise ValueError(
-                    f"{pid.name} lies on the rocker axis (zero radius); it must "
-                    "be off-axis to trace a rocker circle."
-                )
-
     def free_points(self) -> Sequence[PointID]:
-        """
-        Points that move during solving.
-
-        The base wishbone free points plus, when the pushrod/rocker group is
-        present, the pushrod ends and (when given) the rocker droplink. The
-        rocker-axis points are chassis-fixed and stay out of this list.
-        """
-        points: list[PointID] = list(self.FREE_POINTS)
-        if self.has_rocker:
-            points.append(PointID.PUSHROD_OUTBOARD)
-            points.append(PointID.PUSHROD_INBOARD)
-            if PointID.DROPLINK_ROCKER in self.hardpoints:
-                points.append(PointID.DROPLINK_ROCKER)
-        # STRUT_TOP is chassis-fixed (a hardpoint, never a solver variable); only
-        # STRUT_BOTTOM rides a body and moves during solving.
-        if self.has_strut:
-            points.append(PointID.STRUT_BOTTOM)
-        return points
-
-    def output_points(self) -> tuple[PointID, ...]:
-        """Static output points plus present pushrod/rocker points, in order."""
-        extra: list[PointID] = []
-        if self.has_rocker:
-            extra.append(PointID.PUSHROD_OUTBOARD)
-            extra.append(PointID.PUSHROD_INBOARD)
-            if PointID.DROPLINK_ROCKER in self.hardpoints:
-                extra.append(PointID.DROPLINK_ROCKER)
-        if self.has_strut:
-            extra.append(PointID.STRUT_TOP)
-            extra.append(PointID.STRUT_BOTTOM)
-        return self.OUTPUT_POINTS + tuple(extra)
+        """Points that move during solving."""
+        return self.FREE_POINTS
 
     def initial_state(self) -> SuspensionState:
         """Build initial state from hardpoints, applying shims if configured."""
@@ -364,166 +206,6 @@ class DoubleWishboneSuspension(Suspension):
                 line_direction=WorldAxisSystem.Y,
             )
         )
-
-        # Pushrod / rocker group (F1-style inboard actuation), all expressed as
-        # distance constraints so no new Jacobian codegen is required.
-        if self.has_rocker:
-            constraints.extend(self._rocker_constraints(initial_state))
-
-        # Spring/damper (coilover): STRUT_BOTTOM is held rigid to whichever body
-        # carries it (rocker when inboard, lower wishbone when outboard). The
-        # strut length itself is unconstrained (it is the spring/damper travel).
-        if self.has_strut:
-            constraints.extend(self._strut_constraints(initial_state))
-
-        return constraints
-
-    def _rocker_constraints(self, initial_state: SuspensionState) -> list[Constraint]:
-        """
-        Distance constraints for the pushrod / rocker group.
-
-        - ``PUSHROD_OUTBOARD`` is rigid to the upright: 4 distances to the two
-          outboard ball joints and the two axle points.
-        - the pushrod is a fixed-length link ``PUSHROD_OUTBOARD -> PUSHROD_INBOARD``.
-        - ``PUSHROD_INBOARD`` rides the rocker circle: 2 distances to the two
-          chassis-fixed rocker-axis points.
-        - when ``DROPLINK_ROCKER`` is present it also rides the rocker circle
-          (2 distances) and is held rigid to ``PUSHROD_INBOARD`` (1 distance),
-          so the whole rocker body rotates as one about its axis.
-        """
-        pos = initial_state.positions
-        constraints: list[Constraint] = []
-
-        def add_distance(p1: PointID, p2: PointID) -> None:
-            constraints.append(
-                DistanceConstraint(
-                    p1, p2, compute_point_point_distance(pos[p1], pos[p2])
-                )
-            )
-
-        # Pushrod outboard rigidly attached to the upright body.
-        for anchor in (
-            PointID.UPPER_WISHBONE_OUTBOARD,
-            PointID.LOWER_WISHBONE_OUTBOARD,
-            PointID.AXLE_INBOARD,
-            PointID.AXLE_OUTBOARD,
-        ):
-            add_distance(PointID.PUSHROD_OUTBOARD, anchor)
-
-        # Pushrod link length.
-        add_distance(PointID.PUSHROD_OUTBOARD, PointID.PUSHROD_INBOARD)
-
-        # Pushrod inboard on the rocker circle.
-        add_distance(PointID.PUSHROD_INBOARD, PointID.ROCKER_AXIS_FRONT)
-        add_distance(PointID.PUSHROD_INBOARD, PointID.ROCKER_AXIS_REAR)
-
-        # Rocker droplink: also on the rocker circle, and rigid to the pushrod
-        # inboard so the rocker body is a single rotating link.
-        if PointID.DROPLINK_ROCKER in self.hardpoints:
-            add_distance(PointID.DROPLINK_ROCKER, PointID.ROCKER_AXIS_FRONT)
-            add_distance(PointID.DROPLINK_ROCKER, PointID.ROCKER_AXIS_REAR)
-            add_distance(PointID.PUSHROD_INBOARD, PointID.DROPLINK_ROCKER)
-
-            # Chirality pin: the droplink pickup is fixed by only distances (two
-            # to the axis points, one chord to the pushrod pickup), which admit a
-            # mirror solution -- reflecting the droplink through the plane of the
-            # axis and the pushrod pickup satisfies every distance but inverts the
-            # rigid rocker body. Hold the signed scalar triple product of
-            # (axis_front, axis_rear, pushrod_inboard, droplink_rocker) at its
-            # design value to select the correct handedness. Skipped for a
-            # degenerate planar rocker (all four points coplanar at design), where
-            # the two branches coincide and the triple product carries no sign.
-            design_triple = compute_scalar_triple_product(
-                pos[PointID.ROCKER_AXIS_REAR] - pos[PointID.ROCKER_AXIS_FRONT],
-                pos[PointID.PUSHROD_INBOARD] - pos[PointID.ROCKER_AXIS_FRONT],
-                pos[PointID.DROPLINK_ROCKER] - pos[PointID.ROCKER_AXIS_FRONT],
-            )
-            if abs(design_triple) >= 1e-6:
-                constraints.append(
-                    ScalarTripleProductConstraint(
-                        PointID.ROCKER_AXIS_FRONT,
-                        PointID.ROCKER_AXIS_REAR,
-                        PointID.PUSHROD_INBOARD,
-                        PointID.DROPLINK_ROCKER,
-                        target_volume=design_triple,
-                        scale=max(abs(design_triple), 1.0),
-                    )
-                )
-
-        return constraints
-
-    def _strut_constraints(self, initial_state: SuspensionState) -> list[Constraint]:
-        """
-        Constraints holding the spring/damper lower pickup (STRUT_BOTTOM) rigid
-        to a body.
-
-        Only STRUT_BOTTOM is constrained here: STRUT_TOP is chassis-fixed and the
-        strut length is deliberately left free (it is the coilover travel). The
-        carrying body depends on the layout:
-
-        - **Inboard** (``has_rocker``): the damper mounts on the rocker, so
-          STRUT_BOTTOM is rigid to the rocker body via 3 design-length distances
-          (to the two rocker-axis points and to ``PUSHROD_INBOARD``).
-        - **Outboard** (no rocker): the damper mounts on the lower wishbone, so
-          STRUT_BOTTOM is rigid to the lower-wishbone body via 3 design-length
-          distances (to the two inboard pickups and the outboard ball joint).
-
-        In both cases three distances to three reference points fix STRUT_BOTTOM
-        only up to reflection through the plane of those references, so a
-        :class:`ScalarTripleProductConstraint` pins the design handedness -- the
-        same chirality-pin pattern used for the rocker droplink. That pin gives a
-        4th residual for the 3 added variables, keeping the block well posed. The
-        pin is skipped for a degenerate (coplanar) design where the two mirror
-        branches coincide and the triple product carries no sign.
-        """
-        pos = initial_state.positions
-        constraints: list[Constraint] = []
-
-        def add_distance(p1: PointID, p2: PointID) -> None:
-            constraints.append(
-                DistanceConstraint(
-                    p1, p2, compute_point_point_distance(pos[p1], pos[p2])
-                )
-            )
-
-        if self.has_rocker:
-            # Inboard damper: STRUT_BOTTOM rigid to the rocker body.
-            reference_points = (
-                PointID.ROCKER_AXIS_FRONT,
-                PointID.ROCKER_AXIS_REAR,
-                PointID.PUSHROD_INBOARD,
-            )
-        else:
-            # Outboard damper: STRUT_BOTTOM rigid to the lower-wishbone body.
-            reference_points = (
-                PointID.LOWER_WISHBONE_INBOARD_FRONT,
-                PointID.LOWER_WISHBONE_INBOARD_REAR,
-                PointID.LOWER_WISHBONE_OUTBOARD,
-            )
-
-        ref_a, ref_b, ref_c = reference_points
-        for ref in reference_points:
-            add_distance(PointID.STRUT_BOTTOM, ref)
-
-        # Chirality pin: signed volume of (ref_a, ref_b, ref_c, STRUT_BOTTOM) at
-        # its design value selects the correct side of the reference plane, so the
-        # solver cannot fold STRUT_BOTTOM onto its mirror image.
-        design_triple = compute_scalar_triple_product(
-            pos[ref_b] - pos[ref_a],
-            pos[ref_c] - pos[ref_a],
-            pos[PointID.STRUT_BOTTOM] - pos[ref_a],
-        )
-        if abs(design_triple) >= 1e-6:
-            constraints.append(
-                ScalarTripleProductConstraint(
-                    ref_a,
-                    ref_b,
-                    ref_c,
-                    PointID.STRUT_BOTTOM,
-                    target_volume=design_triple,
-                    scale=max(abs(design_triple), 1.0),
-                )
-            )
 
         return constraints
 
@@ -698,38 +380,6 @@ class DoubleWishboneSuspension(Suspension):
                 markersize=15.0,
             ),
         ]
-
-        if self.has_rocker:
-            links.append(
-                LinkVisualization(
-                    points=[PointID.PUSHROD_OUTBOARD, PointID.PUSHROD_INBOARD],
-                    color="crimson",
-                    label="Pushrod",
-                )
-            )
-            # Rocker body: axis-front -> pushrod inboard -> (droplink) ->
-            # axis-rear, drawing the triangular rocker where the droplink exists.
-            rocker_points = [PointID.ROCKER_AXIS_FRONT, PointID.PUSHROD_INBOARD]
-            if PointID.DROPLINK_ROCKER in self.hardpoints:
-                rocker_points.append(PointID.DROPLINK_ROCKER)
-            rocker_points.append(PointID.ROCKER_AXIS_REAR)
-            links.append(
-                LinkVisualization(
-                    points=rocker_points,
-                    color="mediumvioletred",
-                    label="Rocker",
-                )
-            )
-
-        # Spring/damper (coilover): chassis-fixed top down to the moving lower pickup.
-        if self.has_strut:
-            links.append(
-                LinkVisualization(
-                    points=[PointID.STRUT_TOP, PointID.STRUT_BOTTOM],
-                    color="seagreen",
-                    label="Spring/Damper",
-                )
-            )
 
         return links
 

@@ -8,7 +8,7 @@ from kinematics.metrics.catalog import get_default_corner_metrics
 from kinematics.metrics.context import MetricContext
 from kinematics.metrics.main import compute_metrics_for_state_from_suspension
 from kinematics.points.derived.manager import DerivedPointsManager
-from kinematics.suspensions.double_wishbone import DoubleWishboneSuspension
+from kinematics.suspensions.corner import DoubleWishboneSuspension
 
 
 def _shift_x(point: object, delta_x: float):

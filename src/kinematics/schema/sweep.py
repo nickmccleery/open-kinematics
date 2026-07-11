@@ -55,7 +55,7 @@ def vector_to_axis(vec: np.ndarray) -> Axis | None:
 class DirectionSpec(BaseModel):
     """Specification for a target direction (either axis or custom vector)."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     axis: CIAxis | None = None
     vector: Sequence[float] | None = None
@@ -84,7 +84,7 @@ class DirectionSpec(BaseModel):
 class TargetSpec(BaseModel):
     """Specification for a single sweep target dimension."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     point: CIPointID
     direction: DirectionSpec
@@ -94,6 +94,15 @@ class TargetSpec(BaseModel):
     start: float | None = None
     stop: float | None = None
     values: Sequence[float] | None = None
+
+    @model_validator(mode="after")
+    def check_side(self) -> "TargetSpec":
+        """Sweep targets may address only physical left or right corners."""
+        from kinematics.core.point_ref import Side
+
+        if self.side == Side.CENTER:
+            raise ValueError("Sweep target side must be 'left' or 'right'.")
+        return self
 
     def expand_values(self, default_steps: int | None) -> list[float]:
         """Expand this target into concrete values."""
@@ -126,7 +135,7 @@ class SweepSpec(BaseModel):
     with :func:`build_sweep_config`.
     """
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     version: int = 1
     steps: int | None = None
@@ -196,6 +205,11 @@ def build_sweep_config(
             point_key = suspension.resolve_target_key(
                 target_spec.point, target_spec.side
             )
+            if point_key not in suspension.initial_state().positions:
+                raise ValueError(
+                    f"Sweep target point '{point_key.name}' is not present in "
+                    f"suspension type '{suspension.TYPE_KEY}'."
+                )
         else:
             if target_spec.side is not None:
                 raise ValueError(

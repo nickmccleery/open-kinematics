@@ -82,7 +82,7 @@ class TestCornerAnalysis:
     def test_frames_and_metrics(self, corner_analysis):
         analysis = corner_analysis
         assert analysis.steps == len(analysis.frames) > 0
-        assert analysis.suspension.type_key == "double_wishbone"
+        assert analysis.suspension.type_key == "double_wishbone_coilover"
 
         first = analysis.frames[0]
         assert "WHEEL_CENTER" in first.positions

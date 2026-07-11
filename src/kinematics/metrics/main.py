@@ -166,7 +166,8 @@ def _append_rocker_metrics(row: MetricRow, ctx: MetricContext) -> None:
     )
     rocker_angle = degrees(raw) * ctx.side_sign
     row[registry.ROCKER_ANGLE.key] = rocker_angle
-    row[registry.TORSION_BAR_TWIST.key] = rocker_angle
+    if ctx.suspension.has_torsion_bar:
+        row[registry.TORSION_BAR_TWIST.key] = rocker_angle
 
 
 def compute_metrics_for_state_from_suspension(
