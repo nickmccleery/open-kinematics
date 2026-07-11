@@ -32,10 +32,15 @@ def test_explicit_axle_geometry_requires_both_sides() -> None:
         AxleHardpointsSpec.model_validate({"left": {}})
 
 
+def test_mirror_flag_is_not_part_of_axle_schema() -> None:
+    with pytest.raises(ValueError, match="Extra inputs are not permitted"):
+        AxleHardpointsSpec.model_validate({"points": {}, "mirror": True})
+
+
 def test_mirror_source_must_be_a_physical_side() -> None:
     with pytest.raises(ValueError, match="Mirror source side"):
         AxleHardpointsSpec.model_validate(
-            {"points": {}, "side": "center", "mirror": True}
+            {"points": {}, "side": "center"}
         )
 
 

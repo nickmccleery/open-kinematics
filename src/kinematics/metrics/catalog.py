@@ -180,8 +180,6 @@ def get_default_corner_derivative_metrics(
         PointCoordinateResponse,
     )
 
-    if suspension.side is None:
-        raise ValueError("Corner derivative metrics require an explicit side")
     side_sign = suspension.side.lateral_sign
     hub_z_driver = PointCoordinateResponse.from_world_axis(
         PointID.WHEEL_CENTER,

@@ -94,7 +94,7 @@ def build_double_wishbone_axle(spec: GeometrySpecBase) -> Suspension:
         name=typed.name,
         version=typed.version,
         units=typed.units,
-        side=None,
+        side=Side.CENTER,
         hardpoints={},
         config=typed.config,
         corners=corners,

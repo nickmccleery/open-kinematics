@@ -16,6 +16,7 @@ def test_mirrored_axle_builds_two_explicit_corners(test_data_dir: Path) -> None:
     axle = load_geometry(test_data_dir / "axle_geometry.yaml")
 
     assert isinstance(axle, DoubleWishboneAxleSuspension)
+    assert axle.side is Side.CENTER
     assert set(axle.corners) == {Side.LEFT, Side.RIGHT}
     assert axle.corners[Side.LEFT].side is Side.LEFT
     assert axle.corners[Side.RIGHT].side is Side.RIGHT

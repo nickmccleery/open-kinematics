@@ -4,7 +4,6 @@ version: "0.0.1"
 units: MILLIMETERS
 hardpoints:
   side: left
-  mirror: true
   points:
     lower_wishbone_inboard_front: {x: 250, y: 400, z: 200}
     lower_wishbone_inboard_rear: {x: -250, y: 450, z: 200}

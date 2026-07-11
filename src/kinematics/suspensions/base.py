@@ -52,7 +52,7 @@ class Suspension(ABC):
     units: Units = Units.MILLIMETERS
     hardpoints: dict[PointKey, Point3] = field(default_factory=dict)
     config: SuspensionConfig | None = None
-    side: Side | None = field(kw_only=True)
+    side: Side = field(kw_only=True)
 
     # Internal state cache.
     _initial_state: SuspensionState | None = field(default=None, repr=False)

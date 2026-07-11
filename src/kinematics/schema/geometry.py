@@ -68,7 +68,6 @@ class AxleHardpointsSpec(BaseModel):
 
     points: HardpointMap | None = None
     side: CISide = Side.LEFT
-    mirror: bool = True
     left: HardpointMap | None = None
     right: HardpointMap | None = None
 
@@ -92,11 +91,6 @@ class AxleHardpointsSpec(BaseModel):
                 raise ValueError(
                     "Axle hardpoints require a mirror-mode 'points' block "
                     "or explicit 'left'/'right' blocks."
-                )
-            if not self.mirror:
-                raise ValueError(
-                    "Mirror-mode hardpoints with 'mirror: false' are ambiguous; "
-                    "give both sides explicitly under 'left' and 'right'."
                 )
             if self.side == Side.CENTER:
                 raise ValueError("Mirror source side must be 'left' or 'right'.")

@@ -5,6 +5,7 @@ from __future__ import annotations
 from math import atan2, degrees
 from typing import TYPE_CHECKING
 
+from kinematics.core.constants import EPS_GEOMETRIC
 from kinematics.core.enums import Axis, PointID
 from kinematics.core.point_ref import PointRef, Side
 
@@ -19,7 +20,7 @@ def append_axle_state_metrics(
     state: SuspensionState,
     axle: DoubleWishboneAxleSuspension,
 ) -> None:
-    """Append heave, roll, ride-height, track, and steering metrics."""
+    """Append all metrics defined at axle rather than corner scope."""
     wheel_delta_z: dict[Side, float] = {}
     contact_delta_z: dict[Side, float] = {}
     contact_y: dict[Side, float] = {}
@@ -44,6 +45,51 @@ def append_axle_state_metrics(
         contact_delta_z[Side.LEFT] + contact_delta_z[Side.RIGHT]
     )
     row["track_mm"] = track
+
+    roll_center_y, roll_center_z = _roll_center(state, axle)
+    row["roll_center_y_mm"] = roll_center_y
+    row["roll_center_z_mm"] = roll_center_z
+
+    design_trackrod_y = float(
+        axle.corners[Side.LEFT].initial_state().get(PointID.TRACKROD_INBOARD)[Axis.Y]
+    )
+    current_trackrod_y = float(
+        state.get(PointRef(Side.LEFT, PointID.TRACKROD_INBOARD))[Axis.Y]
+    )
+    row["trackrod_inboard_displacement_mm"] = current_trackrod_y - design_trackrod_y
+
+
+def _roll_center(
+    state: SuspensionState,
+    axle: DoubleWishboneAxleSuspension,
+) -> tuple[float | None, float | None]:
+    """Intersect the two contact-patch-to-FVIC lines in the YZ plane."""
+    lines: list[tuple[float, float, float, float]] = []
+    for side in (Side.LEFT, Side.RIGHT):
+        corner_state = axle.corner_state(state, side)
+        fvic = axle.corners[side].compute_front_view_instant_center(corner_state)
+        if fvic is None:
+            return None, None
+        contact = corner_state.get(PointID.CONTACT_PATCH_CENTER)
+        contact_y = float(contact[Axis.Y])
+        contact_z = float(contact[Axis.Z])
+        lines.append(
+            (
+                contact_y,
+                contact_z,
+                float(fvic[Axis.Y]) - contact_y,
+                float(fvic[Axis.Z]) - contact_z,
+            )
+        )
+
+    left, right = lines
+    denominator = left[2] * right[3] - left[3] * right[2]
+    if abs(denominator) < EPS_GEOMETRIC:
+        return None, None
+    parameter = (
+        (right[0] - left[0]) * right[3] - (right[1] - left[1]) * right[2]
+    ) / denominator
+    return left[0] + parameter * left[2], left[1] + parameter * left[3]
 
 
 __all__ = ["append_axle_state_metrics"]
