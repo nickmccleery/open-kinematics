@@ -9,8 +9,9 @@ from typing import TYPE_CHECKING, Any, ClassVar, Sequence
 from kinematics.constraints import Constraint, DistanceConstraint
 from kinematics.core.enums import PointID
 from kinematics.core.geometry import Point3
-from kinematics.core.point_ref import PointKey, PointRef, Side
+from kinematics.core.point_ref import PointKey, PointRef, Side, side_qualified
 from kinematics.core.vector_utils.geometric import compute_point_point_distance
+from kinematics.metrics.main import compute_metrics_for_axle_state
 from kinematics.points.derived.manager import (
     DerivedPointsSpec,
     PositionFn,
@@ -59,6 +60,11 @@ class DoubleWishboneAxleSuspension(Suspension):
 
     corners: dict[Side, DoubleWishboneSuspension] = field(default_factory=dict)
 
+    @property
+    def is_axle(self) -> bool:
+        """Whether this topology composes multiple corner suspensions."""
+        return True
+
     def validate_hardpoints(self) -> None:
         """Require one explicitly sided corner on each side."""
         if set(self.corners) != {Side.LEFT, Side.RIGHT}:
@@ -104,7 +110,7 @@ class DoubleWishboneAxleSuspension(Suspension):
     def constraints(self) -> list[Constraint]:
         """Combine remapped corner constraints and trackrod coupling."""
         constraints = [
-            constraint.remap(lambda point, side=side: PointRef(side, point))
+            constraint.remap(lambda point, side=side: side_qualified(side, point))
             for side, corner in self.corners.items()
             for constraint in corner.constraints()
         ]
@@ -142,7 +148,9 @@ class DoubleWishboneAxleSuspension(Suspension):
         """Adapt a PointID-based derived function to an axle position map."""
 
         def wrapped(positions: dict[PointKey, PositionValue]) -> PositionValue:
-            return function(_CornerPositionView(positions, side))  # type: ignore[arg-type]
+            # _CornerPositionView duck-types as the positions mapping the derived
+            # function expects; ty cannot see the structural match through the view.
+            return function(_CornerPositionView(positions, side))  # ty: ignore[invalid-argument-type]
 
         return wrapped
 
@@ -186,8 +194,6 @@ class DoubleWishboneAxleSuspension(Suspension):
         """Compute structural corner and axle-level metric rows."""
         if self.config is None:
             raise ValueError("Suspension has no configuration")
-        from kinematics.metrics.main import compute_metrics_for_axle_state
-
         return compute_metrics_for_axle_state(
             state,
             self,
@@ -201,7 +207,7 @@ class DoubleWishboneAxleSuspension(Suspension):
 
         links = [
             LinkVisualization(
-                points=[PointRef(side, point) for point in link.points],
+                points=[side_qualified(side, point) for point in link.points],
                 color=link.color,
                 label=f"{side.name.title()} {link.label}",
                 linewidth=link.linewidth,

@@ -1,5 +1,6 @@
 """Double-wishbone pushrod-rocker axle with a shared anti-roll bar."""
 
+from collections import OrderedDict
 from dataclasses import dataclass, field
 from math import acos, degrees
 from typing import TYPE_CHECKING, ClassVar, Sequence
@@ -10,12 +11,15 @@ from kinematics.constraints import Constraint, DistanceConstraint
 from kinematics.core.constants import EPS_GEOMETRIC, MIN_CHIRALITY_VOLUME
 from kinematics.core.enums import Axis, PointID
 from kinematics.core.geometry import Point3, extract_array
-from kinematics.core.point_ref import PointKey, PointRef, Side
+from kinematics.core.point_ref import PointKey, PointRef, Side, side_qualified
 from kinematics.core.vector_utils.geometric import (
     compute_point_point_distance,
     compute_point_to_line_distance,
     compute_scalar_triple_product,
+    signed_angle_about_axis,
 )
+from kinematics.diagnostics import DiagnosticIssue
+from kinematics.metrics import kernels
 from kinematics.metrics.derivatives import (
     CallableScalarResponse,
     DerivativeMetricDefinition,
@@ -27,9 +31,62 @@ from kinematics.suspensions.corner.double_wishbone_pushrod_rocker import (
     DoubleWishbonePushrodRockerArbSuspension,
 )
 
+TRANSMISSION_MARGIN_WARNING_THRESHOLD = 0.15
+"""Warn when a linkage transmission margin falls below this ratio."""
+
 if TYPE_CHECKING:
     from kinematics.state import SuspensionState
     from kinematics.visualization.main import LinkVisualization
+
+
+def calculate_arb_branch_volume(state: "SuspensionState", side: Side) -> float:
+    """Calculate the signed volume of one ARB linkage branch."""
+    axis_a = state.get(PointRef(Side.CENTER, PointID.ARB_AXIS_A))
+    return compute_scalar_triple_product(
+        state.get(PointRef(Side.CENTER, PointID.ARB_AXIS_B)) - axis_a,
+        state.get(PointRef(side, PointID.DROPLINK_ROCKER)) - axis_a,
+        state.get(PointRef(side, PointID.DROPLINK_ARB)) - axis_a,
+    )
+
+
+def calculate_arb_chirality_margin(
+    state: "SuspensionState",
+    side: Side,
+) -> float:
+    """Calculate normalized signed volume for one ARB linkage branch."""
+    axis_a = state.get(PointRef(Side.CENTER, PointID.ARB_AXIS_A)).data
+    axis = state.get(PointRef(Side.CENTER, PointID.ARB_AXIS_B)).data - axis_a
+    rocker_arm = state.get(PointRef(side, PointID.DROPLINK_ROCKER)).data - axis_a
+    arb_arm = state.get(PointRef(side, PointID.DROPLINK_ARB)).data - axis_a
+    scale = (
+        float(np.linalg.norm(axis))
+        * float(np.linalg.norm(rocker_arm))
+        * float(np.linalg.norm(arb_arm))
+    )
+    if scale <= EPS_GEOMETRIC:
+        return 0.0
+    return calculate_arb_branch_volume(state, side) / scale
+
+
+def calculate_transmission_margin(
+    driven: np.ndarray,
+    axis_point: np.ndarray,
+    axis: np.ndarray,
+    link: np.ndarray,
+) -> float | None:
+    """Calculate absolute link alignment with the driven circular tangent."""
+    axis_norm = float(np.linalg.norm(axis))
+    link_norm = float(np.linalg.norm(link))
+    if axis_norm == 0.0 or link_norm == 0.0:
+        return None
+    axis_unit = axis / axis_norm
+    radius = driven - axis_point
+    radius -= axis_unit * float(np.dot(radius, axis_unit))
+    tangent = np.cross(axis_unit, radius)
+    tangent_norm = float(np.linalg.norm(tangent))
+    if tangent_norm == 0.0:
+        return None
+    return float(abs(np.dot(link / link_norm, tangent / tangent_norm)))
 
 
 @dataclass
@@ -128,7 +185,8 @@ class DoubleWishbonePushrodRockerAxleSuspension(DoubleWishboneAxleSuspension):
         result: list[PointKey] = []
         for side in (Side.LEFT, Side.RIGHT):
             result.extend(
-                PointRef(side, point) for point in self.corners[side].output_points()
+                side_qualified(side, point)
+                for point in self.corners[side].output_points()
             )
             result.append(PointRef(side, PointID.DROPLINK_ARB))
         return tuple(result)
@@ -141,14 +199,15 @@ class DoubleWishbonePushrodRockerAxleSuspension(DoubleWishboneAxleSuspension):
         self,
     ) -> tuple[DerivativeMetricDefinition, ...]:
         """Declare ARB twist relative to each hub Z with the other hub held."""
-        from kinematics.metrics import kernels
-
         design = self.initial_state()
         axis_a_key = PointRef(Side.CENTER, PointID.ARB_AXIS_A)
         axis_b_key = PointRef(Side.CENTER, PointID.ARB_AXIS_B)
         axis_point = extract_array(design.positions[axis_a_key])
         axis_direction = extract_array(design.positions[axis_b_key]) - axis_point
-        axis_direction /= np.linalg.norm(axis_direction)
+        axis_length = float(np.linalg.norm(axis_direction))
+        if axis_length < EPS_GEOMETRIC:
+            raise ValueError("ARB twist derivative requires distinct ARB axis points.")
+        axis_direction /= axis_length
         design_pickups = {
             side: extract_array(design.positions[PointRef(side, PointID.DROPLINK_ARB)])
             for side in (Side.LEFT, Side.RIGHT)
@@ -187,16 +246,14 @@ class DoubleWishbonePushrodRockerAxleSuspension(DoubleWishboneAxleSuspension):
 
     def topology_diagnostics(self, states):
         """Report ARB branch inversions and approaching linkage toggles."""
-        from kinematics.diagnostics import DiagnosticIssue
-
         issues: list[DiagnosticIssue] = []
         design = self.initial_state()
         for side in (Side.LEFT, Side.RIGHT):
-            design_triple = self._arb_triple(design, side)
+            design_triple = calculate_arb_branch_volume(design, side)
             design_sign = np.sign(design_triple)
             for step, state in enumerate(states):
-                triple = self._arb_triple(state, side)
-                margin = self._arb_chirality_margin(state, side)
+                triple = calculate_arb_branch_volume(state, side)
+                margin = calculate_arb_chirality_margin(state, side)
                 if abs(margin) <= EPS_GEOMETRIC:
                     issues.append(
                         DiagnosticIssue(
@@ -221,28 +278,8 @@ class DoubleWishbonePushrodRockerAxleSuspension(DoubleWishboneAxleSuspension):
                 issues.extend(self._transmission_issues(state, side, step))
         return issues
 
-    @staticmethod
-    def _arb_chirality_margin(state, side: Side) -> float:
-        """Return normalized signed volume for one ARB linkage branch."""
-        axis_a = state.get(PointRef(Side.CENTER, PointID.ARB_AXIS_A)).data
-        axis = state.get(PointRef(Side.CENTER, PointID.ARB_AXIS_B)).data - axis_a
-        rocker_arm = state.get(PointRef(side, PointID.DROPLINK_ROCKER)).data - axis_a
-        arb_arm = state.get(PointRef(side, PointID.DROPLINK_ARB)).data - axis_a
-        scale = (
-            float(np.linalg.norm(axis))
-            * float(np.linalg.norm(rocker_arm))
-            * float(np.linalg.norm(arb_arm))
-        )
-        if scale <= EPS_GEOMETRIC:
-            return 0.0
-        return float(np.dot(axis, np.cross(rocker_arm, arb_arm)) / scale)
-
     def topology_metric_values(self, state):
         """Return per-side ARB arm rotation and total bar twist from design."""
-        from collections import OrderedDict
-
-        from kinematics.core.vector_utils.geometric import signed_angle_about_axis
-
         design = self.initial_state()
         axis_a = design.get(PointRef(Side.CENTER, PointID.ARB_AXIS_A))
         axis = (
@@ -267,23 +304,8 @@ class DoubleWishbonePushrodRockerAxleSuspension(DoubleWishboneAxleSuspension):
             )
         )
 
-    @staticmethod
-    def _arb_triple(state, side: Side) -> float:
-        """Return the signed branch volume for one ARB arm."""
-        from kinematics.core.vector_utils.geometric import (
-            compute_scalar_triple_product,
-        )
-
-        axis_a = state.get(PointRef(Side.CENTER, PointID.ARB_AXIS_A))
-        return compute_scalar_triple_product(
-            state.get(PointRef(Side.CENTER, PointID.ARB_AXIS_B)) - axis_a,
-            state.get(PointRef(side, PointID.DROPLINK_ROCKER)) - axis_a,
-            state.get(PointRef(side, PointID.DROPLINK_ARB)) - axis_a,
-        )
-
     def _transmission_issues(self, state, side: Side, step: int):
         """Return warnings for the three link-to-lever transmission margins."""
-        from kinematics.diagnostics import DiagnosticIssue
 
         def point(point_id: PointID):
             return state.get(PointRef(side, point_id)).data
@@ -299,7 +321,7 @@ class DoubleWishbonePushrodRockerAxleSuspension(DoubleWishboneAxleSuspension):
         checks = (
             (
                 "pushrod @ PUSHROD_INBOARD",
-                self._transmission_margin(
+                calculate_transmission_margin(
                     point(PointID.PUSHROD_INBOARD),
                     rocker_axis_a,
                     rocker_axis,
@@ -308,7 +330,7 @@ class DoubleWishbonePushrodRockerAxleSuspension(DoubleWishboneAxleSuspension):
             ),
             (
                 "droplink @ DROPLINK_ROCKER",
-                self._transmission_margin(
+                calculate_transmission_margin(
                     point(PointID.DROPLINK_ROCKER),
                     rocker_axis_a,
                     rocker_axis,
@@ -317,7 +339,7 @@ class DoubleWishbonePushrodRockerAxleSuspension(DoubleWishboneAxleSuspension):
             ),
             (
                 "droplink @ DROPLINK_ARB",
-                self._transmission_margin(
+                calculate_transmission_margin(
                     point(PointID.DROPLINK_ARB),
                     arb_axis_a,
                     arb_axis,
@@ -327,7 +349,7 @@ class DoubleWishbonePushrodRockerAxleSuspension(DoubleWishboneAxleSuspension):
         )
         issues: list[DiagnosticIssue] = []
         for joint, margin in checks:
-            if margin is None or margin >= 0.15:
+            if margin is None or margin >= TRANSMISSION_MARGIN_WARNING_THRESHOLD:
                 continue
             angle_from_toggle = 90.0 - degrees(acos(min(1.0, margin)))
             issues.append(
@@ -341,22 +363,6 @@ class DoubleWishbonePushrodRockerAxleSuspension(DoubleWishboneAxleSuspension):
                 )
             )
         return issues
-
-    @staticmethod
-    def _transmission_margin(driven, axis_point, axis, link):
-        """Return absolute link alignment with the driven circular tangent."""
-        axis_norm = float(np.linalg.norm(axis))
-        link_norm = float(np.linalg.norm(link))
-        if axis_norm == 0.0 or link_norm == 0.0:
-            return None
-        axis_unit = axis / axis_norm
-        radius = driven - axis_point
-        radius -= axis_unit * float(np.dot(radius, axis_unit))
-        tangent = np.cross(axis_unit, radius)
-        tangent_norm = float(np.linalg.norm(tangent))
-        if tangent_norm == 0.0:
-            return None
-        return float(abs(np.dot(link / link_norm, tangent / tangent_norm)))
 
     def _arb_constraints(self) -> list[Constraint]:
         """Constrain each ARB arm to its axis and rocker droplink."""

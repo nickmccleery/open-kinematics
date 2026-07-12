@@ -5,7 +5,7 @@ Derived point specifications and management.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Container, Mapping, Set, TypeAlias, TypeVar, cast
+from typing import Callable, Container, Generic, Mapping, Set, TypeAlias, TypeVar, cast
 
 import numpy as np
 
@@ -20,9 +20,15 @@ PositionFn = Callable[[dict[PointKey, PositionValue]], PositionValue]
 
 _V = TypeVar("_V", bound=PositionValue)
 
+# A single spec keys homogeneously on one concrete key type: single-corner
+# models use PointID, axle models use PointRef. Parametrizing over that type
+# keeps the function and dependency dicts precise rather than widening to the
+# invariant PointKey union, which would reject the narrow dicts callers build.
+_K = TypeVar("_K", bound=PointKey)
+
 
 @dataclass(frozen=True)
-class DerivedPointsSpec:
+class DerivedPointsSpec(Generic[_K]):
     """
     Specification for derived point calculations.
 
@@ -30,10 +36,13 @@ class DerivedPointsSpec:
     describing format that can be validated and sorted.
     """
 
-    functions: dict[PointKey, PositionFn]
-    dependencies: dict[PointKey, Set[PointKey]]
+    # The spec only reads these maps. Declaring functions as a Mapping keeps its
+    # value type covariant, so a concrete function map whose values are subtypes
+    # of PositionFn is accepted instead of requiring an exact PositionFn match.
+    functions: Mapping[_K, PositionFn]
+    dependencies: Mapping[_K, Set[_K]]
 
-    def all_points(self) -> Set[PointKey]:
+    def all_points(self) -> Set[_K]:
         """
         Get all derived point IDs defined in this spec.
 
@@ -95,8 +104,11 @@ class DerivedPointsManager:
             PointKey, tuple[tuple[PointKey, ...], tuple[PointKey, ...]]
         ] = {}
 
-    def detect_cycles_util(
-        self, node: PointKey, visited: set, recursion_stack: set
+    def _dependency_path_contains_cycle(
+        self,
+        node: PointKey,
+        visited: set[PointKey],
+        recursion_stack: set[PointKey],
     ) -> bool:
         """
         Depth-first search utility for cycle detection in dependency graph.
@@ -121,7 +133,9 @@ class DerivedPointsManager:
 
         for neighbor in self.dependency_graph.get(node, set()):
             if neighbor not in visited:
-                if self.detect_cycles_util(neighbor, visited, recursion_stack):
+                if self._dependency_path_contains_cycle(
+                    neighbor, visited, recursion_stack
+                ):
                     return True
             elif neighbor in recursion_stack:
                 return True  # Cycle detected.
@@ -137,13 +151,13 @@ class DerivedPointsManager:
         Raises:
             ValueError: If a circular dependency is detected in the graph.
         """
-        visited = set()
-        recursion_stack = set()
-        nodes = set(self.dependency_graph.keys())
+        visited: set[PointKey] = set()
+        recursion_stack: set[PointKey] = set()
+        nodes: set[PointKey] = set(self.dependency_graph)
 
         for node in nodes:
             if node not in visited:
-                if self.detect_cycles_util(node, visited, recursion_stack):
+                if self._dependency_path_contains_cycle(node, visited, recursion_stack):
                     raise ValueError(
                         "Circular dependency detected in derived point definitions."
                     )

@@ -1,10 +1,11 @@
 """
-Visualisation script for camber shim effects.
+Visualization script for camber shim effects.
 
 Generates side-by-side comparisons of stock vs. shimmed suspension geometry,
 demonstrating how camber shims rotate the upright about the lower ball joint.
 """
 
+from dataclasses import replace
 from pathlib import Path
 from typing import cast
 
@@ -16,6 +17,7 @@ from kinematics import load_geometry
 from kinematics.core.enums import PointID
 from kinematics.core.geometry import extract_array
 from kinematics.schema import CamberShimConfig
+from kinematics.suspensions.base import Suspension
 from kinematics.visualization.api import visualize_geometry
 from kinematics.visualization.main import SuspensionVisualizer, WheelVisualization
 from kinematics.visualization.plots import (
@@ -33,15 +35,15 @@ def main():
     geometry_path = Path("tests/data/geometry.yaml")
     suspension = load_geometry(geometry_path)
 
-    # Visualise design configuration.
-    print("\nGenerating design (baseline) visualisation...")
+    # Visualize design configuration.
+    print("\nGenerating design (baseline) visualization...")
     design_output = Path("camber_shim_design.png")
     visualize_geometry(suspension, design_output)
-    print(f"Design visualisation saved to: {design_output}")
+    print(f"Design visualization saved to: {design_output}")
 
     # Create setup configuration with shim change.
     # The shim sits between chassis and upper wishbone bracket.
-    # The shim face centre should be at/near the upper ball joint for maximum effect.
+    # The shim face center should be at/near the upper ball joint for maximum effect.
     # This represents the mounting face of the upright-side bracket.
     # Normal points outboard (positive Y).
     shim_config = CamberShimConfig(
@@ -67,23 +69,14 @@ def main():
     if suspension.config is None:
         raise ValueError("Suspension has no configuration")
 
-    setup_config = suspension.config.model_copy(update={"camber_shim": shim_config})
+    setup_suspension = create_setup_suspension(suspension, shim_config)
 
-    suspension_class = type(suspension)
-    setup_suspension = suspension_class(
-        name=suspension.name,
-        version=suspension.version,
-        units=suspension.units,
-        hardpoints=suspension.hardpoints.copy(),
-        config=setup_config,
-    )
-
-    # Visualise setup configuration.
+    # Visualize setup configuration.
     shim_delta = SETUP_SHIM_THICKNESS - DESIGN_SHIM_THICKNESS
-    print(f"Generating setup ({shim_delta:+.1f}mm shim change) visualisation...")
+    print(f"Generating setup ({shim_delta:+.1f}mm shim change) visualization...")
     setup_output = Path("camber_shim_setup.png")
     visualize_geometry(setup_suspension, setup_output)
-    print(f"Setup visualisation saved to: {setup_output}")
+    print(f"Setup visualization saved to: {setup_output}")
 
     # Overlay comparison plot: both suspensions on a single front view.
     comparison_output = Path("camber_shim_comparison.png")
@@ -91,7 +84,23 @@ def main():
     plot_front_view_comparison(
         suspension, setup_suspension, comparison_output, shim_delta
     )
-    print(f"Comparison visualisation saved to: {comparison_output}")
+    print(f"Comparison visualization saved to: {comparison_output}")
+
+
+def create_setup_suspension(
+    suspension: Suspension,
+    shim_config: CamberShimConfig,
+) -> Suspension:
+    """Create a fresh suspension with the requested camber-shim setup."""
+    if suspension.config is None:
+        raise ValueError("Suspension has no configuration")
+
+    setup_config = suspension.config.model_copy(update={"camber_shim": shim_config})
+    return replace(
+        suspension,
+        hardpoints=suspension.get_hardpoints_copy(),
+        config=setup_config,
+    )
 
 
 def plot_front_view_comparison(
@@ -119,7 +128,7 @@ def plot_front_view_comparison(
     ax = cast(Axes3D, fig.add_subplot(111, projection="3d"))
     configure_3d_axis(ax, "front", x_mid, y_mid, z_mid, max_range)
 
-    # Helper: draw all elements for a suspension in a single colour.
+    # Helper: draw all elements for a suspension in a single color.
     def _draw_suspension(suspension, state, color: str, label: str) -> None:
         wheel_cfg = suspension.config.wheel
         wheel_config = WheelVisualization(
@@ -131,9 +140,7 @@ def plot_front_view_comparison(
         # Draw links.
         first = True
         for link in vis.links:
-            pts = np.stack(
-                [extract_array(state.positions[pid]) for pid in link.points]
-            )
+            pts = np.stack([extract_array(state.positions[pid]) for pid in link.points])
             if len(link.points) > 1:
                 ax.plot(
                     pts[:, 0],
@@ -158,7 +165,7 @@ def plot_front_view_comparison(
                 )
             first = False
 
-        # Draw the wheel (rim circles and cross-tyre bands) in the same colour.
+        # Draw the wheel (rim circles and cross-tire bands) in the same color.
         positions = state.positions
         wheel_center = extract_array(positions[PointID.WHEEL_CENTER])
         wheel_inboard = extract_array(positions[PointID.WHEEL_INBOARD])
@@ -179,18 +186,18 @@ def plot_front_view_comparison(
         radius = wheel_config.diameter / 2
         theta = np.linspace(0, 2 * np.pi, wheel_config.num_points)
 
-        # Rim circles for centre, inboard, and outboard planes.
-        for centre, alpha in [
+        # Rim circles for center, inboard, and outboard planes.
+        for center, alpha in [
             (wheel_center, 0.25),
             (wheel_inboard, wheel_config.alpha),
             (wheel_outboard, wheel_config.alpha),
         ]:
             rim = np.array(
-                [centre + radius * (np.cos(t) * e2 + np.sin(t) * e3) for t in theta]
+                [center + radius * (np.cos(t) * e2 + np.sin(t) * e3) for t in theta]
             )
             ax.plot(rim[:, 0], rim[:, 1], rim[:, 2], color=color, alpha=alpha)
 
-        # Cross-tyre bands connecting inboard and outboard rims.
+        # Cross-tire bands connecting inboard and outboard rims.
         num_bands = 48
         band_in, band_out = SuspensionVisualizer.get_band_endpoints(
             wheel_inboard, wheel_outboard, e2, e3, num_bands, radius

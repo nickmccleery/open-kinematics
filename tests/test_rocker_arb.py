@@ -3,6 +3,7 @@
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 from kinematics.constraints import ScalarTripleProductConstraint
 from kinematics.core.enums import PointID
@@ -40,10 +41,35 @@ def test_corner_spring_type_owns_derivative_declarations(
         "deriv_rocker_angle_wrt_hub_z",
         "deriv_damper_length_wrt_hub_z",
     }
-    assert sum(
-        isinstance(constraint, ScalarTripleProductConstraint)
-        for constraint in coilover.constraints()
-    ) == 1
+    assert (
+        sum(
+            isinstance(constraint, ScalarTripleProductConstraint)
+            for constraint in coilover.constraints()
+        )
+        == 1
+    )
+
+
+def test_corner_derivative_rejects_coincident_rocker_axis(
+    test_data_dir: Path,
+) -> None:
+    corner = load_geometry(test_data_dir / "corner_rocker_geometry.yaml")
+    assert isinstance(corner, DoubleWishbonePushrodRockerSuspension)
+    corner.hardpoints[PointID.ROCKER_AXIS_REAR] = corner.hardpoints[
+        PointID.ROCKER_AXIS_FRONT
+    ]
+
+    with pytest.raises(ValueError, match="distinct rocker axis points"):
+        corner.derivative_metric_definitions()
+
+
+def test_axle_derivative_rejects_coincident_arb_axis(test_data_dir: Path) -> None:
+    axle = load_geometry(test_data_dir / "axle_geometry_rocker.yaml")
+    assert isinstance(axle, DoubleWishbonePushrodRockerAxleSuspension)
+    axle.center_points[PointID.ARB_AXIS_B] = axle.center_points[PointID.ARB_AXIS_A]
+
+    with pytest.raises(ValueError, match="distinct ARB axis points"):
+        axle.derivative_metric_definitions()
 
 
 def test_arb_axle_uses_chirality_constraints(test_data_dir: Path) -> None:

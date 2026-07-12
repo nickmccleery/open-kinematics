@@ -4,9 +4,10 @@ from typing import cast
 
 from kinematics.core.enums import PointID, ShimType
 from kinematics.core.geometry import Direction3, Point3
-from kinematics.core.point_ref import Side
+from kinematics.core.point_ref import PointKey, Side
 from kinematics.schema.config import SuspensionConfig
 from kinematics.schema.geometry import (
+    AxleHardpointsSpec,
     DoubleWishboneAxleGeometrySpec,
     DoubleWishboneCoiloverGeometrySpec,
     DoubleWishboneGeometrySpec,
@@ -25,6 +26,7 @@ from kinematics.suspensions.corner import (
     DoubleWishbonePushrodRockerArbSuspension,
     DoubleWishbonePushrodRockerSuspension,
     DoubleWishboneSuspension,
+    RockerSpringType,
 )
 
 
@@ -58,20 +60,20 @@ def build_double_wishbone_coilover(spec: GeometrySpecBase) -> Suspension:
 def build_double_wishbone_pushrod_rocker(spec: GeometrySpecBase) -> Suspension:
     """Build an explicit pushrod-rocker corner."""
     typed = cast(DoubleWishbonePushrodRockerGeometrySpec, spec)
-    return _build_corner(
+    return _build_rocker_corner(
         typed,
         DoubleWishbonePushrodRockerSuspension,
-        spring_type=typed.spring.type,
+        typed.spring.type,
     )
 
 
 def build_double_wishbone_pushrod_rocker_arb(spec: GeometrySpecBase) -> Suspension:
     """Build a pushrod-rocker corner with a rocker-side ARB pickup."""
     typed = cast(DoubleWishbonePushrodRockerArbGeometrySpec, spec)
-    return _build_corner(
+    return _build_rocker_corner(
         typed,
         DoubleWishbonePushrodRockerArbSuspension,
-        spring_type=typed.spring.type,
+        typed.spring.type,
     )
 
 
@@ -94,7 +96,8 @@ def build_double_wishbone_axle(spec: GeometrySpecBase) -> Suspension:
             version=typed.version,
             units=typed.units,
             side=side,
-            hardpoints=points,
+            # A corner keys strictly on PointID; widen to the base PointKey field.
+            hardpoints=cast("dict[PointKey, Point3]", points),
             config=side_configs[side],
         )
         for side, points in side_points.items()
@@ -144,7 +147,8 @@ def build_double_wishbone_pushrod_rocker_axle(
             version=typed.version,
             units=typed.units,
             side=side,
-            hardpoints=points,
+            # A corner keys strictly on PointID; widen to the base PointKey field.
+            hardpoints=cast("dict[PointKey, Point3]", points),
             config=side_configs[side],
             spring_type=typed.spring.type,
         )
@@ -163,18 +167,27 @@ def build_double_wishbone_pushrod_rocker_axle(
     )
 
 
-def _build_axle_side_points(blocks) -> dict[Side, dict[PointID, Point3]]:
+def _build_axle_side_points(
+    blocks: AxleHardpointsSpec,
+) -> dict[Side, dict[PointID, Point3]]:
     """Copy explicit axle corners or mirror one explicitly sided source."""
     if blocks.is_explicit:
-        assert blocks.left is not None and blocks.right is not None
+        if blocks.left is None or blocks.right is None:
+            raise ValueError(
+                "Explicit axle hardpoints require both left and right point maps."
+            )
         side_points = {
             Side.LEFT: _copy_points(blocks.left),
             Side.RIGHT: _copy_points(blocks.right),
         }
     else:
-        assert blocks.points is not None
+        if blocks.points is None:
+            raise ValueError("Mirrored axle hardpoints require a source point map.")
         source_side = blocks.side
-        assert source_side is not None
+        if source_side not in (Side.LEFT, Side.RIGHT):
+            raise ValueError(
+                "Mirrored axle hardpoints require a left or right source side."
+            )
         source_points = _copy_points(blocks.points)
         other_side = Side.RIGHT if source_side is Side.LEFT else Side.LEFT
         side_points = {
@@ -187,12 +200,8 @@ def _build_axle_side_points(blocks) -> dict[Side, dict[PointID, Point3]]:
 
 
 def _build_corner(
-    spec: DoubleWishboneGeometrySpec
-    | DoubleWishboneCoiloverGeometrySpec
-    | DoubleWishbonePushrodRockerGeometrySpec
-    | DoubleWishbonePushrodRockerArbGeometrySpec,
+    spec: DoubleWishboneGeometrySpec | DoubleWishboneCoiloverGeometrySpec,
     cls: type[DoubleWishboneSuspension],
-    **kwargs: object,
 ) -> DoubleWishboneSuspension:
     """Build one concrete corner after exact point validation."""
     _check_valid_points(spec.hardpoints, cls)
@@ -207,7 +216,29 @@ def _build_corner(
             point: position.copy() for point, position in spec.hardpoints.items()
         },
         config=spec.config,
-        **kwargs,
+    )
+
+
+def _build_rocker_corner(
+    spec: DoubleWishbonePushrodRockerGeometrySpec
+    | DoubleWishbonePushrodRockerArbGeometrySpec,
+    cls: type[DoubleWishbonePushrodRockerSuspension],
+    spring_type: RockerSpringType,
+) -> DoubleWishbonePushrodRockerSuspension:
+    """Build one rocker corner with an explicitly typed spring medium."""
+    _check_valid_points(spec.hardpoints, cls)
+    _validate_side_signs(spec.hardpoints, spec.side)
+    _check_shim_support(spec.config, cls)
+    return cls(
+        name=spec.name,
+        version=spec.version,
+        units=spec.units,
+        side=spec.side,
+        hardpoints={
+            point: position.copy() for point, position in spec.hardpoints.items()
+        },
+        config=spec.config,
+        spring_type=spring_type,
     )
 
 

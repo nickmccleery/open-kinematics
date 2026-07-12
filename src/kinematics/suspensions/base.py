@@ -9,6 +9,7 @@ visualization) in a single unified interface.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections import OrderedDict
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, ClassVar, Sequence
 
@@ -16,6 +17,7 @@ from kinematics.constraints import Constraint
 from kinematics.core.enums import PointID, ShimType, Units
 from kinematics.core.geometry import Point3
 from kinematics.core.point_ref import PointKey, Side
+from kinematics.metrics.main import AxleMetricRows, MetricRow, compute_metrics_for_state
 from kinematics.points.derived.manager import DerivedPointsSpec
 from kinematics.schema.config import SuspensionConfig
 from kinematics.state import SuspensionState
@@ -23,7 +25,6 @@ from kinematics.state import SuspensionState
 if TYPE_CHECKING:
     from kinematics.diagnostics import DiagnosticIssue
     from kinematics.metrics.derivatives import DerivativeMetricDefinition
-    from kinematics.metrics.main import AxleMetricRows, MetricRow
     from kinematics.sensitivity import TangentField
     from kinematics.visualization.main import LinkVisualization, WheelAnchors
 
@@ -56,7 +57,11 @@ class Suspension(ABC):
     side: Side = field(kw_only=True)
 
     # Internal state cache.
-    _initial_state: SuspensionState | None = field(default=None, repr=False)
+    _initial_state: SuspensionState | None = field(
+        default=None,
+        init=False,
+        repr=False,
+    )
 
     def __post_init__(self) -> None:
         """Validate instance after creation."""
@@ -147,7 +152,7 @@ class Suspension(ABC):
         Get visualization links for rendering the suspension.
 
         Returns:
-            List of link definitions for visualisation.
+            List of link definitions for visualization.
         """
         ...
 
@@ -173,14 +178,17 @@ class Suspension(ABC):
         """Whether this explicit topology includes a spring/damper element."""
         return False
 
+    @property
+    def is_axle(self) -> bool:
+        """Whether this topology composes multiple corner suspensions."""
+        return False
+
     def compute_state_metrics(
         self,
         state: SuspensionState,
         tangents: "Sequence[TangentField] | None" = None,
     ) -> "MetricRow | AxleMetricRows":
         """Compute one metric row, including derivatives when tangents exist."""
-        from kinematics.metrics.main import compute_metrics_for_state
-
         if self.config is None:
             raise ValueError("Suspension has no configuration")
         return compute_metrics_for_state(state, self, self.config, tangents)
@@ -193,8 +201,6 @@ class Suspension(ABC):
 
     def topology_metric_values(self, state: SuspensionState) -> "MetricRow":
         """Return non-derivative metrics owned by this topology."""
-        from collections import OrderedDict
-
         return OrderedDict()
 
     def topology_diagnostics(

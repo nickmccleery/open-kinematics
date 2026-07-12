@@ -10,20 +10,16 @@ np.dot and np.linalg.norm works unmodified with dual-number inputs.
 from __future__ import annotations
 
 import math
-from typing import Mapping, overload
+from typing import Callable, Mapping, TypeVar, overload
 
 import numpy as np
 
-from kinematics.core.geometry import extract_array
+from kinematics.core.geometry import (
+    ArrayBacked,
+    extract_array,
+    try_extract_array,
+)
 from kinematics.core.point_ref import PointKey
-
-# Numpy function dispatch table: maps numpy functions to dual-aware
-# implementations.  Populated at module level and used by
-# DualVec3.__array_function__.
-_DUAL_IMPLEMENTATIONS: dict = {}
-
-# Sentinel for __array_function__ protocol.
-_HANDLED_TYPES = (np.ndarray,)
 
 
 class DualScalar:
@@ -106,8 +102,8 @@ class DualScalar:
             return DualVec3(self.val * other, self.deriv * other)
         # Handle geometry types (Point3, Vector3, Direction3) by extracting
         # the raw array -- they are constants in the dual sense.
-        arr = extract_array(other)
-        if isinstance(arr, np.ndarray):
+        arr = try_extract_array(other)
+        if arr is not None:
             return DualVec3(self.val * arr, self.deriv * arr)
         return NotImplemented  # type: ignore[return-value]
 
@@ -121,8 +117,8 @@ class DualScalar:
             return DualScalar(other * self.val, other * self.deriv)
         if isinstance(other, np.ndarray):
             return DualVec3(other * self.val, other * self.deriv)
-        arr = extract_array(other)
-        if isinstance(arr, np.ndarray):
+        arr = try_extract_array(other)
+        if arr is not None:
             return DualVec3(arr * self.val, arr * self.deriv)
         return NotImplemented  # type: ignore[return-value]
 
@@ -211,16 +207,16 @@ class DualVec3:
             return DualVec3(self.val + other.val, self.deriv + other.deriv)
         if isinstance(other, np.ndarray):
             return DualVec3(self.val + other, self.deriv.copy())
-        arr = extract_array(other)
-        if isinstance(arr, np.ndarray):
+        arr = try_extract_array(other)
+        if arr is not None:
             return DualVec3(self.val + arr, self.deriv.copy())
         return NotImplemented  # type: ignore[return-value]
 
     def __radd__(self, other: np.ndarray) -> DualVec3:
         if isinstance(other, np.ndarray):
             return DualVec3(other + self.val, self.deriv.copy())
-        arr = extract_array(other)
-        if isinstance(arr, np.ndarray):
+        arr = try_extract_array(other)
+        if arr is not None:
             return DualVec3(arr + self.val, self.deriv.copy())
         return NotImplemented  # type: ignore[return-value]
 
@@ -229,16 +225,16 @@ class DualVec3:
             return DualVec3(self.val - other.val, self.deriv - other.deriv)
         if isinstance(other, np.ndarray):
             return DualVec3(self.val - other, self.deriv.copy())
-        arr = extract_array(other)
-        if isinstance(arr, np.ndarray):
+        arr = try_extract_array(other)
+        if arr is not None:
             return DualVec3(self.val - arr, self.deriv.copy())
         return NotImplemented  # type: ignore[return-value]
 
     def __rsub__(self, other: np.ndarray) -> DualVec3:
         if isinstance(other, np.ndarray):
             return DualVec3(other - self.val, -self.deriv)
-        arr = extract_array(other)
-        if isinstance(arr, np.ndarray):
+        arr = try_extract_array(other)
+        if arr is not None:
             return DualVec3(arr - self.val, -self.deriv)
         return NotImplemented  # type: ignore[return-value]
 
@@ -289,7 +285,7 @@ class DualVec3:
         return DualScalar(self.val[i], self.deriv[i])
 
     def __array_function__(self, func, types, args, kwargs):
-        impl = _DUAL_IMPLEMENTATIONS.get(func)
+        impl = _dual_implementation(func)
         if impl is not None:
             return impl(*args, **kwargs)
         return NotImplemented
@@ -302,11 +298,11 @@ class DualVec3:
         if method != "__call__" or len(inputs) != 2:
             return NotImplemented
         a, b = inputs
-        # Normalise non-dual, non-ndarray operands to raw arrays.
+        # Normalize non-dual, non-ndarray operands to raw arrays.
         if not isinstance(a, (DualVec3, np.ndarray)):
-            a = extract_array(a)
+            a = try_extract_array(a)
         if not isinstance(b, (DualVec3, np.ndarray)):
-            b = extract_array(b)
+            b = try_extract_array(b)
         if ufunc is np.add:
             if isinstance(a, np.ndarray) and isinstance(b, DualVec3):
                 return DualVec3(a + b.val, b.deriv.copy())
@@ -387,16 +383,22 @@ def _dual_norm(x, ord=None, axis=None, keepdims=False):
     if isinstance(x, DualVec3):
         n = float(np.linalg.norm(x.val))
         if n == 0.0:
-            return DualScalar(0.0, 0.0)
+            raise ValueError("Dual vector norm derivative is undefined at zero length")
         deriv = float(np.dot(x.val, x.deriv)) / n
         return DualScalar(n, deriv)
     # Fall through to standard numpy for non-dual inputs.
     return np.linalg.norm(x, ord=ord, axis=axis, keepdims=keepdims)
 
 
-_DUAL_IMPLEMENTATIONS[np.dot] = _dual_dot
-_DUAL_IMPLEMENTATIONS[np.cross] = _dual_cross
-_DUAL_IMPLEMENTATIONS[np.linalg.norm] = _dual_norm
+def _dual_implementation(func: object) -> Callable[..., object] | None:
+    """Return the dual implementation for a supported numpy function."""
+    if func is np.dot:
+        return _dual_dot
+    if func is np.cross:
+        return _dual_cross
+    if func is np.linalg.norm:
+        return _dual_norm
+    return None
 
 
 # Typed wrappers for dual-compatible numpy operations
@@ -453,7 +455,7 @@ def norm(v: DualVec3) -> DualScalar:
     """
     n = float(np.linalg.norm(v.val))
     if n == 0.0:
-        return DualScalar(0.0, 0.0)
+        raise ValueError("Dual vector norm derivative is undefined at zero length")
     deriv = float(np.dot(v.val, v.deriv)) / n
     return DualScalar(n, deriv)
 
@@ -527,12 +529,17 @@ def degrees(x: DualScalar | float) -> DualScalar | float:
 # Seeding utility
 # ----------------------------------------------------------------
 
+# Seeding preserves the caller's concrete key type: single-corner callers seed a
+# PointID-keyed map, axle callers a PointRef-keyed map. Parametrizing over the key
+# keeps the returned dict's key type precise instead of the invariant PointKey union.
+_SeedKey = TypeVar("_SeedKey", bound=PointKey)
+
 
 def seed_positions(
-    positions: Mapping[PointKey, object],
-    seed_point: PointKey,
+    positions: Mapping[_SeedKey, np.ndarray | ArrayBacked],
+    seed_point: _SeedKey,
     seed_dim: int,
-) -> dict[PointKey, DualVec3]:
+) -> dict[_SeedKey, DualVec3]:
     """
     Create dual-number positions seeded for differentiation.
 
@@ -550,7 +557,7 @@ def seed_positions(
     Returns:
         Dictionary of DualVec3 positions ready for derived-point computation.
     """
-    dual_positions: dict[PointKey, DualVec3] = {}
+    dual_positions: dict[_SeedKey, DualVec3] = {}
     for pid, pos in positions.items():
         raw = extract_array(pos)
         if pid == seed_point:
@@ -563,16 +570,16 @@ def seed_positions(
 
 
 def seed_positions_with_tangent(
-    positions: Mapping[PointKey, object],
-    tangent: Mapping[PointKey, np.ndarray],
-) -> dict[PointKey, DualVec3]:
+    positions: Mapping[_SeedKey, np.ndarray | ArrayBacked],
+    tangent: Mapping[_SeedKey, np.ndarray],
+) -> dict[_SeedKey, DualVec3]:
     """
     Seed every position along an arbitrary tangent field.
 
     Missing tangent keys are held constant. This evaluates a
     Jacobian-vector product in one forward dual-number pass.
     """
-    dual_positions: dict[PointKey, DualVec3] = {}
+    dual_positions: dict[_SeedKey, DualVec3] = {}
     for point_id, position in positions.items():
         raw = extract_array(position)
         tangent_vector = tangent.get(point_id)

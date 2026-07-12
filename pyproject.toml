@@ -32,7 +32,7 @@ dev = [
     "pytest-cov>=7.0.0",
     "ruff>=0.13.3",
     "sympy>=1.13",
-    "ty>=0.0.1a21",
+    "ty>=0.0.58",
 ]
 
 # Pytest settings to exclude manual tests and benchmarks by default.
@@ -74,6 +74,7 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["D103"]  # Test functions don't need docstrings
 "visualize_*.py" = ["D103"] # Script functions don't need docstrings
+"src/kinematics/**/__init__.py" = ["F401"] # Package imports define public APIs
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
@@ -107,9 +108,7 @@ exclude_lines = [
 skip = ".git,*.pyc,*.pyo,__pycache__,*.egg-info,.venv,venv,.mypy_cache,.ruff_cache"
 # Ignore words that are valid in our domain (e.g., technical terms, variable names).
 ignore-words-list = "nd"
-# Use custom dictionary for British -> American English conversions.
 builtin = "clear,rare,informal,usage"
-dictionary = ".codespell-british.txt,-"
 
 # ty type checker settings.
 # --------------------------------------------------------------------------------------
