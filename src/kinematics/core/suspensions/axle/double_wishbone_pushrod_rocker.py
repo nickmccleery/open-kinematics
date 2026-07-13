@@ -9,6 +9,13 @@ import numpy as np
 
 from kinematics.core.constraints import Constraint, DistanceConstraint
 from kinematics.core.diagnostics import DiagnosticIssue
+from kinematics.core.elements import (
+    RigidLinkElement,
+    RigidLinkType,
+    SuspensionElement,
+    TorsionElement,
+    TorsionElementType,
+)
 from kinematics.core.metrics import kernels
 from kinematics.core.metrics.derivatives import (
     CallableScalarResponse,
@@ -37,7 +44,6 @@ from kinematics.core.suspensions.axle.double_wishbone import (
 from kinematics.core.suspensions.corner.double_wishbone_pushrod_rocker import (
     DoubleWishbonePushrodRockerArbSuspension,
 )
-from kinematics.core.topology import LinkRole, LinkTopology
 
 TRANSMISSION_MARGIN_WARNING_THRESHOLD = 0.15
 """Warn when a linkage transmission margin falls below this ratio."""
@@ -408,9 +414,9 @@ class DoubleWishbonePushrodRockerAxleSuspension(DoubleWishboneAxleSuspension):
             )
         return constraints
 
-    def link_topology(self) -> tuple[LinkTopology, ...]:
-        """Return base links plus one continuous ARB and two droplinks."""
-        links = list(super().link_topology())
+    def elements(self) -> tuple[SuspensionElement, ...]:
+        """Return base elements plus one continuous ARB and two droplinks."""
+        elements = list(super().elements())
         design = self.initial_state()
         left_droplink = design.positions[PointRef(Side.LEFT, PointID.DROPLINK_ARB)]
         axis_a = design.positions[PointRef(Side.CENTER, PointID.ARB_AXIS_A)]
@@ -422,27 +428,33 @@ class DoubleWishbonePushrodRockerAxleSuspension(DoubleWishboneAxleSuspension):
         else:
             left_end, right_end = PointID.ARB_AXIS_B, PointID.ARB_AXIS_A
 
-        links.append(
-            LinkTopology(
-                points=(
+        elements.append(
+            TorsionElement(
+                label="Anti-Roll Bar",
+                type=TorsionElementType.ANTI_ROLL_BAR,
+                rotation_axis=(
+                    PointRef(Side.CENTER, left_end),
+                    PointRef(Side.CENTER, right_end),
+                ),
+                attachments=(
+                    PointRef(Side.LEFT, PointID.DROPLINK_ARB),
+                    PointRef(Side.RIGHT, PointID.DROPLINK_ARB),
+                ),
+                path=(
                     PointRef(Side.LEFT, PointID.DROPLINK_ARB),
                     PointRef(Side.CENTER, left_end),
                     PointRef(Side.CENTER, right_end),
                     PointRef(Side.RIGHT, PointID.DROPLINK_ARB),
                 ),
-                role=LinkRole.ANTI_ROLL_BAR,
-                label="Anti-Roll Bar",
             )
         )
         for side in (Side.LEFT, Side.RIGHT):
-            links.append(
-                LinkTopology(
-                    points=(
-                        PointRef(side, PointID.DROPLINK_ROCKER),
-                        PointRef(side, PointID.DROPLINK_ARB),
-                    ),
-                    role=LinkRole.DROPLINK,
+            elements.append(
+                RigidLinkElement(
                     label=f"{side.name.title()} Droplink",
+                    type=RigidLinkType.DROPLINK,
+                    point_a=PointRef(side, PointID.DROPLINK_ROCKER),
+                    point_b=PointRef(side, PointID.DROPLINK_ARB),
                 )
             )
-        return tuple(links)
+        return tuple(elements)

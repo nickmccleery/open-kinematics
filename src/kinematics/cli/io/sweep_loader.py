@@ -4,8 +4,10 @@ from pathlib import Path
 
 import yaml
 
-from kinematics.core import SweepSpec, build_sweep_config
-from kinematics.core.types import Suspension, SweepConfig
+from kinematics.core import build_sweep_config
+from kinematics.core.schema.sweep import SweepSpec
+from kinematics.core.suspensions.base import Suspension
+from kinematics.core.targeting import SweepConfig
 
 
 def parse_sweep_file(

@@ -3,13 +3,22 @@ from typing import Sequence
 
 import numpy as np
 
-from kinematics.core.topology import (
-    LinkRole,
-    LinkTopology,
-    SuspensionTopology,
-    WheelTopology,
+from kinematics.core.assembly import SuspensionAssembly
+from kinematics.core.elements import (
+    RackElement,
+    RigidLinkElement,
+    RigidLinkType,
+    RockerElement,
+    TorsionElement,
+    TorsionElementType,
+    UprightElement,
+    VariableLengthLinkElement,
+    VariableLengthLinkType,
+    WheelElement,
 )
-from kinematics.core.types import Point3, PointID, PointKey
+from kinematics.core.primitives.enums import PointID
+from kinematics.core.primitives.geometry import Point3
+from kinematics.core.primitives.point_ref import PointKey
 
 
 @dataclass(frozen=True)
@@ -23,24 +32,26 @@ class LinkStyle:
     markersize: float = 10.0
 
 
-LINK_STYLES = {
-    LinkRole.WISHBONE: LinkStyle("dodgerblue"),
-    LinkRole.UPRIGHT: LinkStyle("slategrey"),
-    LinkRole.TRACK_ROD: LinkStyle("darkorange"),
-    LinkRole.TRACK_ROD_COUPLING: LinkStyle("purple"),
-    LinkRole.AXLE: LinkStyle("forestgreen"),
-    LinkRole.CONTACT_PATCH: LinkStyle("black", linewidth=0.0, markersize=15.0),
-    LinkRole.PUSHROD: LinkStyle("crimson"),
-    LinkRole.ROCKER: LinkStyle("mediumvioletred"),
-    LinkRole.SPRING_DAMPER: LinkStyle("seagreen"),
-    LinkRole.ANTI_ROLL_BAR: LinkStyle("teal"),
-    LinkRole.DROPLINK: LinkStyle("goldenrod"),
+RIGID_LINK_STYLES = {
+    RigidLinkType.WISHBONE_LEG: LinkStyle("dodgerblue"),
+    RigidLinkType.TRACK_ROD: LinkStyle("darkorange"),
+    RigidLinkType.AXLE: LinkStyle("forestgreen"),
+    RigidLinkType.PUSHROD: LinkStyle("crimson"),
+    RigidLinkType.DROPLINK: LinkStyle("goldenrod"),
 }
+VARIABLE_LINK_STYLES = {
+    VariableLengthLinkType.SPRING_DAMPER: LinkStyle("seagreen"),
+}
+RACK_STYLE = LinkStyle("purple")
+UPRIGHT_STYLE = LinkStyle("slategrey")
+ROCKER_STYLE = LinkStyle("mediumvioletred")
+TORSION_STYLE = LinkStyle("teal")
+CONTACT_PATCH_STYLE = LinkStyle("black", linewidth=0.0, markersize=15.0)
 
 
 @dataclass(frozen=True)
 class LinkVisualization:
-    """One renderer-specific link derived from core topology."""
+    """One renderer-specific point sequence derived from an assembly element."""
 
     points: tuple[PointKey, ...]
     label: str
@@ -51,12 +62,16 @@ class LinkVisualization:
     markersize: float
 
     @classmethod
-    def from_topology(cls, link: LinkTopology) -> "LinkVisualization":
-        """Apply CLI renderer styling to one neutral topology link."""
-        style = LINK_STYLES[link.role]
+    def from_points(
+        cls,
+        points: tuple[PointKey, ...],
+        label: str,
+        style: LinkStyle,
+    ) -> "LinkVisualization":
+        """Apply renderer styling to one point sequence."""
         return cls(
-            points=link.points,
-            label=link.label,
+            points=points,
+            label=label,
             color=style.color,
             linewidth=style.linewidth,
             linestyle=style.linestyle,
@@ -65,32 +80,95 @@ class LinkVisualization:
         )
 
 
-def _corner_wheel_topology() -> WheelTopology:
-    """Return the conventional single-corner wheel topology."""
-    return WheelTopology(
+def _corner_wheel_element() -> WheelElement:
+    """Return the conventional single-corner wheel element."""
+    return WheelElement(
+        label="Wheel",
         center=PointID.WHEEL_CENTER,
         inboard=PointID.WHEEL_INBOARD,
         outboard=PointID.WHEEL_OUTBOARD,
         axle_inboard=PointID.AXLE_INBOARD,
         axle_outboard=PointID.AXLE_OUTBOARD,
+        contact_patch=PointID.CONTACT_PATCH_CENTER,
     )
 
 
-def renderer_links(topology: SuspensionTopology) -> tuple[LinkTopology, ...]:
-    """Expand neutral rocker topology into polylines for the CLI renderer."""
-    rocker_links = tuple(
-        LinkTopology(
-            points=(
-                rocker.axis_front,
-                *rocker.pickups,
-                rocker.axis_rear,
-            ),
-            role=LinkRole.ROCKER,
-            label=f"{rocker.label_prefix}Rocker",
-        )
-        for rocker in topology.rockers
+def renderer_elements(assembly: SuspensionAssembly) -> tuple[LinkVisualization, ...]:
+    """Flatten physical elements into styled renderer point sequences."""
+    rendered: list[LinkVisualization] = []
+    for element in assembly.elements:
+        if isinstance(element, RigidLinkElement):
+            rendered.append(
+                LinkVisualization.from_points(
+                    element.point_keys,
+                    element.label,
+                    RIGID_LINK_STYLES[element.type],
+                )
+            )
+        elif isinstance(element, VariableLengthLinkElement):
+            rendered.append(
+                LinkVisualization.from_points(
+                    element.point_keys,
+                    element.label,
+                    VARIABLE_LINK_STYLES[element.type],
+                )
+            )
+        elif isinstance(element, RackElement):
+            rendered.append(
+                LinkVisualization.from_points(
+                    element.point_keys,
+                    element.label,
+                    RACK_STYLE,
+                )
+            )
+        elif isinstance(element, UprightElement):
+            rendered.extend(
+                LinkVisualization.from_points(
+                    segment,
+                    element.label if index == 0 else "_nolegend_",
+                    UPRIGHT_STYLE,
+                )
+                for index, segment in enumerate(element.segments)
+            )
+        elif isinstance(element, RockerElement):
+            rendered.append(
+                LinkVisualization.from_points(
+                    (
+                        element.rotation_axis[0],
+                        *element.pickups,
+                        element.rotation_axis[1],
+                    ),
+                    element.label,
+                    ROCKER_STYLE,
+                )
+            )
+        elif isinstance(element, TorsionElement):
+            if element.type is TorsionElementType.ANTI_ROLL_BAR:
+                rendered.append(
+                    LinkVisualization.from_points(
+                        element.path,
+                        element.label,
+                        TORSION_STYLE,
+                    )
+                )
+        elif isinstance(element, WheelElement):
+            rendered.append(
+                LinkVisualization.from_points(
+                    (element.contact_patch,),
+                    f"{element.label} Contact Patch",
+                    CONTACT_PATCH_STYLE,
+                )
+            )
+        else:
+            raise TypeError(f"Unsupported suspension element: {type(element)!r}")
+    return tuple(rendered)
+
+
+def wheel_elements(assembly: SuspensionAssembly) -> tuple[WheelElement, ...]:
+    """Return the wheel elements from a suspension assembly."""
+    return tuple(
+        element for element in assembly.elements if isinstance(element, WheelElement)
     )
-    return topology.links + rocker_links
 
 
 @dataclass
@@ -177,13 +255,13 @@ class SuspensionVisualizer:
 
     def __init__(
         self,
-        links: Sequence[LinkTopology],
+        links: Sequence[LinkVisualization],
         wheel_config: WheelVisualization,
-        wheel_anchors: Sequence[WheelTopology] | None = None,
+        wheel_anchors: Sequence[WheelElement] | None = None,
     ):
-        self.links = [LinkVisualization.from_topology(link) for link in links]
+        self.links = list(links)
         self.wheel_config = wheel_config
-        self.wheel_anchors = tuple(wheel_anchors or (_corner_wheel_topology(),))
+        self.wheel_anchors = tuple(wheel_anchors or (_corner_wheel_element(),))
 
     def draw_wheel(
         self,
@@ -201,7 +279,7 @@ class SuspensionVisualizer:
         self,
         ax,
         positions: dict[PointKey, Point3],
-        anchors: WheelTopology,
+        anchors: WheelElement,
         num_bands: int,
     ) -> dict:
         """
@@ -309,7 +387,7 @@ class SuspensionVisualizer:
         self,
         artists: dict,
         positions: dict[PointKey, Point3],
-        anchors: WheelTopology,
+        anchors: WheelElement,
         num_bands: int,
     ) -> None:
         """

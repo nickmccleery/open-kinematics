@@ -7,7 +7,7 @@ from typing import Any, Optional, cast
 
 import numpy as np
 
-from kinematics.core.types import Direction3, Point3
+from kinematics.core.primitives.geometry import Direction3, Point3
 
 PLOTTING_ENABLED = False
 

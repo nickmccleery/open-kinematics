@@ -18,7 +18,8 @@ from kinematics.cli.visualization.api import visualize_geometry
 from kinematics.cli.visualization.main import (
     SuspensionVisualizer,
     WheelVisualization,
-    renderer_links,
+    renderer_elements,
+    wheel_elements,
 )
 from kinematics.cli.visualization.plots import (
     compute_bounds_from_positions,
@@ -139,11 +140,11 @@ def plot_front_view_comparison(
             diameter=wheel_cfg.tire.nominal_radius * 2,
             width=wheel_cfg.tire.section_width,
         )
-        topology = suspension.topology()
+        assembly = suspension.assembly()
         vis = SuspensionVisualizer(
-            renderer_links(topology),
+            renderer_elements(assembly),
             wheel_config,
-            topology.wheels,
+            wheel_elements(assembly),
         )
 
         # Draw links.

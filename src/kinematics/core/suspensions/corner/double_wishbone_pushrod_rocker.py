@@ -8,6 +8,16 @@ from typing import ClassVar, Literal, Sequence
 import numpy as np
 
 from kinematics.core.constraints import Constraint, DistanceConstraint
+from kinematics.core.elements import (
+    RigidLinkElement,
+    RigidLinkType,
+    RockerElement,
+    SuspensionElement,
+    TorsionElement,
+    TorsionElementType,
+    VariableLengthLinkElement,
+    VariableLengthLinkType,
+)
 from kinematics.core.metrics import kernels
 from kinematics.core.metrics.derivatives import (
     CallableScalarResponse,
@@ -30,7 +40,6 @@ from kinematics.core.suspensions.corner.attachments import (
     chiral_rigid_point_constraints,
 )
 from kinematics.core.suspensions.corner.double_wishbone import DoubleWishboneSuspension
-from kinematics.core.topology import LinkRole, LinkTopology, RockerTopology
 
 RockerSpringType = Literal["torsion_bar", "coilover"]
 
@@ -272,38 +281,50 @@ class DoubleWishbonePushrodRockerSuspension(DoubleWishboneSuspension):
             row["torsion_bar_twist"] = angle
         return row
 
-    def link_topology(self) -> tuple[LinkTopology, ...]:
-        """Return base corner topology plus pushrod and selected spring."""
-        links = (
-            *super().link_topology(),
-            LinkTopology(
-                points=(PointID.PUSHROD_OUTBOARD, PointID.PUSHROD_INBOARD),
-                role=LinkRole.PUSHROD,
-                label="Pushrod",
-            ),
-        )
-        if self.has_strut:
-            links += (
-                LinkTopology(
-                    points=(PointID.STRUT_TOP, PointID.STRUT_BOTTOM),
-                    role=LinkRole.SPRING_DAMPER,
-                    label="Spring/Damper",
-                ),
-            )
-        return links
-
-    def rocker_topology(self) -> tuple[RockerTopology, ...]:
-        """Return this corner's rocker axis and rigid pickups."""
+    def elements(self) -> tuple[SuspensionElement, ...]:
+        """Return base corner elements plus pushrod, spring, and rocker."""
         pickups: tuple[PointKey, ...] = (PointID.PUSHROD_INBOARD,)
         if self.has_droplink:
             pickups += (PointID.DROPLINK_ROCKER,)
-        return (
-            RockerTopology(
-                axis_front=PointID.ROCKER_AXIS_FRONT,
-                axis_rear=PointID.ROCKER_AXIS_REAR,
+
+        rotation_axis: tuple[PointKey, PointKey] = (
+            PointID.ROCKER_AXIS_FRONT,
+            PointID.ROCKER_AXIS_REAR,
+        )
+        elements: tuple[SuspensionElement, ...] = (
+            *super().elements(),
+            RigidLinkElement(
+                label="Pushrod",
+                type=RigidLinkType.PUSHROD,
+                point_a=PointID.PUSHROD_OUTBOARD,
+                point_b=PointID.PUSHROD_INBOARD,
+            ),
+            RockerElement(
+                label="Rocker",
+                rotation_axis=rotation_axis,
                 pickups=pickups,
             ),
         )
+        if self.has_strut:
+            elements += (
+                VariableLengthLinkElement(
+                    label="Spring/Damper",
+                    type=VariableLengthLinkType.SPRING_DAMPER,
+                    point_a=PointID.STRUT_TOP,
+                    point_b=PointID.STRUT_BOTTOM,
+                ),
+            )
+        if self.has_torsion_bar:
+            elements += (
+                TorsionElement(
+                    label="Torsion Bar",
+                    type=TorsionElementType.TORSION_BAR,
+                    rotation_axis=rotation_axis,
+                    attachments=(),
+                    path=rotation_axis,
+                ),
+            )
+        return elements
 
 
 @dataclass

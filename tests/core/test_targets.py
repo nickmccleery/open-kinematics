@@ -3,12 +3,12 @@ import pytest
 
 from kinematics.core.primitives.enums import Axis
 from kinematics.core.primitives.geometry import Direction3
-from kinematics.core.primitives.types import (
+from kinematics.core.targeting import (
     PointTargetAxis,
     PointTargetVector,
     WorldAxisSystem,
+    resolve_target,
 )
-from kinematics.core.targets import resolve_target
 
 
 def test_resolve_axis_targets_returns_unit_axes():

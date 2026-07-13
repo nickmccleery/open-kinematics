@@ -8,14 +8,13 @@ from kinematics.core.points.derived.manager import (
 )
 from kinematics.core.primitives.constants import TEST_TOLERANCE
 from kinematics.core.primitives.enums import Axis, PointID, TargetPositionMode
-from kinematics.core.primitives.types import PointTargetAxis, SweepConfig
 from kinematics.core.solver import (
-    PointTarget,
     SolverConfig,
     solve_least_squares_problem,
     solve_suspension_sweep,
 )
 from kinematics.core.state import SuspensionState
+from kinematics.core.targeting import PointTarget, PointTargetAxis, SweepConfig
 
 
 @pytest.fixture

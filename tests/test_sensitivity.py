@@ -7,13 +7,13 @@ from kinematics.cli.io.yaml import load_geometry
 from kinematics.core.points.derived.manager import DerivedPointsManager
 from kinematics.core.primitives.enums import Axis, PointID, TargetPositionMode
 from kinematics.core.primitives.geometry import extract_array
-from kinematics.core.primitives.types import PointTarget, PointTargetAxis, SweepConfig
 from kinematics.core.sensitivity import (
     TangentField,
     combine_tangents,
     compute_state_tangents,
 )
 from kinematics.core.sweep import solve_sweep
+from kinematics.core.targeting import PointTarget, PointTargetAxis, SweepConfig
 
 FD_STEP = 0.25
 

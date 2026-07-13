@@ -1,5 +1,5 @@
 """
-Composite type definitions for suspension kinematics.
+Sweep target definitions and world-direction resolution.
 """
 
 from __future__ import annotations
@@ -128,3 +128,20 @@ class PointTargetVector:
 
 
 PointTargetDirection = Union[PointTargetAxis, PointTargetVector]
+
+
+def resolve_target(target: PointTargetDirection) -> Direction3:
+    """Resolve a target direction specification to a world unit direction."""
+    if isinstance(target, PointTargetAxis):
+        if target.axis is Axis.X:
+            return WorldAxisSystem.X
+        if target.axis is Axis.Y:
+            return WorldAxisSystem.Y
+        if target.axis is Axis.Z:
+            return WorldAxisSystem.Z
+        raise ValueError(f"Unsupported axis: {target.axis!r}")
+
+    if isinstance(target, PointTargetVector):
+        return target.vector
+
+    raise TypeError(f"Unsupported target type: {type(target)!r}")

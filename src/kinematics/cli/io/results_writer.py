@@ -22,7 +22,8 @@ import numpy as np
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from kinematics.core.types import MetricSpec, SolverInfo
+from kinematics.core.metrics.registry import MetricSpec
+from kinematics.core.solver import SolverInfo
 
 
 class MetadataKey(Enum):

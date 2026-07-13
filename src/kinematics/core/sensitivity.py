@@ -18,9 +18,9 @@ from kinematics.core.constraints import Constraint, PointOnLineConstraint
 from kinematics.core.points.derived.manager import DerivedPointsManager
 from kinematics.core.primitives.dual import DualVec3, seed_positions_with_tangent
 from kinematics.core.primitives.point_ref import PointKey
-from kinematics.core.primitives.types import PointTarget
 from kinematics.core.solver import ResidualComputer
 from kinematics.core.state import SuspensionState
+from kinematics.core.targeting import PointTarget
 
 
 @dataclass(frozen=True)

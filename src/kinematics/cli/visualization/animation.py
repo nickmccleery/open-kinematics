@@ -16,7 +16,8 @@ from kinematics.cli.visualization.plots import (
     configure_3d_axis,
     create_four_view_axes,
 )
-from kinematics.core.types import Point3, PointKey
+from kinematics.core.primitives.geometry import Point3
+from kinematics.core.primitives.point_ref import PointKey
 
 
 def create_animation(

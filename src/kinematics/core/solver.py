@@ -46,14 +46,14 @@ from kinematics.core.primitives.constants import (
 )
 from kinematics.core.primitives.geometry import Point3
 from kinematics.core.primitives.point_ref import PointKey
-from kinematics.core.primitives.types import (
+from kinematics.core.primitives.vector_utils.generic import project_coordinate
+from kinematics.core.state import SuspensionState
+from kinematics.core.targeting import (
     PointTarget,
     SweepConfig,
     TargetPositionMode,
+    resolve_target,
 )
-from kinematics.core.primitives.vector_utils.generic import project_coordinate
-from kinematics.core.state import SuspensionState
-from kinematics.core.targets import resolve_target
 
 # Levenberg-Marquardt: damped least squares that can deal with the system being
 # overdetermined (m > n), as may be the case with any redundant (but consistent)

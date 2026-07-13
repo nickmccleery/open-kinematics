@@ -17,6 +17,13 @@ from kinematics.core.constraints import (
     DistanceConstraint,
     PointOnLineConstraint,
 )
+from kinematics.core.elements import (
+    RigidLinkElement,
+    RigidLinkType,
+    SuspensionElement,
+    UprightElement,
+    WheelElement,
+)
 from kinematics.core.points.derived.definitions import (
     get_axle_midpoint,
     get_contact_patch_center,
@@ -32,7 +39,6 @@ from kinematics.core.primitives.constants import EPS_GEOMETRIC
 from kinematics.core.primitives.enums import Axis, PointID, ShimType
 from kinematics.core.primitives.geometry import Direction3, Point3
 from kinematics.core.primitives.point_ref import PointKey
-from kinematics.core.primitives.types import WorldAxisSystem
 from kinematics.core.primitives.vector_utils.geometric import (
     compute_point_point_distance,
     compute_vector_vector_angle,
@@ -45,7 +51,7 @@ from kinematics.core.primitives.vector_utils.geometric import (
 from kinematics.core.state import SuspensionState
 from kinematics.core.suspensions.base import Suspension
 from kinematics.core.suspensions.config.shims import solve_camber_shim_assembly
-from kinematics.core.topology import LinkRole, LinkTopology
+from kinematics.core.targeting import WorldAxisSystem
 
 
 @dataclass
@@ -334,51 +340,70 @@ class DoubleWishboneSuspension(Suspension):
             axis_point, axis_direction, Axis.X, wheel_center_x
         )
 
-    def link_topology(self) -> tuple[LinkTopology, ...]:
-        """Return the physical links and points in this corner."""
+    def elements(self) -> tuple[SuspensionElement, ...]:
+        """Return the physical elements in this corner."""
         return (
-            LinkTopology(
-                points=(
-                    PointID.UPPER_WISHBONE_INBOARD_FRONT,
-                    PointID.UPPER_WISHBONE_OUTBOARD,
-                    PointID.UPPER_WISHBONE_INBOARD_REAR,
-                ),
-                role=LinkRole.WISHBONE,
-                label="Upper Wishbone",
+            RigidLinkElement(
+                label="Upper Wishbone Front Leg",
+                type=RigidLinkType.WISHBONE_LEG,
+                point_a=PointID.UPPER_WISHBONE_INBOARD_FRONT,
+                point_b=PointID.UPPER_WISHBONE_OUTBOARD,
             ),
-            LinkTopology(
-                points=(
-                    PointID.LOWER_WISHBONE_INBOARD_FRONT,
-                    PointID.LOWER_WISHBONE_OUTBOARD,
-                    PointID.LOWER_WISHBONE_INBOARD_REAR,
-                ),
-                role=LinkRole.WISHBONE,
-                label="Lower Wishbone",
+            RigidLinkElement(
+                label="Upper Wishbone Rear Leg",
+                type=RigidLinkType.WISHBONE_LEG,
+                point_a=PointID.UPPER_WISHBONE_INBOARD_REAR,
+                point_b=PointID.UPPER_WISHBONE_OUTBOARD,
             ),
-            LinkTopology(
-                points=(
-                    PointID.TRACKROD_OUTBOARD,
-                    PointID.UPPER_WISHBONE_OUTBOARD,
-                    PointID.LOWER_WISHBONE_OUTBOARD,
-                    PointID.TRACKROD_OUTBOARD,
-                ),
-                role=LinkRole.UPRIGHT,
+            RigidLinkElement(
+                label="Lower Wishbone Front Leg",
+                type=RigidLinkType.WISHBONE_LEG,
+                point_a=PointID.LOWER_WISHBONE_INBOARD_FRONT,
+                point_b=PointID.LOWER_WISHBONE_OUTBOARD,
+            ),
+            RigidLinkElement(
+                label="Lower Wishbone Rear Leg",
+                type=RigidLinkType.WISHBONE_LEG,
+                point_a=PointID.LOWER_WISHBONE_INBOARD_REAR,
+                point_b=PointID.LOWER_WISHBONE_OUTBOARD,
+            ),
+            UprightElement(
                 label="Upright",
+                hardpoints=(
+                    PointID.UPPER_WISHBONE_OUTBOARD,
+                    PointID.LOWER_WISHBONE_OUTBOARD,
+                    PointID.TRACKROD_OUTBOARD,
+                ),
+                attachments=(PointID.AXLE_INBOARD, PointID.AXLE_OUTBOARD),
+                segments=(
+                    (PointID.TRACKROD_OUTBOARD, PointID.UPPER_WISHBONE_OUTBOARD),
+                    (
+                        PointID.UPPER_WISHBONE_OUTBOARD,
+                        PointID.LOWER_WISHBONE_OUTBOARD,
+                    ),
+                    (PointID.LOWER_WISHBONE_OUTBOARD, PointID.TRACKROD_OUTBOARD),
+                ),
             ),
-            LinkTopology(
-                points=(PointID.TRACKROD_INBOARD, PointID.TRACKROD_OUTBOARD),
-                role=LinkRole.TRACK_ROD,
+            RigidLinkElement(
                 label="Track Rod",
+                type=RigidLinkType.TRACK_ROD,
+                point_a=PointID.TRACKROD_INBOARD,
+                point_b=PointID.TRACKROD_OUTBOARD,
             ),
-            LinkTopology(
-                points=(PointID.AXLE_INBOARD, PointID.AXLE_OUTBOARD),
-                role=LinkRole.AXLE,
+            RigidLinkElement(
                 label="Axle",
+                type=RigidLinkType.AXLE,
+                point_a=PointID.AXLE_INBOARD,
+                point_b=PointID.AXLE_OUTBOARD,
             ),
-            LinkTopology(
-                points=(PointID.CONTACT_PATCH_CENTER,),
-                role=LinkRole.CONTACT_PATCH,
-                label="Contact Patch",
+            WheelElement(
+                label="Wheel",
+                center=PointID.WHEEL_CENTER,
+                inboard=PointID.WHEEL_INBOARD,
+                outboard=PointID.WHEEL_OUTBOARD,
+                axle_inboard=PointID.AXLE_INBOARD,
+                axle_outboard=PointID.AXLE_OUTBOARD,
+                contact_patch=PointID.CONTACT_PATCH_CENTER,
             ),
         )
 

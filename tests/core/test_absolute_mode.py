@@ -5,9 +5,9 @@ from kinematics.core.points.derived.manager import (
     DerivedPointsSpec,
 )
 from kinematics.core.primitives.enums import Axis, PointID, TargetPositionMode
-from kinematics.core.primitives.types import PointTarget, PointTargetAxis, SweepConfig
 from kinematics.core.solver import convert_targets_to_absolute, solve_suspension_sweep
 from kinematics.core.state import SuspensionState
+from kinematics.core.targeting import PointTarget, PointTargetAxis, SweepConfig
 
 
 def test_resolve_targets_to_absolute():

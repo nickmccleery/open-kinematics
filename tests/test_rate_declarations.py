@@ -9,9 +9,9 @@ from kinematics.core.metrics.catalog import get_default_corner_derivative_metric
 from kinematics.core.metrics.main import compute_metrics_for_state
 from kinematics.core.points.derived.manager import DerivedPointsManager
 from kinematics.core.primitives.enums import Axis, PointID, TargetPositionMode
-from kinematics.core.primitives.types import PointTarget, PointTargetAxis, SweepConfig
 from kinematics.core.sensitivity import compute_state_tangents
 from kinematics.core.sweep import solve_sweep
+from kinematics.core.targeting import PointTarget, PointTargetAxis, SweepConfig
 
 TEST_DATA = Path(__file__).parent / "data"
 FD_STEP = 0.25

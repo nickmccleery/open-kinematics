@@ -7,13 +7,18 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, ClassVar, Sequence
 
 from kinematics.core.constraints import Constraint, DistanceConstraint
+from kinematics.core.elements import (
+    RackElement,
+    SuspensionElement,
+    map_element_points,
+)
 from kinematics.core.metrics.main import compute_metrics_for_axle_state
 from kinematics.core.points.derived.manager import (
     DerivedPointsSpec,
     PositionFn,
     PositionValue,
 )
-from kinematics.core.primitives.enums import PointID
+from kinematics.core.primitives.enums import Axis, PointID
 from kinematics.core.primitives.geometry import Point3
 from kinematics.core.primitives.point_ref import (
     PointKey,
@@ -27,12 +32,6 @@ from kinematics.core.primitives.vector_utils.geometric import (
 from kinematics.core.state import SuspensionState
 from kinematics.core.suspensions.base import Suspension
 from kinematics.core.suspensions.corner import DoubleWishboneSuspension
-from kinematics.core.topology import (
-    LinkRole,
-    LinkTopology,
-    RockerTopology,
-    WheelTopology,
-)
 
 if TYPE_CHECKING:
     from kinematics.core.metrics.main import AxleMetricRows
@@ -213,52 +212,22 @@ class DoubleWishboneAxleSuspension(Suspension):
             tangents,
         )
 
-    def link_topology(self) -> tuple[LinkTopology, ...]:
-        """Return side-qualified corner links and the trackrod coupling."""
-        links = tuple(
-            LinkTopology(
-                points=tuple(side_qualified(side, point) for point in link.points),
-                role=link.role,
-                label=f"{side.name.title()} {link.label}",
+    def elements(self) -> tuple[SuspensionElement, ...]:
+        """Return side-qualified corner elements and the trackrod coupling."""
+        elements = tuple(
+            map_element_points(
+                element,
+                lambda point, side=side: side_qualified(side, point),
+                label=f"{side.name.title()} {element.label}",
             )
             for side, corner in self.corners.items()
-            for link in corner.link_topology()
+            for element in corner.elements()
         )
-        return links + (
-            LinkTopology(
-                points=(
-                    PointRef(Side.LEFT, PointID.TRACKROD_INBOARD),
-                    PointRef(Side.RIGHT, PointID.TRACKROD_INBOARD),
-                ),
-                role=LinkRole.TRACK_ROD_COUPLING,
-                label="Trackrod Inboard Coupling",
+        return elements + (
+            RackElement(
+                label="Steering Rack",
+                left_inner=PointRef(Side.LEFT, PointID.TRACKROD_INBOARD),
+                right_inner=PointRef(Side.RIGHT, PointID.TRACKROD_INBOARD),
+                translation_axis=Axis.Y,
             ),
-        )
-
-    def rocker_topology(self) -> tuple[RockerTopology, ...]:
-        """Return side-qualified rocker topology for both corners."""
-        return tuple(
-            RockerTopology(
-                axis_front=side_qualified(side, rocker.axis_front),
-                axis_rear=side_qualified(side, rocker.axis_rear),
-                pickups=tuple(
-                    side_qualified(side, pickup) for pickup in rocker.pickups
-                ),
-                label_prefix=f"{side.name.title()} ",
-            )
-            for side, corner in self.corners.items()
-            for rocker in corner.rocker_topology()
-        )
-
-    def wheel_topology(self) -> tuple[WheelTopology, ...]:
-        """Return one wheel anchor set for each side."""
-        return tuple(
-            WheelTopology(
-                center=PointRef(side, PointID.WHEEL_CENTER),
-                inboard=PointRef(side, PointID.WHEEL_INBOARD),
-                outboard=PointRef(side, PointID.WHEEL_OUTBOARD),
-                axle_inboard=PointRef(side, PointID.AXLE_INBOARD),
-                axle_outboard=PointRef(side, PointID.AXLE_OUTBOARD),
-            )
-            for side in (Side.LEFT, Side.RIGHT)
         )

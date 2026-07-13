@@ -8,9 +8,19 @@ CORE_PACKAGE = PROJECT_ROOT / "src" / "kinematics" / "core"
 CLI_ONLY_DEPENDENCIES = ("matplotlib", "pyarrow", "typer", "yaml")
 PUBLIC_CORE_MODULES = {
     "kinematics.core",
+    "kinematics.core.assembly",
+    "kinematics.core.elements",
     "kinematics.core.export",
-    "kinematics.core.topology",
-    "kinematics.core.types",
+    "kinematics.core.metrics.registry",
+    "kinematics.core.primitives.enums",
+    "kinematics.core.primitives.geometry",
+    "kinematics.core.primitives.point_ref",
+    "kinematics.core.schema.sweep",
+    "kinematics.core.solver",
+    "kinematics.core.state",
+    "kinematics.core.suspensions.base",
+    "kinematics.core.sweep",
+    "kinematics.core.targeting",
 }
 
 
@@ -80,18 +90,25 @@ def test_core_does_not_import_cli_only_dependencies() -> None:
 
 
 def test_cli_uses_documented_public_core_modules() -> None:
+    # This allowlist is the adapter API contract. Adding a module deliberately
+    # expands the supported surface and should receive architecture review.
     forbidden_imports: list[str] = []
     cli_package = PROJECT_ROOT / "src" / "kinematics" / "cli"
     for path in cli_package.rglob("*.py"):
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         for node in ast.walk(tree):
-            if not isinstance(node, ast.ImportFrom) or node.module is None:
-                continue
-            if node.module.startswith("kinematics.core") and (
-                node.module not in PUBLIC_CORE_MODULES
+            imported_modules: list[str] = []
+            if isinstance(node, ast.ImportFrom) and node.module is not None:
+                imported_modules.append(node.module)
+            elif isinstance(node, ast.Import):
+                imported_modules.extend(alias.name for alias in node.names)
+            if any(
+                module.startswith("kinematics.core")
+                and module not in PUBLIC_CORE_MODULES
+                for module in imported_modules
             ):
                 forbidden_imports.append(
-                    f"{path.relative_to(PROJECT_ROOT)}:{node.lineno}"
+                    f"{path.relative_to(PROJECT_ROOT)}:{getattr(node, 'lineno', 0)}"
                 )
 
     assert forbidden_imports == []

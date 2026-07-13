@@ -25,9 +25,9 @@ def sweep(
         kinematics sweep --geometry=geo.yaml --sweep=sweep.yaml --out=out.csv
     """
     run = run_sweep_files(geometry, sweep, out)
-    if run.analysis.diagnostics:
+    if run.evaluated.diagnostics:
         typer.echo("Diagnostics:", err=True)
-        for issue in run.analysis.diagnostics:
+        for issue in run.evaluated.diagnostics:
             typer.echo(f"{issue.severity.upper()}: {issue.message}", err=True)
 
     typer.echo(f"wrote {out}")
@@ -36,27 +36,6 @@ def sweep(
     if animation_out:
         try:
             from kinematics.cli.visualization.api import visualize_suspension_sweep
-
-            # Get wheel parameters from suspension configuration.
-            if run.suspension.config is None:
-                typer.echo("Error: No config in suspension", err=True)
-                raise typer.Exit(1)
-
-            wheel_cfg = run.suspension.config.wheel
-
-            # Create animation.
-            visualize_suspension_sweep(
-                suspension=run.suspension,
-                solution_states=run.states,
-                output_path=animation_out,
-                wheel_diameter=wheel_cfg.tire.nominal_radius * 2,
-                wheel_width=wheel_cfg.tire.section_width,
-                fps=20,
-                show_live=False,
-            )
-
-            typer.echo(f"Wrote animation: {animation_out}")
-
         except ImportError as e:
             typer.echo(
                 f"Error: Visualization dependencies not installed.\n"
@@ -65,6 +44,26 @@ def sweep(
                 err=True,
             )
             raise typer.Exit(1)
+
+        # Get wheel parameters from suspension configuration.
+        if run.suspension.config is None:
+            typer.echo("Error: No config in suspension", err=True)
+            raise typer.Exit(1)
+
+        wheel_cfg = run.suspension.config.wheel
+
+        # Create animation.
+        visualize_suspension_sweep(
+            suspension=run.suspension,
+            solution_states=run.evaluated.states,
+            output_path=animation_out,
+            wheel_diameter=wheel_cfg.tire.nominal_radius * 2,
+            wheel_width=wheel_cfg.tire.section_width,
+            fps=20,
+            show_live=False,
+        )
+
+        typer.echo(f"Wrote animation: {animation_out}")
 
 
 @app.command()

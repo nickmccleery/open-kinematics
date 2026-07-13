@@ -7,13 +7,13 @@ import pytest
 from kinematics.cli.io.loaders import _read_yaml_mapping
 from kinematics.core.primitives.enums import Axis, PointID
 from kinematics.core.primitives.point_ref import Side
-from kinematics.core.primitives.types import PointTargetAxis
 from kinematics.core.schema.geometry import (
     AxleHardpointsSpec,
     DoubleWishboneAxleGeometrySpec,
     parse_geometry_spec,
 )
 from kinematics.core.schema.sweep import SweepSpec, build_sweep_config
+from kinematics.core.targeting import PointTargetAxis
 
 
 def test_mirrored_axle_geometry_parses_without_top_level_side(

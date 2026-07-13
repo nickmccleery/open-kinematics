@@ -1,9 +1,9 @@
 """
 Base class for suspension types.
 
-This module defines the abstract Suspension class that combines topology definition
+This module defines the abstract Suspension class that combines assembly definition
 (required points, shim support) with behavior implementation (constraints and
-consumer topology) in a single unified interface.
+physical elements) in a single unified interface.
 """
 
 from __future__ import annotations
@@ -13,7 +13,9 @@ from collections import OrderedDict
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, ClassVar, Sequence
 
+from kinematics.core.assembly import SuspensionAssembly
 from kinematics.core.constraints import Constraint
+from kinematics.core.elements import SuspensionElement
 from kinematics.core.metrics.main import (
     AxleMetricRows,
     MetricRow,
@@ -25,12 +27,6 @@ from kinematics.core.primitives.geometry import Point3
 from kinematics.core.primitives.point_ref import PointKey, Side
 from kinematics.core.schema.config import SuspensionConfig
 from kinematics.core.state import SuspensionState
-from kinematics.core.topology import (
-    LinkTopology,
-    RockerTopology,
-    SuspensionTopology,
-    WheelTopology,
-)
 
 if TYPE_CHECKING:
     from kinematics.core.diagnostics import DiagnosticIssue
@@ -44,9 +40,9 @@ class Suspension(ABC):
     Base class for all suspension types.
 
     Subclasses define:
-    - Class-level attributes for topology (required/optional points, shim support)
+    - Class-level attributes for geometry (required/optional points, shim support)
     - Instance-level storage for geometry and configuration
-    - Methods for constraints, consumer topology, and kinematic behavior
+    - Methods for constraints, physical elements, and kinematic behavior
 
     This class implements the provider interface directly - no separate provider needed.
     """
@@ -156,12 +152,12 @@ class Suspension(ABC):
         ...
 
     @abstractmethod
-    def link_topology(self) -> tuple[LinkTopology, ...]:
+    def elements(self) -> tuple[SuspensionElement, ...]:
         """
-        Return the physical links and points exposed to consumers.
+        Return the physical elements composing this suspension.
 
         Returns:
-            Renderer-neutral link topology.
+            Physical suspension elements referencing points in the solver state.
         """
         ...
 
@@ -233,27 +229,11 @@ class Suspension(ABC):
             )
         return point
 
-    def rocker_topology(self) -> tuple[RockerTopology, ...]:
-        """Return rocker axes and pickups exposed to consumers."""
-        return ()
-
-    def wheel_topology(self) -> tuple[WheelTopology, ...]:
-        """Return the point keys anchoring this suspension's wheels."""
-        return (
-            WheelTopology(
-                center=PointID.WHEEL_CENTER,
-                inboard=PointID.WHEEL_INBOARD,
-                outboard=PointID.WHEEL_OUTBOARD,
-                axle_inboard=PointID.AXLE_INBOARD,
-                axle_outboard=PointID.AXLE_OUTBOARD,
-            ),
-        )
-
-    def topology(self) -> SuspensionTopology:
-        """Return the complete renderer-neutral suspension topology."""
-        return SuspensionTopology(
-            output_points=self.output_points(),
-            links=self.link_topology(),
-            rockers=self.rocker_topology(),
-            wheels=self.wheel_topology(),
+    def assembly(self) -> SuspensionAssembly:
+        """Return the validated point and element composition."""
+        return SuspensionAssembly.from_state(
+            self.initial_state(),
+            self.derived_spec(),
+            self.elements(),
+            self.output_points(),
         )

@@ -23,8 +23,8 @@ import pyarrow.parquet as pq
 import pytest
 
 from kinematics.cli.app import sweep as cli_sweep
-from kinematics.core import solve_sweep
 from kinematics.core.primitives.constants import TEST_TOLERANCE
+from kinematics.core.sweep import solve_evaluated_sweep
 
 # Check if matplotlib is available for animation tests without importing it.
 HAS_MATPLOTLIB = find_spec("matplotlib") is not None
@@ -404,8 +404,8 @@ class TestCliEndToEnd:
 
         with (
             patch(
-                "kinematics.cli.commands.sweep.solve_sweep",
-                wraps=solve_sweep,
+                "kinematics.cli.commands.sweep.solve_evaluated_sweep",
+                wraps=solve_evaluated_sweep,
             ) as solve_mock,
             patch("kinematics.cli.visualization.api.visualize_suspension_sweep"),
         ):

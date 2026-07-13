@@ -5,13 +5,13 @@ from pathlib import Path
 
 from kinematics.cli.io.results_writer import SolutionFrame, create_writer_for_path
 from kinematics.cli.io.yaml import load_geometry, load_sweep
-from kinematics.core import SweepAnalysis, analyze_solved_sweep, solve_sweep
 from kinematics.core.export import (
     flat_specs_for_suspension,
-    flatten_metric_rows,
-    point_key_name,
+    flatten_metric_result,
+    flatten_positions,
 )
-from kinematics.core.types import Suspension, SuspensionState
+from kinematics.core.suspensions.base import Suspension
+from kinematics.core.sweep import EvaluatedSweep, solve_evaluated_sweep
 
 
 @dataclass(frozen=True)
@@ -19,8 +19,7 @@ class SweepRun:
     """Solved objects retained for terminal reporting and optional rendering."""
 
     suspension: Suspension
-    states: list[SuspensionState]
-    analysis: SweepAnalysis
+    evaluated: EvaluatedSweep
 
 
 def run_sweep_files(
@@ -31,13 +30,7 @@ def run_sweep_files(
     """Load, solve, analyze, and write one sweep without terminal behavior."""
     suspension = load_geometry(geometry_path)
     sweep_config = load_sweep(sweep_path, suspension)
-    states, solver_stats = solve_sweep(suspension, sweep_config)
-    analysis = analyze_solved_sweep(
-        suspension,
-        sweep_config,
-        states,
-        solver_stats,
-    )
+    evaluated = solve_evaluated_sweep(suspension, sweep_config)
 
     writer = create_writer_for_path(
         output_path,
@@ -46,22 +39,19 @@ def run_sweep_files(
     )
     output_points = suspension.output_points()
     metric_specs = flat_specs_for_suspension(suspension)
-    for analyzed_frame in analysis.frames:
-        positions = {
-            point_key_name(point): position
-            for point in output_points
-            if (position := analyzed_frame.positions.get(point_key_name(point)))
-            is not None
-        }
+    for index, (state, solver_info, metric_row) in enumerate(
+        zip(
+            evaluated.states,
+            evaluated.solver_stats,
+            evaluated.metrics.rows,
+        )
+    ):
         writer.add_frame(
-            analyzed_frame.index,
+            index,
             SolutionFrame(
-                positions=positions,
-                solver_info=analyzed_frame.solver,
-                metrics=flatten_metric_rows(
-                    analyzed_frame.metrics,
-                    analyzed_frame.corner_metrics,
-                ),
+                positions=flatten_positions(state.positions, output_points),
+                solver_info=solver_info,
+                metrics=flatten_metric_result(metric_row),
                 metric_specs=metric_specs,
             ),
         )
@@ -69,6 +59,5 @@ def run_sweep_files(
 
     return SweepRun(
         suspension=suspension,
-        states=states,
-        analysis=analysis,
+        evaluated=evaluated,
     )

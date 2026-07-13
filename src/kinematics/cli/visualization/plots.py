@@ -16,9 +16,13 @@ from mpl_toolkits.mplot3d.axes3d import Axes3D
 from kinematics.cli.visualization.main import (
     SuspensionVisualizer,
     WheelVisualization,
-    renderer_links,
+    renderer_elements,
+    wheel_elements,
 )
-from kinematics.core.types import Point3, PointID, Suspension, SuspensionState
+from kinematics.core.primitives.enums import PointID
+from kinematics.core.primitives.geometry import Point3
+from kinematics.core.state import SuspensionState
+from kinematics.core.suspensions.base import Suspension
 
 
 def compute_bounds_from_positions(
@@ -226,13 +230,13 @@ def create_four_view_plot(
         width=wheel_width,
     )
 
-    topology = suspension.topology()
+    assembly = suspension.assembly()
 
     # Create visualizer.
     visualizer = SuspensionVisualizer(
-        renderer_links(topology),
+        renderer_elements(assembly),
         wheel_config,
-        topology.wheels,
+        wheel_elements(assembly),
     )
 
     # Create figure with four subplots.
@@ -293,13 +297,13 @@ def create_single_view_plot(
         width=wheel_width,
     )
 
-    topology = suspension.topology()
+    assembly = suspension.assembly()
 
     # Create visualizer.
     visualizer = SuspensionVisualizer(
-        renderer_links(topology),
+        renderer_elements(assembly),
         wheel_config,
-        topology.wheels,
+        wheel_elements(assembly),
     )
 
     # Create single plot.

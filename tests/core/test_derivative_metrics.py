@@ -17,9 +17,9 @@ from kinematics.core.metrics.units import MetricUnit
 from kinematics.core.primitives.dual import DualScalar, dot
 from kinematics.core.primitives.enums import Axis, PointID, TargetPositionMode
 from kinematics.core.primitives.geometry import Point3
-from kinematics.core.primitives.types import PointTarget, PointTargetAxis
 from kinematics.core.sensitivity import TangentField
 from kinematics.core.state import SuspensionState
+from kinematics.core.targeting import PointTarget, PointTargetAxis
 
 
 def _state_and_tangent() -> tuple[SuspensionState, TangentField]:

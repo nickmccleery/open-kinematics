@@ -1,6 +1,4 @@
-"""
-Public API for visualization features with lazy imports for optional dependencies.
-"""
+"""Public API for optional visualization features."""
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -8,11 +6,19 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from kinematics.cli.visualization.animation import create_animation
+from kinematics.cli.visualization.main import (
+    SuspensionVisualizer,
+    WheelVisualization,
+    renderer_elements,
+    wheel_elements,
+)
 from kinematics.cli.visualization.plots import create_four_view_plot
-from kinematics.core.types import Axis, PointID
+from kinematics.core.primitives.enums import Axis, PointID
 
 if TYPE_CHECKING:
-    from kinematics.core.types import Suspension, SuspensionState
+    from kinematics.core.state import SuspensionState
+    from kinematics.core.suspensions.base import Suspension
 
 
 @dataclass(frozen=True)
@@ -48,36 +54,20 @@ def visualize_suspension_sweep(
         fps: Frames per second for the animation.
         show_live: Whether to show the animation during creation.
 
-    Raises:
-        ImportError: If visualization dependencies are not installed.
     """
-    try:
-        from kinematics.cli.visualization.animation import create_animation
-        from kinematics.cli.visualization.main import (
-            SuspensionVisualizer,
-            WheelVisualization,
-            renderer_links,
-        )
-    except ImportError as e:
-        raise ImportError(
-            "Visualization dependencies not found. "
-            'Install with: pip install "kinematics[cli,viz]"\n'
-            f"Original error: {e}"
-        ) from e
-
     # Configure wheel visualization.
     wheel_config = WheelVisualization(
         diameter=wheel_diameter,
         width=wheel_width,
     )
 
-    topology = suspension.topology()
+    assembly = suspension.assembly()
 
     # Create visualizer.
     visualizer = SuspensionVisualizer(
-        renderer_links(topology),
+        renderer_elements(assembly),
         wheel_config,
-        topology.wheels,
+        wheel_elements(assembly),
     )
 
     # Get initial positions for animation baseline.
@@ -109,31 +99,6 @@ def visualize_geometry(
         suspension: The Suspension instance for the geometry.
         output_path: Path where the plot image will be saved.
     """
-    try:
-        # Test for matplotlib availability; plotting is handled by plots module.
-        import matplotlib.pyplot as plt
-
-        plt.figure()  # Test that matplotlib works.
-        plt.close()
-    except ImportError as e:
-        raise ImportError(
-            "Visualization dependencies not found. "
-            'Install with: pip install "kinematics[cli,viz]"\n'
-            f"Original error: {e}"
-        ) from e
-
-    # Check for supported suspension types.
-    is_double_wishbone = suspension.TYPE_KEY in (
-        "double_wishbone",
-        "double_wishbone_front",
-        "double_wishbone_rear",
-    )
-
-    if not is_double_wishbone:
-        raise NotImplementedError(
-            "Geometry visualization only supported for double wishbone suspensions."
-        )
-
     state = suspension.initial_state()
     contact_patch_z = float(state.get(PointID.CONTACT_PATCH_CENTER)[Axis.Z])
 

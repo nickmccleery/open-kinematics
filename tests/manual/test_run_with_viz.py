@@ -8,9 +8,8 @@ from kinematics.core.constraints import DistanceConstraint
 from kinematics.core.points.derived.manager import DerivedPointsManager
 from kinematics.core.primitives.constants import TEST_TOLERANCE
 from kinematics.core.primitives.enums import Axis, PointID, TargetPositionMode
-from kinematics.core.primitives.types import PointTargetAxis, SweepConfig
-from kinematics.core.solver import PointTarget
 from kinematics.core.sweep import solve_sweep
+from kinematics.core.targeting import PointTarget, PointTargetAxis, SweepConfig
 
 
 @pytest.fixture
@@ -124,7 +123,8 @@ def test_run_solver(
     from kinematics.cli.visualization.main import (
         SuspensionVisualizer,
         WheelVisualization,
-        renderer_links,
+        renderer_elements,
+        wheel_elements,
     )
 
     # Extract positions from SuspensionState objects for animation.
@@ -142,11 +142,11 @@ def test_run_solver(
         width=225,
     )
 
-    topology = suspension.topology()
+    assembly = suspension.assembly()
     visualizer = SuspensionVisualizer(
-        renderer_links(topology),
+        renderer_elements(assembly),
         wheel_config,
-        topology.wheels,
+        wheel_elements(assembly),
     )
     create_animation(
         position_states_positions,

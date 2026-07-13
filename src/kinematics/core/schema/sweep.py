@@ -10,18 +10,18 @@ from pydantic import BaseModel, ConfigDict, model_validator
 from kinematics.core.primitives.enums import Axis, TargetPositionMode
 from kinematics.core.primitives.geometry import Direction3, extract_array
 from kinematics.core.primitives.point_ref import Side
-from kinematics.core.primitives.types import (
-    PointTarget,
-    PointTargetAxis,
-    PointTargetVector,
-    SweepConfig,
-    WorldAxisSystem,
-)
 from kinematics.core.schema.coercion import (
     CIAxis,
     CIPointID,
     CISide,
     CITargetPositionMode,
+)
+from kinematics.core.targeting import (
+    PointTarget,
+    PointTargetAxis,
+    PointTargetVector,
+    SweepConfig,
+    WorldAxisSystem,
 )
 
 if TYPE_CHECKING:

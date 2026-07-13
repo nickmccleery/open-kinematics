@@ -4,6 +4,11 @@ from dataclasses import dataclass
 from typing import ClassVar, Sequence
 
 from kinematics.core.constraints import Constraint
+from kinematics.core.elements import (
+    SuspensionElement,
+    VariableLengthLinkElement,
+    VariableLengthLinkType,
+)
 from kinematics.core.metrics.derivatives import (
     DerivativeMetricDefinition,
     PointCoordinateResponse,
@@ -15,7 +20,6 @@ from kinematics.core.suspensions.corner.attachments import (
     chiral_rigid_point_constraints,
 )
 from kinematics.core.suspensions.corner.double_wishbone import DoubleWishboneSuspension
-from kinematics.core.topology import LinkRole, LinkTopology
 
 
 @dataclass
@@ -80,13 +84,14 @@ class DoubleWishboneCoiloverSuspension(DoubleWishboneSuspension):
             ),
         )
 
-    def link_topology(self) -> tuple[LinkTopology, ...]:
-        """Return base corner topology plus the coilover."""
+    def elements(self) -> tuple[SuspensionElement, ...]:
+        """Return base corner elements plus the coilover."""
         return (
-            *super().link_topology(),
-            LinkTopology(
-                points=(PointID.STRUT_TOP, PointID.STRUT_BOTTOM),
-                role=LinkRole.SPRING_DAMPER,
+            *super().elements(),
+            VariableLengthLinkElement(
                 label="Spring/Damper",
+                type=VariableLengthLinkType.SPRING_DAMPER,
+                point_a=PointID.STRUT_TOP,
+                point_b=PointID.STRUT_BOTTOM,
             ),
         )

@@ -25,7 +25,7 @@ The tool is built around a numerical solver that determines the positions of all
 - Suspension Metrics: Compute roadwheel angle, camber, caster, kingpin inclination, scrub radius, mechanical trail, instant-center geometry, wheel travel, half-track, damper length, and anti-pitch geometry. Axle models add track, roll center, heave, roll, ride-height change, trackrod inboard displacement, and anti-roll-bar metrics.
 - Exact Derivatives: Evaluate declarative `d(response) / d(driver)` metrics, including wheel-center X with respect to wheel-center Z, camber, roadwheel angle, damper, rocker, torsion-bar, and anti-roll-bar ratios, using analytical constraint Jacobians and forward-mode automatic differentiation.
 - Sweep Diagnostics: Report convergence, residual acceptance, branch continuity, derivative availability, mechanism chirality, and transmission-margin issues without discarding otherwise available results.
-- Structured Analysis API: Use `analyze_sweep()` and `initial_pose()` to obtain name-keyed positions, structural corner locations, metric metadata, display topology, diagnostics, and solved frames.
+- Structured Analysis API: Use `analyze_sweep()` and `initial_pose()` to obtain name-keyed positions, structural corner locations, metric metadata, presentation geometry, diagnostics, and solved frames.
 - Data Export: Save wide-format CSV or Apache Parquet results with lowercase `snake_case` columns. Units are metadata rather than part of metric names.
 - Visualization: Generate static plots of the design condition and create MP4/GIF animations of sweep motions.
 
@@ -77,12 +77,12 @@ objects; callers own transport and filesystem behavior.
 
 ```python
 from kinematics.core import (
-    SweepSpec,
     analyze_sweep,
     build_suspension,
     build_sweep_config,
     parse_geometry_spec,
 )
+from kinematics.core.schema.sweep import SweepSpec
 
 suspension = build_suspension(parse_geometry_spec(geometry_data))
 sweep = build_sweep_config(SweepSpec.model_validate(sweep_data), suspension)

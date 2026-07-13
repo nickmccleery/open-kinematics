@@ -440,13 +440,13 @@ class TestFullJacobianAssembly:
             DerivedPointsSpec,
         )
         from kinematics.core.primitives.geometry import Point3
-        from kinematics.core.primitives.types import (
+        from kinematics.core.solver import ResidualComputer
+        from kinematics.core.state import SuspensionState
+        from kinematics.core.targeting import (
             PointTarget,
             PointTargetAxis,
             TargetPositionMode,
         )
-        from kinematics.core.solver import ResidualComputer
-        from kinematics.core.state import SuspensionState
 
         positions = {
             P1: Point3([0.0, 0.0, 0.0]),
@@ -510,13 +510,13 @@ class TestFullJacobianAssembly:
             DerivedPointsSpec,
         )
         from kinematics.core.primitives.geometry import Point3
-        from kinematics.core.primitives.types import (
+        from kinematics.core.solver import ResidualComputer
+        from kinematics.core.state import SuspensionState
+        from kinematics.core.targeting import (
             PointTarget,
             PointTargetAxis,
             TargetPositionMode,
         )
-        from kinematics.core.solver import ResidualComputer
-        from kinematics.core.state import SuspensionState
 
         positions = {
             P1: Point3([0.0, 0.0, 0.0]),

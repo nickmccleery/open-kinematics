@@ -19,9 +19,9 @@ from kinematics.core.metrics.main import (
 )
 from kinematics.core.primitives.enums import PointID
 from kinematics.core.primitives.geometry import Point3
-from kinematics.core.primitives.types import SweepConfig
 from kinematics.core.schema.config import SuspensionConfig
 from kinematics.core.sweep import compute_sweep_metrics, solve_sweep
+from kinematics.core.targeting import SweepConfig
 
 TEST_DATA = Path(__file__).parent / "data"
 

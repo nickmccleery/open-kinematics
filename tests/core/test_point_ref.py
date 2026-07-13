@@ -26,9 +26,9 @@ from kinematics.core.primitives.point_ref import (
     Side,
     point_key_name,
 )
-from kinematics.core.primitives.types import PointTarget, PointTargetAxis, SweepConfig
 from kinematics.core.solver import ResidualComputer, solve_least_squares_problem
 from kinematics.core.state import SuspensionState
+from kinematics.core.targeting import PointTarget, PointTargetAxis, SweepConfig
 
 # ----------------------------------------------------------------------------
 # Side / PointRef basics

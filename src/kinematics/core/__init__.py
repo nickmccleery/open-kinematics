@@ -1,34 +1,18 @@
 """
-Public, transport-independent suspension solver API.
+Public, transport-independent suspension solver workflows.
 
-This package owns validated schemas, suspension construction, numerical solving,
-diagnostics, metrics, and structured analysis. It does not read or write files,
-render plots, format terminal output, or control process exit behavior.
+Value types live in their defining modules. This package facade exposes only
+the high-level operations used to build, solve, evaluate, and analyze suspensions.
 """
 
 from kinematics.core.analysis import (
-    AnalyzedFrame,
-    ReferenceCondition,
-    StaticPose,
-    SuspensionInfo,
-    SweepAnalysis,
-    SweepParameter,
+    analyze_evaluated_sweep,
     analyze_solved_sweep,
     analyze_sweep,
     initial_pose,
 )
-from kinematics.core.diagnostics import DiagnosticIssue, SweepDiagnostics
-from kinematics.core.metrics.metadata import MetricDisplay
-from kinematics.core.metrics.registry import MetricSpec
-from kinematics.core.schema import (
-    GeometrySpec,
-    SweepSpec,
-    build_sweep_config,
-    parse_geometry_spec,
-)
-from kinematics.core.solver import SolverInfo
-from kinematics.core.state import SuspensionState
-from kinematics.core.suspensions.base import Suspension
+from kinematics.core.schema.geometry import parse_geometry_spec
+from kinematics.core.schema.sweep import build_sweep_config
 from kinematics.core.suspensions.build import build_suspension
 from kinematics.core.suspensions.registry import list_supported_types
-from kinematics.core.sweep import solve_sweep
+from kinematics.core.sweep import solve_evaluated_sweep, solve_sweep
