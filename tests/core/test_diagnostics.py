@@ -5,7 +5,9 @@ from types import SimpleNamespace
 import pytest
 
 from kinematics.core.diagnostics import (
+    DiagnosticCategory,
     DiagnosticIssue,
+    DiagnosticSeverity,
     SweepDiagnostics,
     diagnose_sweep,
 )
@@ -31,8 +33,20 @@ def _suspension():
 
 
 def test_sweep_diagnostics_groups_issues_by_severity() -> None:
-    warning = DiagnosticIssue(1, "jump", "warning", "jump", 10.0)
-    error = DiagnosticIssue(2, "residual", "error", "residual", 1.0)
+    warning = DiagnosticIssue(
+        1,
+        DiagnosticCategory.JUMP,
+        DiagnosticSeverity.WARNING,
+        "jump",
+        10.0,
+    )
+    error = DiagnosticIssue(
+        2,
+        DiagnosticCategory.RESIDUAL,
+        DiagnosticSeverity.ERROR,
+        "residual",
+        1.0,
+    )
 
     diagnostics = SweepDiagnostics([warning, error])
 

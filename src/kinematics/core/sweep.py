@@ -9,7 +9,12 @@ from collections import OrderedDict
 from dataclasses import dataclass
 from typing import List
 
-from kinematics.core.diagnostics import DiagnosticIssue, diagnose_sweep
+from kinematics.core.diagnostics import (
+    DiagnosticCategory,
+    DiagnosticIssue,
+    DiagnosticSeverity,
+    diagnose_sweep,
+)
 from kinematics.core.metrics.main import AxleMetricRows, MetricRow
 from kinematics.core.points.derived.manager import DerivedPointsManager
 from kinematics.core.sensitivity import (
@@ -61,7 +66,9 @@ def solve_sweep(
 
 @dataclass(frozen=True)
 class SweepTangents:
-    """Per-state tangent fields and their numerical solve health."""
+    """
+    Per-state tangent fields and their numerical solve health.
+    """
 
     per_step: list[list[TangentField]]
     solve_infos: list[TangentSolveInfo]
@@ -69,7 +76,9 @@ class SweepTangents:
 
 @dataclass(frozen=True)
 class SweepMetricsResult:
-    """Metric rows plus visible derivative-computation status."""
+    """
+    Metric rows plus visible derivative-computation status.
+    """
 
     rows: list[MetricRow | AxleMetricRows]
     derivative_error: str | None = None
@@ -78,7 +87,9 @@ class SweepMetricsResult:
 
 @dataclass(frozen=True)
 class EvaluatedSweep:
-    """Lean solved sweep result shared by transport and presentation adapters."""
+    """
+    Lean solved sweep result shared by transport and presentation adapters.
+    """
 
     states: list[SuspensionState]
     solver_stats: list[SolverInfo]
@@ -86,7 +97,9 @@ class EvaluatedSweep:
     diagnostics: list[DiagnosticIssue]
 
     def __post_init__(self) -> None:
-        """Reject partial results that would truncate adapter output."""
+        """
+        Reject partial results that would truncate adapter output.
+        """
         lengths = (len(self.states), len(self.solver_stats), len(self.metrics.rows))
         if len(set(lengths)) != 1:
             raise ValueError(
@@ -101,7 +114,9 @@ def compute_sweep_tangents(
     sweep_config: SweepConfig,
     states: List[SuspensionState],
 ) -> SweepTangents:
-    """Compute solution-manifold tangents for every solved sweep state."""
+    """
+    Compute solution-manifold tangents for every solved sweep state.
+    """
     derived_manager = DerivedPointsManager(suspension.derived_spec())
     constraints = suspension.constraints()
     initial_state = suspension.initial_state()
@@ -130,7 +145,9 @@ def compute_sweep_metrics(
     sweep_config: SweepConfig,
     states: List[SuspensionState],
 ) -> SweepMetricsResult:
-    """Compute all sweep metrics, reporting derivative failures explicitly."""
+    """
+    Compute all sweep metrics, reporting derivative failures explicitly.
+    """
     if suspension.config is None:
         return SweepMetricsResult(rows=[OrderedDict() for _ in states])
 
@@ -156,14 +173,16 @@ def compute_sweep_metrics(
 
 
 def _derivative_issues(result: SweepMetricsResult) -> list[DiagnosticIssue]:
-    """Turn tangent-computation health into visible advisory diagnostics."""
+    """
+    Turn tangent-computation health into visible advisory diagnostics.
+    """
     issues: list[DiagnosticIssue] = []
     if result.derivative_error is not None:
         issues.append(
             DiagnosticIssue(
                 step=None,
-                category="derivatives",
-                severity="warning",
+                category=DiagnosticCategory.DERIVATIVES,
+                severity=DiagnosticSeverity.WARNING,
                 message=(
                     "Derivative metrics unavailable: tangent computation failed "
                     f"({result.derivative_error}); derivative columns are omitted."
@@ -179,8 +198,8 @@ def _derivative_issues(result: SweepMetricsResult) -> list[DiagnosticIssue]:
         issues.append(
             DiagnosticIssue(
                 step=first,
-                category="derivatives",
-                severity="warning",
+                category=DiagnosticCategory.DERIVATIVES,
+                severity=DiagnosticSeverity.WARNING,
                 message=(
                     f"Tangent system rank-deficient at {len(deficient)} of "
                     f"{len(infos)} steps (first at step {first}, rank "
@@ -200,7 +219,9 @@ def evaluate_solved_sweep(
     states: list[SuspensionState],
     solver_stats: list[SolverInfo],
 ) -> EvaluatedSweep:
-    """Compute metrics and diagnostics for an already solved sweep."""
+    """
+    Compute metrics and diagnostics for an already solved sweep.
+    """
     if len(states) != len(solver_stats):
         raise ValueError(
             "Solved state and solver-stat counts must match: "
@@ -214,8 +235,8 @@ def evaluate_solved_sweep(
         diagnostics = [
             DiagnosticIssue(
                 step=None,
-                category="diagnostics",
-                severity="warning",
+                category=DiagnosticCategory.DIAGNOSTICS,
+                severity=DiagnosticSeverity.WARNING,
                 message=(
                     "Sweep diagnostics unavailable: diagnostic evaluation failed "
                     f"({type(error).__name__}: {error})."
@@ -236,7 +257,9 @@ def solve_evaluated_sweep(
     suspension: Suspension,
     sweep_config: SweepConfig,
 ) -> EvaluatedSweep:
-    """Solve one sweep and compute its metrics and advisory diagnostics."""
+    """
+    Solve one sweep and compute its metrics and advisory diagnostics.
+    """
     states, solver_stats = solve_sweep(suspension, sweep_config)
     return evaluate_solved_sweep(
         suspension,

@@ -4,8 +4,14 @@ import pytest
 
 from kinematics.core.assembly import PointCatalog, SuspensionAssembly
 from kinematics.core.elements import (
+    AxisProjection,
+    ElementType,
     RigidLinkElement,
-    RigidLinkType,
+    RockerElement,
+    RockerPickup,
+    RockerPickupType,
+    TorsionElement,
+    UprightElement,
 )
 from kinematics.core.points.derived.manager import DerivedPointsSpec
 from kinematics.core.primitives.enums import PointID
@@ -61,13 +67,13 @@ def test_assembly_accepts_shared_element_points() -> None:
     state = make_state()
     link_a = RigidLinkElement(
         label="Link A",
-        type=RigidLinkType.WISHBONE_LEG,
+        type=ElementType.WISHBONE,
         point_a=FIXED_POINT,
         point_b=FREE_POINT,
     )
     link_b = RigidLinkElement(
         label="Link B",
-        type=RigidLinkType.WISHBONE_LEG,
+        type=ElementType.WISHBONE,
         point_a=FIXED_POINT,
         point_b=FREE_POINT,
     )
@@ -80,7 +86,8 @@ def test_assembly_accepts_shared_element_points() -> None:
     )
 
     assert assembly.elements == (link_a, link_b)
-    assert assembly.point_keys == (DERIVED_POINT, FIXED_POINT, FREE_POINT)
+    assert assembly.referenced_point_keys == (DERIVED_POINT, FIXED_POINT, FREE_POINT)
+    assert [path.label for path in assembly.element_paths] == ["Link A", "Link B"]
 
 
 def test_point_catalog_rejects_derived_point_marked_free() -> None:
@@ -99,7 +106,7 @@ def test_point_catalog_rejects_unknown_derived_dependency() -> None:
 def test_assembly_rejects_unknown_element_point() -> None:
     invalid_link = RigidLinkElement(
         label="Invalid Link",
-        type=RigidLinkType.WISHBONE_LEG,
+        type=ElementType.WISHBONE,
         point_a=FIXED_POINT,
         point_b=UNKNOWN_POINT,
     )
@@ -113,6 +120,28 @@ def test_assembly_rejects_unknown_element_point() -> None:
         )
 
 
+def test_assembly_rejects_unknown_upright_segment_endpoint() -> None:
+    invalid_upright = UprightElement(
+        label="Invalid Upright",
+        hardpoints=(FIXED_POINT,),
+        attachments=(FREE_POINT,),
+        segments=((FIXED_POINT, UNKNOWN_POINT),),
+    )
+
+    assert invalid_upright.point_keys == (
+        FIXED_POINT,
+        FREE_POINT,
+        UNKNOWN_POINT,
+    )
+    with pytest.raises(ValueError, match="elements reference unknown points"):
+        SuspensionAssembly.from_state(
+            make_state(),
+            make_derived_spec(),
+            (invalid_upright,),
+            (DERIVED_POINT,),
+        )
+
+
 def test_assembly_rejects_unknown_output_point() -> None:
     with pytest.raises(ValueError, match="output references unknown points"):
         SuspensionAssembly.from_state(
@@ -121,3 +150,63 @@ def test_assembly_rejects_unknown_output_point() -> None:
             (),
             (UNKNOWN_POINT,),
         )
+
+
+def test_torsion_bar_owns_matching_reversed_rocker_axis() -> None:
+    rocker = RockerElement(
+        label="Rocker",
+        rotation_axis=(FIXED_POINT, FREE_POINT),
+        pickups=(RockerPickup(DERIVED_POINT, RockerPickupType.PUSHROD),),
+    )
+    torsion_bar = TorsionElement(
+        label="Torsion Bar",
+        type=ElementType.TORSION_BAR,
+        rotation_axis=(FREE_POINT, FIXED_POINT),
+        attachments=(),
+        path=(FREE_POINT, FIXED_POINT),
+    )
+    assembly = SuspensionAssembly.from_state(
+        make_state(),
+        make_derived_spec(),
+        (rocker, torsion_bar),
+        (DERIVED_POINT,),
+    )
+
+    assert [path.type for path in assembly.element_paths] == [
+        ElementType.ROCKER,
+        ElementType.TORSION_BAR,
+    ]
+    assert assembly.element_paths[0].points == (
+        DERIVED_POINT,
+        AxisProjection(DERIVED_POINT, rocker.rotation_axis),
+    )
+
+
+def test_torsion_bar_does_not_hide_axis_that_its_path_does_not_render() -> None:
+    rocker = RockerElement(
+        label="Rocker",
+        rotation_axis=(FIXED_POINT, FREE_POINT),
+        pickups=(RockerPickup(DERIVED_POINT, RockerPickupType.PUSHROD),),
+    )
+    torsion_bar = TorsionElement(
+        label="Torsion Bar",
+        type=ElementType.TORSION_BAR,
+        rotation_axis=rocker.rotation_axis,
+        attachments=(),
+        path=(FIXED_POINT, DERIVED_POINT),
+    )
+    assembly = SuspensionAssembly.from_state(
+        make_state(),
+        make_derived_spec(),
+        (rocker, torsion_bar),
+        (DERIVED_POINT,),
+    )
+
+    assert [path.points for path in assembly.element_paths] == [
+        rocker.rotation_axis,
+        (
+            DERIVED_POINT,
+            AxisProjection(DERIVED_POINT, rocker.rotation_axis),
+        ),
+        torsion_bar.path,
+    ]

@@ -4,8 +4,8 @@ from typing import cast
 
 import pytest
 
-from kinematics.cli.io.sweep_loader import parse_sweep_file
-from kinematics.cli.io.yaml import load_geometry
+from kinematics.cli.io.loaders import load_geometry
+from kinematics.cli.io.sweep_loader import load_sweep
 from kinematics.core.metrics.anti_geometry import (
     calculate_anti_dive_pct,
     calculate_anti_lift_pct,
@@ -96,7 +96,7 @@ def test_coilover_damper_length_matches_mount_distance() -> None:
 def test_coilover_sweep_emits_corner_derivative_metrics() -> None:
     suspension = load_geometry(TEST_DATA / "corner_strut_geometry.yaml")
     assert suspension.config is not None
-    sweep = parse_sweep_file(TEST_DATA / "sweep.yaml")
+    sweep = load_sweep(TEST_DATA / "sweep.yaml")
     states, _ = solve_sweep(suspension, sweep)
 
     result = compute_sweep_metrics(suspension, sweep, states)
@@ -178,7 +178,7 @@ def test_tangent_failure_is_visible_and_preserves_base_metrics(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     suspension = load_geometry(TEST_DATA / "geometry.yaml")
-    sweep = parse_sweep_file(TEST_DATA / "sweep.yaml")
+    sweep = load_sweep(TEST_DATA / "sweep.yaml")
     states, _ = solve_sweep(suspension, sweep)
 
     def fail_tangents(*_args: object, **_kwargs: object) -> None:

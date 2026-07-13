@@ -5,7 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from kinematics.cli.io.yaml import load_geometry, load_sweep
+from kinematics.cli.io.loaders import load_geometry
+from kinematics.cli.io.sweep_loader import load_sweep
 from kinematics.core.analysis import (
     analyze_evaluated_sweep,
     analyze_solved_sweep,
@@ -97,7 +98,7 @@ def test_initial_pose_contains_display_geometry() -> None:
     assert "wheel_center" in pose.positions
     assert pose.wheel is not None
     assert pose.elements
-    assert pose.wheel_anchors
+    assert pose.wheel_references
 
 
 def test_analyze_solved_sweep_rejects_mismatched_solver_stats() -> None:
@@ -170,7 +171,7 @@ def test_setup_reference_failure_is_visible(monkeypatch) -> None:
 
     monkeypatch.setattr(
         analysis_module,
-        "solve_evaluated_sweep",
+        "solve_sweep",
         fail_reference,
     )
     analysis = analyze_evaluated_sweep(suspension, sweep, evaluated)

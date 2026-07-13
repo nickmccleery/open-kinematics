@@ -9,7 +9,7 @@ upright-mounted points.
 
 import numpy as np
 
-from kinematics.cli.io.yaml import load_geometry
+from kinematics.cli.io.loaders import load_geometry
 from kinematics.core.primitives.constants import TEST_TOLERANCE
 from kinematics.core.primitives.enums import Axis, PointID
 from kinematics.core.primitives.geometry import Direction3, Point3

@@ -4,7 +4,7 @@ from typing import cast
 import pytest
 import yaml
 
-from kinematics.cli.io.yaml import load_geometry
+from kinematics.cli.io.loaders import load_geometry
 from kinematics.core.constraints import ScalarTripleProductConstraint
 from kinematics.core.primitives.enums import PointID
 from kinematics.core.suspensions.corner import (

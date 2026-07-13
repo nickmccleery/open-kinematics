@@ -1,25 +1,39 @@
-"""File-to-file sweep command service."""
+"""
+File-to-file sweep command service.
+"""
 
 from dataclasses import dataclass
 from pathlib import Path
 
+from kinematics.cli.io.loaders import load_geometry
 from kinematics.cli.io.results_writer import SolutionFrame, create_writer_for_path
-from kinematics.cli.io.yaml import load_geometry, load_sweep
-from kinematics.core.export import (
-    flat_specs_for_suspension,
-    flatten_metric_result,
-    flatten_positions,
-)
+from kinematics.cli.io.sweep_loader import load_sweep
+from kinematics.core.export import flatten_positions
+from kinematics.core.metrics.main import AxleMetricRows, MetricRow, flatten_metric_rows
+from kinematics.core.metrics.registry import flat_specs_for_suspension
 from kinematics.core.suspensions.base import Suspension
 from kinematics.core.sweep import EvaluatedSweep, solve_evaluated_sweep
 
 
 @dataclass(frozen=True)
 class SweepRun:
-    """Solved objects retained for terminal reporting and optional rendering."""
+    """
+    Solved objects retained for terminal reporting and optional rendering.
+    """
 
     suspension: Suspension
     evaluated: EvaluatedSweep
+
+
+def flatten_metrics_for_export(
+    row: MetricRow | AxleMetricRows,
+) -> dict[str, float | None]:
+    """
+    Flatten corner or axle metric rows at the file-output boundary.
+    """
+    if isinstance(row, AxleMetricRows):
+        return flatten_metric_rows(row.axle, row.corners)
+    return dict(row)
 
 
 def run_sweep_files(
@@ -27,7 +41,9 @@ def run_sweep_files(
     sweep_path: Path,
     output_path: Path,
 ) -> SweepRun:
-    """Load, solve, analyze, and write one sweep without terminal behavior."""
+    """
+    Load, solve, analyze, and write one sweep without terminal behavior.
+    """
     suspension = load_geometry(geometry_path)
     sweep_config = load_sweep(sweep_path, suspension)
     evaluated = solve_evaluated_sweep(suspension, sweep_config)
@@ -51,7 +67,7 @@ def run_sweep_files(
             SolutionFrame(
                 positions=flatten_positions(state.positions, output_points),
                 solver_info=solver_info,
-                metrics=flatten_metric_result(metric_row),
+                metrics=flatten_metrics_for_export(metric_row),
                 metric_specs=metric_specs,
             ),
         )

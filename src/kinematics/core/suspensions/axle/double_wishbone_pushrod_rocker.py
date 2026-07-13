@@ -8,13 +8,16 @@ from typing import TYPE_CHECKING, ClassVar, Sequence
 import numpy as np
 
 from kinematics.core.constraints import Constraint, DistanceConstraint
-from kinematics.core.diagnostics import DiagnosticIssue
+from kinematics.core.diagnostics import (
+    DiagnosticCategory,
+    DiagnosticIssue,
+    DiagnosticSeverity,
+)
 from kinematics.core.elements import (
+    ElementType,
     RigidLinkElement,
-    RigidLinkType,
     SuspensionElement,
     TorsionElement,
-    TorsionElementType,
 )
 from kinematics.core.metrics import kernels
 from kinematics.core.metrics.derivatives import (
@@ -271,8 +274,8 @@ class DoubleWishbonePushrodRockerAxleSuspension(DoubleWishboneAxleSuspension):
                     issues.append(
                         DiagnosticIssue(
                             step,
-                            "chirality",
-                            "error",
+                            DiagnosticCategory.CHIRALITY,
+                            DiagnosticSeverity.ERROR,
                             f"{side.name.lower()} ARB arm reached its chirality "
                             f"boundary at step {step}.",
                             margin,
@@ -282,8 +285,8 @@ class DoubleWishbonePushrodRockerAxleSuspension(DoubleWishboneAxleSuspension):
                     issues.append(
                         DiagnosticIssue(
                             step,
-                            "chirality",
-                            "error",
+                            DiagnosticCategory.CHIRALITY,
+                            DiagnosticSeverity.ERROR,
                             f"{side.name.lower()} ARB arm inverted at step {step}.",
                             triple,
                         )
@@ -368,8 +371,8 @@ class DoubleWishbonePushrodRockerAxleSuspension(DoubleWishboneAxleSuspension):
             issues.append(
                 DiagnosticIssue(
                     step,
-                    "transmission",
-                    "warning",
+                    DiagnosticCategory.TRANSMISSION,
+                    DiagnosticSeverity.WARNING,
                     f"{side.name.lower()} {joint} is {angle_from_toggle:.1f} deg "
                     f"from toggle at step {step} (margin {margin:.3g}).",
                     margin,
@@ -431,7 +434,7 @@ class DoubleWishbonePushrodRockerAxleSuspension(DoubleWishboneAxleSuspension):
         elements.append(
             TorsionElement(
                 label="Anti-Roll Bar",
-                type=TorsionElementType.ANTI_ROLL_BAR,
+                type=ElementType.ANTI_ROLL_BAR,
                 rotation_axis=(
                     PointRef(Side.CENTER, left_end),
                     PointRef(Side.CENTER, right_end),
@@ -452,7 +455,7 @@ class DoubleWishbonePushrodRockerAxleSuspension(DoubleWishboneAxleSuspension):
             elements.append(
                 RigidLinkElement(
                     label=f"{side.name.title()} Droplink",
-                    type=RigidLinkType.DROPLINK,
+                    type=ElementType.DROPLINK,
                     point_a=PointRef(side, PointID.DROPLINK_ROCKER),
                     point_b=PointRef(side, PointID.DROPLINK_ARB),
                 )

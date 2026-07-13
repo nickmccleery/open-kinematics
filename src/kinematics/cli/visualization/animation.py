@@ -16,13 +16,11 @@ from kinematics.cli.visualization.plots import (
     configure_3d_axis,
     create_four_view_axes,
 )
-from kinematics.core.primitives.geometry import Point3
-from kinematics.core.primitives.point_ref import PointKey
 
 
 def create_animation(
-    position_states: list[dict[PointKey, Point3]],
-    initial_positions: dict[PointKey, Point3],
+    position_states: list[dict[str, tuple[float, float, float]]],
+    initial_positions: dict[str, tuple[float, float, float]],
     visualizer: SuspensionVisualizer,
     output_path: Path,
     fps: int = 20,
@@ -78,7 +76,9 @@ def create_animation(
 
     # Persistent title updated each frame (cheaper than re-creating)
     title_artist = fig.suptitle("", fontsize=16)
-    title_center_key = visualizer.wheel_anchors[0].center
+    title_center_key = (
+        visualizer.wheel_references[0].center if visualizer.wheel_references else None
+    )
 
     # Update function that only updates artist data (no clears/plots)
     def update(frame: int):
@@ -95,12 +95,14 @@ def create_animation(
             )
 
         # Update global title.
-        wheel_center_z = positions[title_center_key][2]
-        initial_wheel_center_z = initial_positions[title_center_key][2]
-        title_string = (
-            f"Wheel Center Z: {wheel_center_z - initial_wheel_center_z:.1f} [mm]",
-        )
-        title_artist.set_text("\n".join(title_string))
+        if title_center_key is None:
+            title_artist.set_text(f"Frame {frame}")
+        else:
+            wheel_center_z = positions[title_center_key][2]
+            initial_wheel_center_z = initial_positions[title_center_key][2]
+            title_artist.set_text(
+                f"Wheel Center Z: {wheel_center_z - initial_wheel_center_z:.1f} [mm]"
+            )
 
         artists = []
         for view_name in axes.keys():

@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from kinematics.cli.io.sweep_loader import parse_sweep_file
-from kinematics.cli.io.yaml import load_geometry
+from kinematics.cli.io.loaders import load_geometry
+from kinematics.cli.io.sweep_loader import load_sweep
 from kinematics.core.elements import TorsionElement
 from kinematics.core.primitives.enums import PointID
 from kinematics.core.primitives.point_ref import PointRef, Side
@@ -54,7 +54,7 @@ def test_roll_sweep_conserves_both_droplink_lengths(
         ).norm()
         for side in (Side.LEFT, Side.RIGHT)
     }
-    sweep = parse_sweep_file(test_data_dir / "axle_rocker_sweep.yaml", rocker_axle)
+    sweep = load_sweep(test_data_dir / "axle_rocker_sweep.yaml", rocker_axle)
 
     states, stats = solve_sweep(rocker_axle, sweep)
 

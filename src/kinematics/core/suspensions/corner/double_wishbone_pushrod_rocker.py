@@ -9,14 +9,14 @@ import numpy as np
 
 from kinematics.core.constraints import Constraint, DistanceConstraint
 from kinematics.core.elements import (
+    ElementType,
     RigidLinkElement,
-    RigidLinkType,
     RockerElement,
+    RockerPickup,
+    RockerPickupType,
     SuspensionElement,
     TorsionElement,
-    TorsionElementType,
     VariableLengthLinkElement,
-    VariableLengthLinkType,
 )
 from kinematics.core.metrics import kernels
 from kinematics.core.metrics.derivatives import (
@@ -283,9 +283,11 @@ class DoubleWishbonePushrodRockerSuspension(DoubleWishboneSuspension):
 
     def elements(self) -> tuple[SuspensionElement, ...]:
         """Return base corner elements plus pushrod, spring, and rocker."""
-        pickups: tuple[PointKey, ...] = (PointID.PUSHROD_INBOARD,)
+        pickups = (RockerPickup(PointID.PUSHROD_INBOARD, RockerPickupType.PUSHROD),)
         if self.has_droplink:
-            pickups += (PointID.DROPLINK_ROCKER,)
+            pickups += (
+                RockerPickup(PointID.DROPLINK_ROCKER, RockerPickupType.DROPLINK),
+            )
 
         rotation_axis: tuple[PointKey, PointKey] = (
             PointID.ROCKER_AXIS_FRONT,
@@ -295,7 +297,7 @@ class DoubleWishbonePushrodRockerSuspension(DoubleWishboneSuspension):
             *super().elements(),
             RigidLinkElement(
                 label="Pushrod",
-                type=RigidLinkType.PUSHROD,
+                type=ElementType.PUSHROD,
                 point_a=PointID.PUSHROD_OUTBOARD,
                 point_b=PointID.PUSHROD_INBOARD,
             ),
@@ -309,7 +311,7 @@ class DoubleWishbonePushrodRockerSuspension(DoubleWishboneSuspension):
             elements += (
                 VariableLengthLinkElement(
                     label="Spring/Damper",
-                    type=VariableLengthLinkType.SPRING_DAMPER,
+                    type=ElementType.SPRING_DAMPER,
                     point_a=PointID.STRUT_TOP,
                     point_b=PointID.STRUT_BOTTOM,
                 ),
@@ -318,7 +320,7 @@ class DoubleWishbonePushrodRockerSuspension(DoubleWishboneSuspension):
             elements += (
                 TorsionElement(
                     label="Torsion Bar",
-                    type=TorsionElementType.TORSION_BAR,
+                    type=ElementType.TORSION_BAR,
                     rotation_axis=rotation_axis,
                     attachments=(),
                     path=rotation_axis,

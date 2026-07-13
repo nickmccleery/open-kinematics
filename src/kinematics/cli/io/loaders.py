@@ -5,8 +5,9 @@ from typing import Any
 
 import yaml
 
-from kinematics.core import build_suspension, parse_geometry_spec
+from kinematics.core.schema.geometry import parse_geometry_spec
 from kinematics.core.suspensions.base import Suspension
+from kinematics.core.suspensions.build import build_suspension
 
 
 def _read_yaml_mapping(path: Path, kind: str) -> dict[str, Any]:

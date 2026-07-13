@@ -1,7 +1,7 @@
 import numpy as np
 
-from kinematics.cli.io.sweep_loader import parse_sweep_file
-from kinematics.cli.io.yaml import load_geometry
+from kinematics.cli.io.loaders import load_geometry
+from kinematics.cli.io.sweep_loader import load_sweep
 from kinematics.core.metrics.catalog import get_default_corner_metrics
 from kinematics.core.metrics.context import MetricContext
 from kinematics.core.metrics.main import compute_metrics_for_state_from_suspension
@@ -108,7 +108,7 @@ def test_front_view_metrics_are_invariant_to_rigid_x_translation(
     suspension = load_geometry(double_wishbone_geometry_file)
     assert isinstance(suspension, DoubleWishboneSuspension)
 
-    sweep_config = parse_sweep_file(test_data_dir / "sweep.yaml")
+    sweep_config = load_sweep(test_data_dir / "sweep.yaml")
     states, _ = solve_sweep(suspension, sweep_config)
 
     translated = _translate_double_wishbone_x(suspension, 100.0)
@@ -407,7 +407,7 @@ class TestSignConventionsAndKnownValues:
         sweep step produces a positive angle for the left-side suspension.
         """
         suspension = load_geometry(double_wishbone_geometry_file)
-        sweep_config = parse_sweep_file(test_data_dir / "sweep.yaml")
+        sweep_config = load_sweep(test_data_dir / "sweep.yaml")
         states, _ = solve_sweep(suspension, sweep_config)
 
         first_metrics = compute_metrics_for_state_from_suspension(states[0], suspension)

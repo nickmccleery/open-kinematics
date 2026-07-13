@@ -1,72 +1,35 @@
 """
-Name-keyed analysis views derived from a suspension assembly.
+Renderer-neutral, name-keyed geometry derived from suspension assemblies.
 """
 
-from __future__ import annotations
-
 from dataclasses import dataclass
-from enum import StrEnum
 from typing import Mapping
 
 import numpy as np
 
 from kinematics.core.assembly import SuspensionAssembly
-from kinematics.core.elements import (
-    RackElement,
-    RigidLinkElement,
-    RockerElement,
-    TorsionElement,
-    UprightElement,
-    VariableLengthLinkElement,
-    WheelElement,
-)
-from kinematics.core.primitives.enums import PointID
-from kinematics.core.primitives.geometry import extract_array
+from kinematics.core.elements import AxisProjection, ElementPathPoint, ElementType
+from kinematics.core.export import flatten_positions
 from kinematics.core.primitives.point_ref import PointKey, point_key_name
 from kinematics.core.schema.config import SuspensionConfig
 
-AXIS_FOOT_SUFFIX = "_axis_foot"
-
-
-class DisplayElementType(StrEnum):
-    """Kind of flattened element exposed to presentation consumers."""
-
-    WISHBONE = "wishbone"
-    UPRIGHT = "upright"
-    TRACK_ROD = "track_rod"
-    RACK = "rack"
-    AXLE = "axle"
-    CONTACT_PATCH = "contact_patch"
-    PUSHROD = "pushrod"
-    ROCKER = "rocker"
-    SPRING_DAMPER = "spring_damper"
-    ANTI_ROLL_BAR = "anti_roll_bar"
-    TORSION_BAR = "torsion_bar"
-    DROPLINK = "droplink"
-
 
 @dataclass(frozen=True)
-class DisplayElement:
-    """One name-keyed point sequence in the presentation topology."""
+class NamedElementPath:
+    """
+    One element path resolved to stable public point names.
+    """
 
     points: tuple[str, ...]
-    type: DisplayElementType
+    type: ElementType
     label: str
 
 
 @dataclass(frozen=True)
-class RockerDisplayGroup:
-    """Display description for one rocker-equipped corner."""
-
-    axis_start: str
-    axis_end: str
-    pickups: tuple[str, ...]
-    label: str
-
-
-@dataclass(frozen=True)
-class WheelDisplayDimensions:
-    """Static tire dimensions in mm for drawing a wheel."""
+class WheelDimensions:
+    """
+    Physical tire and rim dimensions in mm.
+    """
 
     radius: float
     width: float
@@ -74,195 +37,151 @@ class WheelDisplayDimensions:
 
 
 @dataclass(frozen=True)
-class WheelAnchorNames:
-    """Name-keyed positions anchoring one displayed wheel."""
+class WheelReferences:
+    """
+    Public point names defining one wheel's position and orientation.
+    """
 
     center: str
     inboard: str
     outboard: str
     axle_inboard: str
     axle_outboard: str
+    contact_patch: str
 
 
-def rocker_display_groups(assembly: SuspensionAssembly) -> list[RockerDisplayGroup]:
-    """Convert rocker elements to public point names."""
+def axis_projection_name(projection: AxisProjection) -> str:
+    """
+    Return a stable public name for a point projected onto an axis.
+    """
+    axis_names = sorted(point_key_name(point) for point in projection.rotation_axis)
+    return (
+        f"{point_key_name(projection.point)}_axis_projection_"
+        f"{axis_names[0]}_{axis_names[1]}"
+    )
+
+
+def _path_point_name(point: ElementPathPoint) -> str:
+    """
+    Resolve a physical or projected path point to its public name.
+    """
+    if isinstance(point, AxisProjection):
+        return axis_projection_name(point)
+    return point_key_name(point)
+
+
+def named_element_paths(assembly: SuspensionAssembly) -> list[NamedElementPath]:
+    """
+    Resolve assembly element paths to stable public point names.
+    """
     return [
-        RockerDisplayGroup(
-            axis_start=point_key_name(rocker.rotation_axis[0]),
-            axis_end=point_key_name(rocker.rotation_axis[1]),
-            pickups=tuple(point_key_name(point) for point in rocker.pickups),
-            label=rocker.label,
+        NamedElementPath(
+            points=tuple(_path_point_name(point) for point in path.points),
+            type=path.type,
+            label=path.label,
         )
-        for rocker in assembly.elements
-        if isinstance(rocker, RockerElement)
+        for path in assembly.element_paths
     ]
 
 
-def display_point_keys(assembly: SuspensionAssembly) -> tuple[PointKey, ...]:
-    """Return all point keys required to resolve the presentation model."""
-    points = list(assembly.output_points)
-    seen = set(points)
-    for element in assembly.elements:
-        for key in element.point_keys:
-            if key not in seen:
-                points.append(key)
-                seen.add(key)
-    return tuple(points)
+def named_point_keys(assembly: SuspensionAssembly) -> list[str]:
+    """
+    Return every physical and projected position name in stable order.
+    """
+    names = [point_key_name(point) for point in assembly.referenced_point_keys]
+    names.extend(
+        axis_projection_name(projection) for projection in _axis_projections(assembly)
+    )
+    return names
 
 
-def display_positions(
+def _axis_projections(assembly: SuspensionAssembly) -> tuple[AxisProjection, ...]:
+    """
+    Return unique projected points in assembly path order.
+    """
+    projections: list[AxisProjection] = []
+    seen: set[AxisProjection] = set()
+    for path in assembly.element_paths:
+        for point in path.points:
+            if isinstance(point, AxisProjection) and point not in seen:
+                projections.append(point)
+                seen.add(point)
+    return tuple(projections)
+
+
+def resolve_positions(
     positions: Mapping[PointKey, object],
-    point_keys: tuple[PointKey, ...],
-    rocker_groups: list[RockerDisplayGroup],
+    assembly: SuspensionAssembly,
 ) -> dict[str, tuple[float, float, float]]:
-    """Flatten positions to name keys and append synthetic rocker-axis feet."""
-    named: dict[str, tuple[float, float, float]] = {}
-    for key in point_keys:
-        position = positions.get(key)
-        if position is None:
-            continue
-        raw = extract_array(position)
-        named[point_key_name(key)] = (float(raw[0]), float(raw[1]), float(raw[2]))
+    """
+    Resolve one solver state to all named physical and projected positions.
 
-    for group in rocker_groups:
-        _append_axis_feet(named, group)
+    Raises:
+        ValueError: If an element point is missing or a projection axis is
+            degenerate.
+    """
+    missing = [
+        point for point in assembly.referenced_point_keys if point not in positions
+    ]
+    if missing:
+        raise ValueError(f"Cannot resolve missing assembly points: {missing!r}")
+
+    named = flatten_positions(positions, assembly.referenced_point_keys)
+    for projection in _axis_projections(assembly):
+        point = np.asarray(named[point_key_name(projection.point)], dtype=np.float64)
+        axis_start = np.asarray(
+            named[point_key_name(projection.rotation_axis[0])],
+            dtype=np.float64,
+        )
+        axis_end = np.asarray(
+            named[point_key_name(projection.rotation_axis[1])],
+            dtype=np.float64,
+        )
+        axis_direction = axis_end - axis_start
+        axis_length_sq = float(np.dot(axis_direction, axis_direction))
+        if axis_length_sq <= 0.0:
+            raise ValueError(
+                "Cannot project onto a zero-length rotation axis: "
+                f"{projection.rotation_axis!r}"
+            )
+
+        point_from_axis = point - axis_start
+        axis_parameter = float(np.dot(point_from_axis, axis_direction)) / axis_length_sq
+        projected = axis_start + axis_parameter * axis_direction
+        named[axis_projection_name(projection)] = (
+            float(projected[0]),
+            float(projected[1]),
+            float(projected[2]),
+        )
     return named
 
 
-def _append_axis_feet(
-    named_positions: dict[str, tuple[float, float, float]],
-    group: RockerDisplayGroup,
-) -> None:
-    """Append the perpendicular projection of each pickup onto its rocker axis."""
-    axis_a = named_positions.get(group.axis_start)
-    axis_b = named_positions.get(group.axis_end)
-    if axis_a is None or axis_b is None:
-        return
-
-    axis_origin = np.asarray(axis_a, dtype=np.float64)
-    axis_direction = np.asarray(axis_b, dtype=np.float64) - axis_origin
-    norm_sq = float(np.dot(axis_direction, axis_direction))
-    if norm_sq <= 0.0:
-        return
-
-    for pickup in group.pickups:
-        position = named_positions.get(pickup)
-        if position is None:
-            continue
-        radius = np.asarray(position, dtype=np.float64) - axis_origin
-        parameter = float(np.dot(radius, axis_direction)) / norm_sq
-        foot = axis_origin + parameter * axis_direction
-        named_positions[f"{pickup}{AXIS_FOOT_SUFFIX}"] = (
-            float(foot[0]),
-            float(foot[1]),
-            float(foot[2]),
-        )
-
-
-def display_elements(assembly: SuspensionAssembly) -> list[DisplayElement]:
-    """Flatten assembly elements to name-keyed presentation geometry."""
-    elements: list[DisplayElement] = []
-    for element in assembly.elements:
-        if isinstance(element, RigidLinkElement | VariableLengthLinkElement):
-            elements.append(
-                DisplayElement(
-                    points=(
-                        point_key_name(element.point_a),
-                        point_key_name(element.point_b),
-                    ),
-                    type=DisplayElementType(element.type.value),
-                    label=element.label,
-                )
-            )
-        elif isinstance(element, RackElement):
-            elements.append(
-                DisplayElement(
-                    points=(
-                        point_key_name(element.left_inner),
-                        point_key_name(element.right_inner),
-                    ),
-                    type=DisplayElementType.RACK,
-                    label=element.label,
-                )
-            )
-        elif isinstance(element, UprightElement):
-            elements.extend(
-                DisplayElement(
-                    points=(point_key_name(start), point_key_name(end)),
-                    type=DisplayElementType.UPRIGHT,
-                    label=element.label,
-                )
-                for start, end in element.segments
-            )
-        elif isinstance(element, WheelElement):
-            elements.append(
-                DisplayElement(
-                    points=(point_key_name(element.contact_patch),),
-                    type=DisplayElementType.CONTACT_PATCH,
-                    label=f"{element.label} Contact Patch",
-                )
-            )
-        elif isinstance(element, TorsionElement):
-            elements.append(
-                DisplayElement(
-                    points=tuple(point_key_name(point) for point in element.path),
-                    type=DisplayElementType(element.type.value),
-                    label=element.label,
-                )
-            )
-        elif isinstance(element, RockerElement):
-            continue
-        else:
-            raise TypeError(f"Unsupported suspension element: {type(element)!r}")
-
-    for group in rocker_display_groups(assembly):
-        elements.append(
-            DisplayElement(
-                points=(group.axis_start, group.axis_end),
-                type=DisplayElementType.ROCKER,
-                label=f"{group.label} Axis",
-            )
-        )
-        for pickup in group.pickups:
-            arm = (
-                "Droplink Arm"
-                if pickup.endswith(PointID.DROPLINK_ROCKER.name.lower())
-                else "Pushrod Arm"
-            )
-            elements.append(
-                DisplayElement(
-                    points=(pickup, f"{pickup}{AXIS_FOOT_SUFFIX}"),
-                    type=DisplayElementType.ROCKER,
-                    label=f"{group.label} {arm}",
-                )
-            )
-    return elements
-
-
-def wheel_display_dimensions(
-    config: SuspensionConfig | None,
-) -> WheelDisplayDimensions | None:
-    """Return static tire dimensions, or None when no config is available."""
+def wheel_dimensions(config: SuspensionConfig | None) -> WheelDimensions | None:
+    """
+    Return physical tire dimensions, or None when no config is available.
+    """
     if config is None:
         return None
     tire = config.wheel.tire
-    return WheelDisplayDimensions(
+    return WheelDimensions(
         radius=float(tire.nominal_radius),
         width=float(tire.section_width),
         rim_radius=float(tire.rim_diameter_mm) / 2.0,
     )
 
 
-def wheel_anchor_names(assembly: SuspensionAssembly) -> list[WheelAnchorNames]:
-    """Return name-keyed drawing anchors for every wheel."""
+def wheel_references(assembly: SuspensionAssembly) -> list[WheelReferences]:
+    """
+    Return public point names for every wheel in the assembly.
+    """
     return [
-        WheelAnchorNames(
-            center=point_key_name(anchors.center),
-            inboard=point_key_name(anchors.inboard),
-            outboard=point_key_name(anchors.outboard),
-            axle_inboard=point_key_name(anchors.axle_inboard),
-            axle_outboard=point_key_name(anchors.axle_outboard),
+        WheelReferences(
+            center=point_key_name(wheel.center),
+            inboard=point_key_name(wheel.inboard),
+            outboard=point_key_name(wheel.outboard),
+            axle_inboard=point_key_name(wheel.axle_inboard),
+            axle_outboard=point_key_name(wheel.axle_outboard),
+            contact_patch=point_key_name(wheel.contact_patch),
         )
-        for anchors in assembly.elements
-        if isinstance(anchors, WheelElement)
+        for wheel in assembly.wheels
     ]

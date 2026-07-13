@@ -393,6 +393,7 @@ class TestCliEndToEnd:
         assert not success, "CLI should fail with invalid sweep file"
         assert output  # Should have an error message
 
+    @requires_viz
     def test_animation_reuses_the_primary_sweep_solution(
         self,
         temp_dir: Path,
@@ -418,6 +419,24 @@ class TestCliEndToEnd:
 
         assert success, output
         assert solve_mock.call_count == 1
+
+    @requires_viz
+    def test_axle_geometry_visualization_uses_both_contact_patches(
+        self,
+        temp_dir: Path,
+        test_data_dir: Path,
+    ) -> None:
+        from kinematics.cli.io.loaders import load_geometry
+        from kinematics.cli.visualization.api import visualize_geometry
+
+        output_file = temp_dir / "axle_geometry.png"
+        suspension = load_geometry(test_data_dir / "axle_geometry.yaml")
+
+        result = visualize_geometry(suspension, output_file)
+
+        assert output_file.exists()
+        assert len(result.contact_patch_z) == 2
+        assert result.contact_patch_on_ground
 
     @requires_viz
     def test_csv_output_with_animation(

@@ -8,27 +8,28 @@ export concern and are not embedded in analysis metric keys.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Mapping
 
-from kinematics.core.diagnostics import DiagnosticIssue
+from kinematics.core.assembly import SuspensionAssembly
+from kinematics.core.diagnostics import (
+    DiagnosticCategory,
+    DiagnosticIssue,
+    DiagnosticSeverity,
+)
 from kinematics.core.metrics.main import AxleMetricRows, MetricRow
 from kinematics.core.metrics.metadata import MetricDisplay, metric_display_for_keys
-from kinematics.core.metrics.registry import MetricSpec, metric_specs_for_suspension
+from kinematics.core.metrics.registry import metric_specs_for_suspension
 from kinematics.core.presentation import (
-    DisplayElement,
-    RockerDisplayGroup,
-    WheelAnchorNames,
-    WheelDisplayDimensions,
-    display_elements,
-    display_point_keys,
-    display_positions,
-    rocker_display_groups,
-    wheel_anchor_names,
-    wheel_display_dimensions,
+    NamedElementPath,
+    WheelDimensions,
+    WheelReferences,
+    named_element_paths,
+    named_point_keys,
+    resolve_positions,
+    wheel_dimensions,
+    wheel_references,
 )
 from kinematics.core.primitives.enums import TargetPositionMode
 from kinematics.core.primitives.point_ref import (
-    PointKey,
     PointRef,
     Side,
     point_key_name,
@@ -38,8 +39,10 @@ from kinematics.core.state import SuspensionState
 from kinematics.core.suspensions.base import Suspension
 from kinematics.core.sweep import (
     EvaluatedSweep,
+    compute_sweep_metrics,
     evaluate_solved_sweep,
     solve_evaluated_sweep,
+    solve_sweep,
 )
 from kinematics.core.targeting import PointTarget, SweepConfig
 
@@ -92,9 +95,9 @@ class StaticPose:
     suspension: SuspensionInfo
     point_keys: list[str]
     positions: Positions
-    wheel: WheelDisplayDimensions | None
-    elements: list[DisplayElement]
-    wheel_anchors: list[WheelAnchorNames]
+    wheel: WheelDimensions | None
+    elements: list[NamedElementPath]
+    wheel_references: list[WheelReferences]
 
 
 @dataclass(frozen=True)
@@ -109,9 +112,9 @@ class SweepAnalysis:
     metric_display: list[MetricDisplay]
     sweep_parameters: list[SweepParameter]
     references: dict[str, ReferenceCondition]
-    wheel: WheelDisplayDimensions | None
-    elements: list[DisplayElement]
-    wheel_anchors: list[WheelAnchorNames]
+    wheel: WheelDimensions | None
+    elements: list[NamedElementPath]
+    wheel_references: list[WheelReferences]
     diagnostics: list[DiagnosticIssue]
     frames: list[AnalyzedFrame] = field(default_factory=list)
 
@@ -179,23 +182,22 @@ def _split_metric_rows(
 def _setup_reference(
     suspension: Suspension,
     sweep_config: SweepConfig,
-    point_keys: tuple[PointKey, ...],
-    rocker_groups: list[RockerDisplayGroup],
+    assembly: SuspensionAssembly,
 ) -> tuple[ReferenceCondition | None, DiagnosticIssue | None]:
     """Solve the nominal setup pose without making it a hard dependency."""
     hold_config = _hold_sweep_config(sweep_config)
     if hold_config is None:
         return None, None
     try:
-        evaluated = solve_evaluated_sweep(suspension, hold_config)
-        if not evaluated.states:
+        states, _solver_stats = solve_sweep(suspension, hold_config)
+        if not states:
             return None, None
-        row = evaluated.metrics.rows[0]
+        row = compute_sweep_metrics(suspension, hold_config, states).rows[0]
     except Exception as error:  # noqa: BLE001 - the reference is optional
         return None, DiagnosticIssue(
             step=None,
-            category="reference",
-            severity="warning",
+            category=DiagnosticCategory.REFERENCE,
+            severity=DiagnosticSeverity.WARNING,
             message=(
                 "Setup reference unavailable: reference solve failed "
                 f"({type(error).__name__}: {error})."
@@ -206,21 +208,12 @@ def _setup_reference(
     return (
         ReferenceCondition(
             label="Setup",
-            positions=display_positions(
-                evaluated.states[0].positions,
-                point_keys,
-                rocker_groups,
-            ),
+            positions=resolve_positions(states[0].positions, assembly),
             metrics=metrics,
             corner_metrics=corner_metrics,
         ),
         None,
     )
-
-
-def _metric_specs(suspension: Suspension) -> Mapping[str, MetricSpec]:
-    """Collect canonical static and topology-specific derivative metadata."""
-    return metric_specs_for_suspension(suspension)
 
 
 def analyze_sweep(suspension: Suspension, sweep_config: SweepConfig) -> SweepAnalysis:
@@ -258,8 +251,6 @@ def analyze_evaluated_sweep(
 ) -> SweepAnalysis:
     """Build the rich presentation model for an evaluated sweep."""
     assembly = suspension.assembly()
-    point_keys = display_point_keys(assembly)
-    rocker_groups = rocker_display_groups(assembly)
 
     frames: list[AnalyzedFrame] = []
     for index, (state, info, row) in enumerate(
@@ -269,7 +260,7 @@ def analyze_evaluated_sweep(
         frames.append(
             AnalyzedFrame(
                 index=index,
-                positions=display_positions(state.positions, point_keys, rocker_groups),
+                positions=resolve_positions(state.positions, assembly),
                 metrics=metrics,
                 corner_metrics=corner_metrics,
                 solver=info,
@@ -295,8 +286,7 @@ def analyze_evaluated_sweep(
     setup, reference_issue = _setup_reference(
         suspension,
         sweep_config,
-        point_keys,
-        rocker_groups,
+        assembly,
     )
     if setup is not None:
         references["setup"] = setup
@@ -306,16 +296,19 @@ def analyze_evaluated_sweep(
 
     return SweepAnalysis(
         suspension=_suspension_info(suspension),
-        point_keys=[point_key_name(key) for key in point_keys],
+        point_keys=named_point_keys(assembly),
         metric_keys=metric_keys,
         corner_metric_keys=corner_metric_keys,
         locations=locations,
-        metric_display=metric_display_for_keys(display_keys, _metric_specs(suspension)),
+        metric_display=metric_display_for_keys(
+            display_keys,
+            metric_specs_for_suspension(suspension),
+        ),
         sweep_parameters=sweep_parameters(sweep_config),
         references=references,
-        wheel=wheel_display_dimensions(suspension.config),
-        elements=display_elements(assembly),
-        wheel_anchors=wheel_anchor_names(assembly),
+        wheel=wheel_dimensions(suspension.config),
+        elements=named_element_paths(assembly),
+        wheel_references=wheel_references(assembly),
         diagnostics=diagnostics,
         frames=frames,
     )
@@ -325,13 +318,11 @@ def initial_pose(suspension: Suspension) -> StaticPose:
     """Return the as-assembled pose without running a sweep."""
     state = suspension.initial_state()
     assembly = suspension.assembly()
-    point_keys = display_point_keys(assembly)
-    rocker_groups = rocker_display_groups(assembly)
     return StaticPose(
         suspension=_suspension_info(suspension),
-        point_keys=[point_key_name(key) for key in point_keys],
-        positions=display_positions(state.positions, point_keys, rocker_groups),
-        wheel=wheel_display_dimensions(suspension.config),
-        elements=display_elements(assembly),
-        wheel_anchors=wheel_anchor_names(assembly),
+        point_keys=named_point_keys(assembly),
+        positions=resolve_positions(state.positions, assembly),
+        wheel=wheel_dimensions(suspension.config),
+        elements=named_element_paths(assembly),
+        wheel_references=wheel_references(assembly),
     )

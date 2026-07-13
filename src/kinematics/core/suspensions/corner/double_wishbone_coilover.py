@@ -5,9 +5,9 @@ from typing import ClassVar, Sequence
 
 from kinematics.core.constraints import Constraint
 from kinematics.core.elements import (
+    ElementType,
     SuspensionElement,
     VariableLengthLinkElement,
-    VariableLengthLinkType,
 )
 from kinematics.core.metrics.derivatives import (
     DerivativeMetricDefinition,
@@ -90,7 +90,7 @@ class DoubleWishboneCoiloverSuspension(DoubleWishboneSuspension):
             *super().elements(),
             VariableLengthLinkElement(
                 label="Spring/Damper",
-                type=VariableLengthLinkType.SPRING_DAMPER,
+                type=ElementType.SPRING_DAMPER,
                 point_a=PointID.STRUT_TOP,
                 point_b=PointID.STRUT_BOTTOM,
             ),

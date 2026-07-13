@@ -1,29 +1,29 @@
 from dataclasses import dataclass
-from typing import Sequence
+from typing import TYPE_CHECKING, Mapping, Sequence
 
 import numpy as np
 
 from kinematics.core.assembly import SuspensionAssembly
-from kinematics.core.elements import (
-    RackElement,
-    RigidLinkElement,
-    RigidLinkType,
-    RockerElement,
-    TorsionElement,
-    TorsionElementType,
-    UprightElement,
-    VariableLengthLinkElement,
-    VariableLengthLinkType,
-    WheelElement,
+from kinematics.core.elements import ElementType
+from kinematics.core.presentation import (
+    NamedElementPath,
+    WheelReferences,
+    named_element_paths,
+    resolve_positions,
+    wheel_dimensions,
+    wheel_references,
 )
-from kinematics.core.primitives.enums import PointID
-from kinematics.core.primitives.geometry import Point3
-from kinematics.core.primitives.point_ref import PointKey
+from kinematics.core.state import SuspensionState
+
+if TYPE_CHECKING:
+    from kinematics.core.suspensions.base import Suspension
 
 
 @dataclass(frozen=True)
 class LinkStyle:
-    """Matplotlib styling for one physical link role."""
+    """
+    Matplotlib styling for one physical link role.
+    """
 
     color: str
     linewidth: float = 3.0
@@ -32,148 +32,77 @@ class LinkStyle:
     markersize: float = 10.0
 
 
-RIGID_LINK_STYLES = {
-    RigidLinkType.WISHBONE_LEG: LinkStyle("dodgerblue"),
-    RigidLinkType.TRACK_ROD: LinkStyle("darkorange"),
-    RigidLinkType.AXLE: LinkStyle("forestgreen"),
-    RigidLinkType.PUSHROD: LinkStyle("crimson"),
-    RigidLinkType.DROPLINK: LinkStyle("goldenrod"),
+ELEMENT_STYLES = {
+    ElementType.WISHBONE: LinkStyle("dodgerblue"),
+    ElementType.TRACK_ROD: LinkStyle("darkorange"),
+    ElementType.AXLE: LinkStyle("forestgreen"),
+    ElementType.PUSHROD: LinkStyle("crimson"),
+    ElementType.DROPLINK: LinkStyle("goldenrod"),
+    ElementType.SPRING_DAMPER: LinkStyle("seagreen"),
+    ElementType.RACK: LinkStyle("purple"),
+    ElementType.UPRIGHT: LinkStyle("slategrey"),
+    ElementType.ROCKER: LinkStyle("mediumvioletred"),
+    ElementType.ANTI_ROLL_BAR: LinkStyle("teal"),
+    ElementType.TORSION_BAR: LinkStyle("teal"),
+    ElementType.CONTACT_PATCH: LinkStyle(
+        "black",
+        linewidth=0.0,
+        markersize=15.0,
+    ),
 }
-VARIABLE_LINK_STYLES = {
-    VariableLengthLinkType.SPRING_DAMPER: LinkStyle("seagreen"),
-}
-RACK_STYLE = LinkStyle("purple")
-UPRIGHT_STYLE = LinkStyle("slategrey")
-ROCKER_STYLE = LinkStyle("mediumvioletred")
-TORSION_STYLE = LinkStyle("teal")
-CONTACT_PATCH_STYLE = LinkStyle("black", linewidth=0.0, markersize=15.0)
 
 
 @dataclass(frozen=True)
 class LinkVisualization:
-    """One renderer-specific point sequence derived from an assembly element."""
+    """
+    One presentation element paired with renderer-specific styling.
+    """
 
-    points: tuple[PointKey, ...]
-    label: str
-    color: str
-    linewidth: float
-    linestyle: str
-    marker: str
-    markersize: float
+    element: NamedElementPath
+    style: LinkStyle
+    legend_label: str
 
-    @classmethod
-    def from_points(
-        cls,
-        points: tuple[PointKey, ...],
-        label: str,
-        style: LinkStyle,
-    ) -> "LinkVisualization":
-        """Apply renderer styling to one point sequence."""
-        return cls(
-            points=points,
-            label=label,
-            color=style.color,
-            linewidth=style.linewidth,
-            linestyle=style.linestyle,
-            marker=style.marker,
-            markersize=style.markersize,
-        )
+    @property
+    def points(self) -> tuple[str, ...]:
+        """
+        Return the presentation point names.
+        """
+        return self.element.points
+
+    @property
+    def label(self) -> str:
+        """
+        Return the renderer label.
+        """
+        return self.legend_label
 
 
-def _corner_wheel_element() -> WheelElement:
-    """Return the conventional single-corner wheel element."""
-    return WheelElement(
-        label="Wheel",
-        center=PointID.WHEEL_CENTER,
-        inboard=PointID.WHEEL_INBOARD,
-        outboard=PointID.WHEEL_OUTBOARD,
-        axle_inboard=PointID.AXLE_INBOARD,
-        axle_outboard=PointID.AXLE_OUTBOARD,
-        contact_patch=PointID.CONTACT_PATCH_CENTER,
-    )
-
-
-def renderer_elements(assembly: SuspensionAssembly) -> tuple[LinkVisualization, ...]:
-    """Flatten physical elements into styled renderer point sequences."""
+def renderer_elements(
+    elements: Sequence[NamedElementPath],
+) -> tuple[LinkVisualization, ...]:
+    """
+    Attach CLI-owned styles to canonical presentation elements.
+    """
     rendered: list[LinkVisualization] = []
-    for element in assembly.elements:
-        if isinstance(element, RigidLinkElement):
-            rendered.append(
-                LinkVisualization.from_points(
-                    element.point_keys,
-                    element.label,
-                    RIGID_LINK_STYLES[element.type],
-                )
+    labels: set[str] = set()
+    for element in elements:
+        legend_label = element.label if element.label not in labels else "_nolegend_"
+        labels.add(element.label)
+        rendered.append(
+            LinkVisualization(
+                element=element,
+                style=ELEMENT_STYLES[element.type],
+                legend_label=legend_label,
             )
-        elif isinstance(element, VariableLengthLinkElement):
-            rendered.append(
-                LinkVisualization.from_points(
-                    element.point_keys,
-                    element.label,
-                    VARIABLE_LINK_STYLES[element.type],
-                )
-            )
-        elif isinstance(element, RackElement):
-            rendered.append(
-                LinkVisualization.from_points(
-                    element.point_keys,
-                    element.label,
-                    RACK_STYLE,
-                )
-            )
-        elif isinstance(element, UprightElement):
-            rendered.extend(
-                LinkVisualization.from_points(
-                    segment,
-                    element.label if index == 0 else "_nolegend_",
-                    UPRIGHT_STYLE,
-                )
-                for index, segment in enumerate(element.segments)
-            )
-        elif isinstance(element, RockerElement):
-            rendered.append(
-                LinkVisualization.from_points(
-                    (
-                        element.rotation_axis[0],
-                        *element.pickups,
-                        element.rotation_axis[1],
-                    ),
-                    element.label,
-                    ROCKER_STYLE,
-                )
-            )
-        elif isinstance(element, TorsionElement):
-            if element.type is TorsionElementType.ANTI_ROLL_BAR:
-                rendered.append(
-                    LinkVisualization.from_points(
-                        element.path,
-                        element.label,
-                        TORSION_STYLE,
-                    )
-                )
-        elif isinstance(element, WheelElement):
-            rendered.append(
-                LinkVisualization.from_points(
-                    (element.contact_patch,),
-                    f"{element.label} Contact Patch",
-                    CONTACT_PATCH_STYLE,
-                )
-            )
-        else:
-            raise TypeError(f"Unsupported suspension element: {type(element)!r}")
+        )
     return tuple(rendered)
-
-
-def wheel_elements(assembly: SuspensionAssembly) -> tuple[WheelElement, ...]:
-    """Return the wheel elements from a suspension assembly."""
-    return tuple(
-        element for element in assembly.elements if isinstance(element, WheelElement)
-    )
 
 
 @dataclass
 class WheelVisualization:
-    """Configuration for visualizing the wheel."""
+    """
+    Configuration for visualizing the wheel.
+    """
 
     diameter: float
     width: float
@@ -184,28 +113,30 @@ class WheelVisualization:
 
 
 class SuspensionVisualizer:
-    """Renders suspension geometry to matplotlib 3D axes."""
+    """
+    Renders suspension geometry to matplotlib 3D axes.
+    """
 
     def draw_links(
         self,
         ax,
-        positions: dict[PointKey, Point3],
+        positions: Mapping[str, tuple[float, float, float]],
     ) -> list:
         """
         Draws all links and returns a list of matplotlib line artists.
         """
         link_artists = []
         for link in self.links:
-            pts = np.array([positions[pid].data for pid in link.points])
+            pts = np.asarray([positions[name] for name in link.points])
             (line,) = ax.plot(
                 pts[:, 0],
                 pts[:, 1],
                 pts[:, 2],
-                color=link.color,
-                linewidth=link.linewidth,
-                linestyle=link.linestyle,
-                marker=link.marker,
-                markersize=link.markersize,
+                color=link.style.color,
+                linewidth=link.style.linewidth,
+                linestyle=link.style.linestyle,
+                marker=link.style.marker,
+                markersize=link.style.markersize,
                 label=link.label,
             )
             link_artists.append(line)
@@ -214,13 +145,13 @@ class SuspensionVisualizer:
     def update_links(
         self,
         artists: list,
-        positions: dict[PointKey, Point3],
+        positions: Mapping[str, tuple[float, float, float]],
     ) -> None:
         """
         Update all link artists with new geometry for animation.
         """
         for line, link in zip(artists, self.links):
-            pts = np.array([positions[pid].data for pid in link.points])
+            pts = np.asarray([positions[name] for name in link.points])
             line.set_data(pts[:, 0], pts[:, 1])
             line.set_3d_properties(pts[:, 2])
 
@@ -257,29 +188,31 @@ class SuspensionVisualizer:
         self,
         links: Sequence[LinkVisualization],
         wheel_config: WheelVisualization,
-        wheel_anchors: Sequence[WheelElement] | None = None,
+        wheel_references: Sequence[WheelReferences],
     ):
         self.links = list(links)
         self.wheel_config = wheel_config
-        self.wheel_anchors = tuple(wheel_anchors or (_corner_wheel_element(),))
+        self.wheel_references = tuple(wheel_references)
 
     def draw_wheel(
         self,
         ax,
-        positions: dict[PointKey, Point3],
+        positions: Mapping[str, tuple[float, float, float]],
         num_bands: int = 48,
     ) -> list[dict]:
-        """Draw every configured wheel and return their artists."""
+        """
+        Draw every configured wheel and return their artists.
+        """
         return [
-            self._draw_single_wheel(ax, positions, anchors, num_bands)
-            for anchors in self.wheel_anchors
+            self._draw_single_wheel(ax, positions, references, num_bands)
+            for references in self.wheel_references
         ]
 
     def _draw_single_wheel(
         self,
         ax,
-        positions: dict[PointKey, Point3],
-        anchors: WheelElement,
+        positions: Mapping[str, tuple[float, float, float]],
+        references: WheelReferences,
         num_bands: int,
     ) -> dict:
         """
@@ -288,11 +221,11 @@ class SuspensionVisualizer:
         Returns dict with 'rims' (list of 3 lines) and 'bands' (list of lines).
         """
         # Extract raw arrays for matplotlib drawing math.
-        wheel_center = positions[anchors.center].data
-        wheel_inboard = positions[anchors.inboard].data
-        wheel_outboard = positions[anchors.outboard].data
-        axle_vector = (
-            positions[anchors.axle_outboard].data - positions[anchors.axle_inboard].data
+        wheel_center = np.asarray(positions[references.center])
+        wheel_inboard = np.asarray(positions[references.inboard])
+        wheel_outboard = np.asarray(positions[references.outboard])
+        axle_vector = np.asarray(positions[references.axle_outboard]) - np.asarray(
+            positions[references.axle_inboard]
         )
 
         axle_vector = axle_vector / np.linalg.norm(axle_vector)
@@ -376,29 +309,31 @@ class SuspensionVisualizer:
     def update_wheel(
         self,
         artists: list[dict],
-        positions: dict[PointKey, Point3],
+        positions: Mapping[str, tuple[float, float, float]],
         num_bands: int = 36,
     ) -> None:
-        """Update every configured wheel's artists."""
-        for wheel_artists, anchors in zip(artists, self.wheel_anchors):
-            self._update_single_wheel(wheel_artists, positions, anchors, num_bands)
+        """
+        Update every configured wheel's artists.
+        """
+        for wheel_artists, references in zip(artists, self.wheel_references):
+            self._update_single_wheel(wheel_artists, positions, references, num_bands)
 
     def _update_single_wheel(
         self,
         artists: dict,
-        positions: dict[PointKey, Point3],
-        anchors: WheelElement,
+        positions: Mapping[str, tuple[float, float, float]],
+        references: WheelReferences,
         num_bands: int,
     ) -> None:
         """
         Update the wheel artists with new geometry for animation.
         """
         # Extract raw arrays for matplotlib drawing math.
-        wheel_center = positions[anchors.center].data
-        wheel_inboard = positions[anchors.inboard].data
-        wheel_outboard = positions[anchors.outboard].data
-        axle_vector = (
-            positions[anchors.axle_outboard].data - positions[anchors.axle_inboard].data
+        wheel_center = np.asarray(positions[references.center])
+        wheel_inboard = np.asarray(positions[references.inboard])
+        wheel_outboard = np.asarray(positions[references.outboard])
+        axle_vector = np.asarray(positions[references.axle_outboard]) - np.asarray(
+            positions[references.axle_inboard]
         )
 
         axle_vector = axle_vector / np.linalg.norm(axle_vector)
@@ -469,3 +404,46 @@ class SuspensionVisualizer:
             # Pad by repeating last index if needed.
             indices = np.pad(indices, (0, num_bands - len(indices)), "edge")
         return indices
+
+
+@dataclass(frozen=True)
+class SuspensionRenderModel:
+    """
+    Canonical presentation geometry and its CLI renderer.
+    """
+
+    visualizer: SuspensionVisualizer
+    assembly: SuspensionAssembly
+
+    def positions(
+        self,
+        state: SuspensionState,
+    ) -> dict[str, tuple[float, float, float]]:
+        """
+        Resolve one solver state to the presentation point names.
+        """
+        return resolve_positions(state.positions, self.assembly)
+
+
+def build_render_model(suspension: "Suspension") -> SuspensionRenderModel:
+    """
+    Build one shared presentation and renderer model for a suspension.
+    """
+    dimensions = wheel_dimensions(suspension.config)
+    if dimensions is None:
+        raise ValueError("Suspension has no wheel configuration")
+
+    assembly = suspension.assembly()
+    elements = named_element_paths(assembly)
+    visualizer = SuspensionVisualizer(
+        renderer_elements(elements),
+        WheelVisualization(
+            diameter=dimensions.radius * 2.0,
+            width=dimensions.width,
+        ),
+        wheel_references(assembly),
+    )
+    return SuspensionRenderModel(
+        visualizer=visualizer,
+        assembly=assembly,
+    )

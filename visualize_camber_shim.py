@@ -13,13 +13,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 from mpl_toolkits.mplot3d.axes3d import Axes3D
 
-from kinematics.cli.io.yaml import load_geometry
+from kinematics.cli.io.loaders import load_geometry
 from kinematics.cli.visualization.api import visualize_geometry
 from kinematics.cli.visualization.main import (
     SuspensionVisualizer,
-    WheelVisualization,
-    renderer_elements,
-    wheel_elements,
+    build_render_model,
 )
 from kinematics.cli.visualization.plots import (
     compute_bounds_from_positions,
@@ -135,32 +133,25 @@ def plot_front_view_comparison(
 
     # Helper: draw all elements for a suspension in a single color.
     def _draw_suspension(suspension, state, color: str, label: str) -> None:
-        wheel_cfg = suspension.config.wheel
-        wheel_config = WheelVisualization(
-            diameter=wheel_cfg.tire.nominal_radius * 2,
-            width=wheel_cfg.tire.section_width,
-        )
-        assembly = suspension.assembly()
-        vis = SuspensionVisualizer(
-            renderer_elements(assembly),
-            wheel_config,
-            wheel_elements(assembly),
-        )
+        render_model = build_render_model(suspension)
+        vis = render_model.visualizer
+        displayed_positions = render_model.positions(state)
+        wheel_config = vis.wheel_config
 
         # Draw links.
         first = True
         for link in vis.links:
-            pts = np.stack([extract_array(state.positions[pid]) for pid in link.points])
+            pts = np.asarray([displayed_positions[name] for name in link.points])
             if len(link.points) > 1:
                 ax.plot(
                     pts[:, 0],
                     pts[:, 1],
                     pts[:, 2],
                     color=color,
-                    linewidth=link.linewidth,
-                    linestyle=link.linestyle,
-                    marker=link.marker,
-                    markersize=link.markersize,
+                    linewidth=link.style.linewidth,
+                    linestyle=link.style.linestyle,
+                    marker=link.style.marker,
+                    markersize=link.style.markersize,
                     label=label if first else None,
                 )
             else:
@@ -169,8 +160,8 @@ def plot_front_view_comparison(
                     pts[0, 1],
                     pts[0, 2],
                     color=color,
-                    s=int(link.markersize**2),
-                    marker=link.marker,
+                    s=int(link.style.markersize**2),
+                    marker=link.style.marker,
                     label=label if first else None,
                 )
             first = False

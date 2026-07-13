@@ -6,28 +6,22 @@ animation sequences.
 """
 
 from pathlib import Path
-from typing import cast
+from typing import Mapping, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.figure import Figure
 from mpl_toolkits.mplot3d.axes3d import Axes3D
 
-from kinematics.cli.visualization.main import (
-    SuspensionVisualizer,
-    WheelVisualization,
-    renderer_elements,
-    wheel_elements,
-)
-from kinematics.core.primitives.enums import PointID
-from kinematics.core.primitives.geometry import Point3
+from kinematics.cli.visualization.main import SuspensionVisualizer, build_render_model
+from kinematics.core.primitives.geometry import extract_array
 from kinematics.core.state import SuspensionState
 from kinematics.core.suspensions.base import Suspension
 
 
 def compute_bounds_from_positions(
-    positions: dict[PointID, Point3],
-) -> tuple[Point3, Point3, tuple[float, float, float, float]]:
+    positions: Mapping[object, object],
+) -> tuple[np.ndarray, np.ndarray, tuple[float, float, float, float]]:
     """
     Compute axis bounds and limits from position data.
 
@@ -37,7 +31,9 @@ def compute_bounds_from_positions(
     Returns:
         Tuple of (min_bounds, max_bounds, (x_mid, y_mid, z_mid, max_range))
     """
-    all_points = np.array([p.data for p in positions.values()])
+    all_points = np.asarray(
+        [extract_array(position) for position in positions.values()]
+    )
     min_bounds = all_points.min(axis=0) - 100
     max_bounds = all_points.max(axis=0) + 100
 
@@ -54,8 +50,8 @@ def compute_bounds_from_positions(
 
 
 def compute_bounds_from_states(
-    states: list[dict[PointID, Point3]],
-) -> tuple[Point3, Point3, tuple[float, float, float, float]]:
+    states: list[dict[str, tuple[float, float, float]]],
+) -> tuple[np.ndarray, np.ndarray, tuple[float, float, float, float]]:
     """
     Compute axis bounds and limits from multiple position states.
 
@@ -65,7 +61,9 @@ def compute_bounds_from_states(
     Returns:
         Tuple of (min_bounds, max_bounds, (x_mid, y_mid, z_mid, max_range))
     """
-    all_points = np.array([p.data for state in states for p in state.values()])
+    all_points = np.asarray(
+        [extract_array(position) for state in states for position in state.values()]
+    )
     min_bounds = all_points.min(axis=0) - 100
     max_bounds = all_points.max(axis=0) + 100
 
@@ -155,7 +153,7 @@ def create_four_view_axes() -> tuple[Figure, dict[str, Axes3D]]:
 def plot_suspension_on_axis(
     ax: Axes3D,
     visualizer: SuspensionVisualizer,
-    positions: dict[PointID, Point3],
+    positions: dict[str, tuple[float, float, float]],
     view_name: str,
     show_labels: bool = True,
 ) -> None:
@@ -172,30 +170,30 @@ def plot_suspension_on_axis(
     # Plot suspension links.
     for link in visualizer.links:
         if len(link.points) > 1:
-            pts = np.array([positions[pid].data for pid in link.points])
+            pts = np.asarray([positions[name] for name in link.points])
             ax.plot(
                 pts[:, 0],
                 pts[:, 1],
                 pts[:, 2],
-                color=link.color,
-                linewidth=link.linewidth,
-                linestyle=link.linestyle,
-                marker=link.marker,
-                markersize=link.markersize,
+                color=link.style.color,
+                linewidth=link.style.linewidth,
+                linestyle=link.style.linestyle,
+                marker=link.style.marker,
+                markersize=link.style.markersize,
                 label=link.label if show_labels else None,
             )
         else:
             # Single point. matplotlib's mplot3d scatter stubs insist on int
             # for `zs`, even though the runtime accepts array-like; ignore
             # the pyright complaint on the third arg.
-            pt = positions[link.points[0]].data
+            pt = np.asarray(positions[link.points[0]])
             ax.scatter(
                 pt[0:1],
                 pt[1:2],
                 pt[2:3],  # pyright: ignore[reportArgumentType]
-                color=link.color,
-                s=int(link.markersize**2),
-                marker=link.marker,
+                color=link.style.color,
+                s=int(link.style.markersize**2),
+                marker=link.style.marker,
                 label=link.label if show_labels else None,
             )
 
@@ -207,8 +205,6 @@ def create_four_view_plot(
     state: SuspensionState,
     suspension: Suspension,
     output_path: Path,
-    wheel_diameter: float,
-    wheel_width: float,
     title: str = "Suspension Geometry Visualization",
     dpi: int = 150,
 ) -> None:
@@ -219,39 +215,27 @@ def create_four_view_plot(
         state: The suspension state to visualize.
         suspension: The Suspension instance for getting visualization links.
         output_path: Path where the plot image will be saved.
-        wheel_diameter: Wheel diameter in millimeters.
-        wheel_width: Wheel width in millimeters.
         title: Main title for the plot.
         dpi: DPI for the saved image.
     """
-    # Configure wheel visualization.
-    wheel_config = WheelVisualization(
-        diameter=wheel_diameter,
-        width=wheel_width,
-    )
-
-    assembly = suspension.assembly()
-
-    # Create visualizer.
-    visualizer = SuspensionVisualizer(
-        renderer_elements(assembly),
-        wheel_config,
-        wheel_elements(assembly),
-    )
+    render_model = build_render_model(suspension)
+    positions = render_model.positions(state)
 
     # Create figure with four subplots.
     fig, axes = create_four_view_axes()
 
     # Compute global bounds for consistent scaling.
-    _, _, (x_mid, y_mid, z_mid, max_range) = compute_bounds_from_positions(
-        state.positions
-    )
+    _, _, (x_mid, y_mid, z_mid, max_range) = compute_bounds_from_positions(positions)
 
     # Configure each view and plot suspension.
     for view_name, ax in axes.items():
         configure_3d_axis(ax, view_name, x_mid, y_mid, z_mid, max_range)
         plot_suspension_on_axis(
-            ax, visualizer, state.positions, view_name, view_name == "iso"
+            ax,
+            render_model.visualizer,
+            positions,
+            view_name,
+            view_name == "iso",
         )
 
     # Add legend only to isometric view.
@@ -272,8 +256,6 @@ def create_single_view_plot(
     state: SuspensionState,
     suspension: Suspension,
     output_path: Path,
-    wheel_diameter: float,
-    wheel_width: float,
     view: str = "iso",
     title: str = "Suspension Geometry Visualization",
     dpi: int = 150,
@@ -285,26 +267,12 @@ def create_single_view_plot(
         state: The suspension state to visualize.
         suspension: The Suspension instance for getting visualization links.
         output_path: Path where the plot image will be saved.
-        wheel_diameter: Wheel diameter in millimeters.
-        wheel_width: Wheel width in millimeters.
         view: View type ("front", "top", "side", "iso").
         title: Title for the plot.
         dpi: DPI for the saved image.
     """
-    # Configure wheel visualization.
-    wheel_config = WheelVisualization(
-        diameter=wheel_diameter,
-        width=wheel_width,
-    )
-
-    assembly = suspension.assembly()
-
-    # Create visualizer.
-    visualizer = SuspensionVisualizer(
-        renderer_elements(assembly),
-        wheel_config,
-        wheel_elements(assembly),
-    )
+    render_model = build_render_model(suspension)
+    positions = render_model.positions(state)
 
     # Create single plot.
     fig = plt.figure(figsize=(12, 8))
@@ -312,9 +280,7 @@ def create_single_view_plot(
     ax = cast(Axes3D, ax_raw)
 
     # Compute bounds and configure axis.
-    _, _, (x_mid, y_mid, z_mid, max_range) = compute_bounds_from_positions(
-        state.positions
-    )
+    _, _, (x_mid, y_mid, z_mid, max_range) = compute_bounds_from_positions(positions)
 
     # Set custom title for isometric view.
     if view == "iso":
@@ -324,7 +290,13 @@ def create_single_view_plot(
         configure_3d_axis(ax, view, x_mid, y_mid, z_mid, max_range)
 
     # Plot suspension.
-    plot_suspension_on_axis(ax, visualizer, state.positions, view, show_labels=True)
+    plot_suspension_on_axis(
+        ax,
+        render_model.visualizer,
+        positions,
+        view,
+        show_labels=True,
+    )
 
     ax.legend()
 

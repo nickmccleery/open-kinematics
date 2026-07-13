@@ -1,11 +1,26 @@
+from importlib import import_module
 from pathlib import Path
+from types import ModuleType
 
 import typer
 
-from kinematics.cli.commands.sweep import run_sweep_files
-from kinematics.cli.io.yaml import load_geometry
-
 app = typer.Typer(add_completion=False, no_args_is_help=True)
+
+
+def require_visualization() -> ModuleType:
+    """
+    Load the optional visualization API or exit with installation guidance.
+    """
+    try:
+        return import_module("kinematics.cli.visualization.api")
+    except ImportError as error:
+        typer.echo(
+            "Error: Visualization dependencies not installed.\n"
+            'Install with: pip install "kinematics[cli,viz]"\n'
+            f"Details: {error}",
+            err=True,
+        )
+        raise typer.Exit(1) from error
 
 
 @app.command()
@@ -24,6 +39,8 @@ def sweep(
         kinematics sweep --geometry=geo.yaml --sweep=sweep.yaml --out=out.parquet
         kinematics sweep --geometry=geo.yaml --sweep=sweep.yaml --out=out.csv
     """
+    from kinematics.cli.commands.sweep import run_sweep_files
+
     run = run_sweep_files(geometry, sweep, out)
     if run.evaluated.diagnostics:
         typer.echo("Diagnostics:", err=True)
@@ -34,31 +51,13 @@ def sweep(
 
     # Generate animation if requested.
     if animation_out:
-        try:
-            from kinematics.cli.visualization.api import visualize_suspension_sweep
-        except ImportError as e:
-            typer.echo(
-                f"Error: Visualization dependencies not installed.\n"
-                f'Install with: pip install "kinematics[cli,viz]"\n'
-                f"Details: {e}",
-                err=True,
-            )
-            raise typer.Exit(1)
-
-        # Get wheel parameters from suspension configuration.
-        if run.suspension.config is None:
-            typer.echo("Error: No config in suspension", err=True)
-            raise typer.Exit(1)
-
-        wheel_cfg = run.suspension.config.wheel
+        visualization = require_visualization()
 
         # Create animation.
-        visualize_suspension_sweep(
+        visualization.visualize_suspension_sweep(
             suspension=run.suspension,
             solution_states=run.evaluated.states,
             output_path=animation_out,
-            wheel_diameter=wheel_cfg.tire.nominal_radius * 2,
-            wheel_width=wheel_cfg.tire.section_width,
             fps=20,
             show_live=False,
         )
@@ -83,28 +82,21 @@ def visualize(
     Example:
     uv run kinematics visualize --geometry=tests/data/geometry.yaml --output=plot.png
     """
-    try:
-        from kinematics.cli.visualization.api import visualize_geometry
-    except ImportError as e:
-        typer.echo(
-            f"Error: Visualization dependencies not installed.\n"
-            f'Install with: pip install "kinematics[cli,viz]"\n'
-            f"Details: {e}",
-            err=True,
-        )
-        raise typer.Exit(1)
+    from kinematics.cli.io.loaders import load_geometry
 
+    visualization = require_visualization()
     suspension = load_geometry(geometry)
 
     typer.echo("Checking and visualizing suspension geometry...")
-    result = visualize_geometry(
+    result = visualization.visualize_geometry(
         suspension=suspension,
         output_path=output,
     )
+    contact_patch_z = ", ".join(f"{value:.3f}" for value in result.contact_patch_z)
     if result.contact_patch_on_ground:
         typer.secho(
-            "Geometry Check: OK. Contact patch at ground "
-            f"(Z = {result.contact_patch_z:.3f} mm).",
+            "Geometry Check: OK. Contact patches at ground "
+            f"(Z = {contact_patch_z} mm).",
             fg=typer.colors.GREEN,
         )
     else:
@@ -113,8 +105,8 @@ def visualize(
             fg=typer.colors.RED,
         )
         typer.echo(
-            "The contact patch center is currently located at "
-            f"Z = {result.contact_patch_z:.3f} mm."
+            "The contact patch centers are currently located at "
+            f"Z = {contact_patch_z} mm."
         )
     typer.secho(
         f"Visualization saved to: {result.output_path}",

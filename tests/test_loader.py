@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from kinematics.cli.io.yaml import load_geometry
+from kinematics.cli.io.loaders import load_geometry
 from kinematics.core.primitives.point_ref import Side
 from kinematics.core.suspensions.base import Suspension
 

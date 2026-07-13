@@ -47,7 +47,7 @@ def test_camber_shim_setup_reconstruction_preserves_suspension_data(
     test_data_dir: Path,
 ) -> None:
     """Exercise the setup reconstruction used by the script's main path."""
-    from kinematics.cli.io.yaml import load_geometry
+    from kinematics.cli.io.loaders import load_geometry
     from kinematics.core.primitives.point_ref import Side
 
     module = _load_script(VISUALIZE_CAMBER_SHIM)
@@ -74,7 +74,7 @@ def test_camber_shim_setup_reconstruction_preserves_suspension_data(
 
 def test_camber_shim_front_view_renders(tmp_path: Path, test_data_dir: Path) -> None:
     """Exercise the camber-shim comparison plot with the headless backend."""
-    from kinematics.cli.io.yaml import load_geometry
+    from kinematics.cli.io.loaders import load_geometry
 
     module = _load_script(VISUALIZE_CAMBER_SHIM)
     suspension = load_geometry(test_data_dir / "geometry.yaml")

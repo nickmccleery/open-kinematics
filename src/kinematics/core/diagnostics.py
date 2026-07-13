@@ -9,6 +9,7 @@ checks belong with the topology that defines them.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import StrEnum
 from statistics import median
 from typing import TYPE_CHECKING
 
@@ -30,6 +31,30 @@ CONTINUITY_ABS_FLOOR_MM: float = 5.0
 CONTINUITY_MEDIAN_FACTOR: float = 4.0
 
 
+class DiagnosticCategory(StrEnum):
+    """
+    Machine-readable class of advisory diagnostic.
+    """
+
+    CONVERGENCE = "convergence"
+    RESIDUAL = "residual"
+    JUMP = "jump"
+    DERIVATIVES = "derivatives"
+    DIAGNOSTICS = "diagnostics"
+    REFERENCE = "reference"
+    CHIRALITY = "chirality"
+    TRANSMISSION = "transmission"
+
+
+class DiagnosticSeverity(StrEnum):
+    """
+    Severity assigned to an advisory diagnostic.
+    """
+
+    WARNING = "warning"
+    ERROR = "error"
+
+
 @dataclass(frozen=True)
 class DiagnosticIssue:
     """
@@ -44,8 +69,8 @@ class DiagnosticIssue:
     """
 
     step: int | None
-    category: str
-    severity: str
+    category: DiagnosticCategory
+    severity: DiagnosticSeverity
     message: str
     value: float | None
 
@@ -60,18 +85,30 @@ class SweepDiagnostics:
 
     @property
     def ok(self) -> bool:
-        """Return whether the report contains no errors."""
+        """
+        Return whether the report contains no errors.
+        """
         return not self.errors
 
     @property
     def warnings(self) -> list[DiagnosticIssue]:
-        """Return warning-severity issues."""
-        return [issue for issue in self.issues if issue.severity == "warning"]
+        """
+        Return warning-severity issues.
+        """
+        return [
+            issue
+            for issue in self.issues
+            if issue.severity is DiagnosticSeverity.WARNING
+        ]
 
     @property
     def errors(self) -> list[DiagnosticIssue]:
-        """Return error-severity issues."""
-        return [issue for issue in self.issues if issue.severity == "error"]
+        """
+        Return error-severity issues.
+        """
+        return [
+            issue for issue in self.issues if issue.severity is DiagnosticSeverity.ERROR
+        ]
 
 
 def diagnose_sweep(
@@ -99,15 +136,17 @@ def diagnose_sweep(
 def _check_convergence_and_residual(
     stats: list[SolverInfo],
 ) -> list[DiagnosticIssue]:
-    """Report non-convergence and residuals above the acceptance threshold."""
+    """
+    Report non-convergence and residuals above the acceptance threshold.
+    """
     issues: list[DiagnosticIssue] = []
     for step, info in enumerate(stats):
         if not info.converged:
             issues.append(
                 DiagnosticIssue(
                     step=step,
-                    category="convergence",
-                    severity="error",
+                    category=DiagnosticCategory.CONVERGENCE,
+                    severity=DiagnosticSeverity.ERROR,
                     message=f"Step {step} did not converge.",
                     value=None,
                 )
@@ -116,8 +155,8 @@ def _check_convergence_and_residual(
             issues.append(
                 DiagnosticIssue(
                     step=step,
-                    category="residual",
-                    severity="error",
+                    category=DiagnosticCategory.RESIDUAL,
+                    severity=DiagnosticSeverity.ERROR,
                     message=(
                         f"Step {step} residual {info.max_residual:.6g} exceeds the "
                         f"acceptance tolerance {SOLVE_ACCEPT_RESIDUAL:.6g}."
@@ -132,7 +171,9 @@ def _check_continuity(
     suspension: Suspension,
     states: list[SuspensionState],
 ) -> list[DiagnosticIssue]:
-    """Report free-point jumps that are large relative to ordinary sweep steps."""
+    """
+    Report free-point jumps that are large relative to ordinary sweep steps.
+    """
     if len(states) < 2:
         return []
 
@@ -153,8 +194,8 @@ def _check_continuity(
             issues.append(
                 DiagnosticIssue(
                     step=step,
-                    category="jump",
-                    severity="warning",
+                    category=DiagnosticCategory.JUMP,
+                    severity=DiagnosticSeverity.WARNING,
                     message=(
                         f"Point '{name}' jumped {displacement:.3g} mm from step "
                         f"{previous_step} to step {step} (threshold "
@@ -170,7 +211,9 @@ def _point_step_displacements(
     states: list[SuspensionState],
     key: PointKey,
 ) -> list[float]:
-    """Return Euclidean displacement of one point for each sweep transition."""
+    """
+    Return Euclidean displacement of one point for each sweep transition.
+    """
     displacements: list[float] = []
     previous = states[0].positions.get(key)
     for state in states[1:]:

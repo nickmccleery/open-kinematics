@@ -4,13 +4,12 @@ from pathlib import Path
 
 import yaml
 
-from kinematics.core import build_sweep_config
-from kinematics.core.schema.sweep import SweepSpec
+from kinematics.core.schema.sweep import SweepSpec, build_sweep_config
 from kinematics.core.suspensions.base import Suspension
 from kinematics.core.targeting import SweepConfig
 
 
-def parse_sweep_file(
+def load_sweep(
     path: Path,
     suspension: Suspension | None = None,
 ) -> SweepConfig:

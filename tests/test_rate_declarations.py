@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from kinematics.cli.io.yaml import load_geometry
+from kinematics.cli.io.loaders import load_geometry
 from kinematics.core.metrics.catalog import get_default_corner_derivative_metrics
 from kinematics.core.metrics.main import compute_metrics_for_state
 from kinematics.core.points.derived.manager import DerivedPointsManager

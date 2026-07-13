@@ -1,15 +1,11 @@
-"""Pure helpers for flattening structured analysis at transport boundaries."""
+"""
+Pure position flattening at transport boundaries.
+"""
 
 from collections.abc import Mapping, Sequence
 
-from kinematics.core.metrics.main import AxleMetricRows, MetricRow
-from kinematics.core.metrics.main import flatten_metric_rows as flatten_metric_rows
-from kinematics.core.metrics.registry import (
-    flat_specs_for_suspension as flat_specs_for_suspension,
-)
 from kinematics.core.primitives.geometry import extract_array
-from kinematics.core.primitives.point_ref import PointKey
-from kinematics.core.primitives.point_ref import point_key_name as point_key_name
+from kinematics.core.primitives.point_ref import PointKey, point_key_name
 
 
 def flatten_positions(
@@ -29,12 +25,3 @@ def flatten_positions(
             float(raw[2]),
         )
     return flattened
-
-
-def flatten_metric_result(
-    row: MetricRow | AxleMetricRows,
-) -> dict[str, float | None]:
-    """Flatten either corner or structural axle metric rows for export."""
-    if isinstance(row, AxleMetricRows):
-        return flatten_metric_rows(row.axle, row.corners)
-    return dict(row)

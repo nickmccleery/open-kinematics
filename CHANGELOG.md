@@ -11,7 +11,7 @@ All notable changes to this project will be documented in this file.
 - Declarative derivative metrics use analytical solution-manifold tangents and forward-mode automatic differentiation for arbitrary scalar responses and drivers.
 - Advisory sweep diagnostics report convergence, residual acceptance, branch continuity, derivative availability, rocker and anti-roll-bar chirality, and transmission margin.
 - Coupled axle models solve left and right corners together and support either mirrored or independently authored geometry.
-- The public `analyze_sweep()` and `initial_pose()` APIs return structured positions, metrics, locations, metadata, presentation topology, diagnostics, references, and solved frames.
+- The public `analyze_sweep()` and `initial_pose()` APIs return structured positions, metrics, locations, metadata, renderer-neutral element paths, diagnostics, references, and solved frames.
 
 ### Changed
 
@@ -29,13 +29,19 @@ All notable changes to this project will be documented in this file.
   metrics, solver statistics, and diagnostics. Rich presentation analysis is
   built only for consumers that request it.
 - The root `kinematics` package is no longer a second API facade. Public solver
-  workflows live in `kinematics.core`; value types live in their defining
+  workflows and value types are imported from their defining `kinematics.core`
   modules, and transport flattening helpers live in `kinematics.core.export`.
 - Sweep target definitions and target-direction resolution now share the
   canonical `kinematics.core.targeting` module. Presentation-model helpers live
   in `kinematics.core.presentation`.
 - Optional diagnostic, derivative, and setup-reference failures are exposed as
   structured advisory warnings instead of disappearing silently.
+- Diagnostic categories and severities use typed string enums across the core
+  and CLI boundary.
+- Physical elements and assemblies own renderer-neutral path topology. CLI plots
+  and animations add Matplotlib styling client-side, and structured analysis
+  exposes the same unstyled paths for external clients. Static visualization
+  supports both corner and axle assemblies and checks every wheel contact patch.
 - Core-only CI now exercises numerical, constraint, Jacobian, state, target,
   derived-point, and rigid-body tests without CLI or visualization dependencies.
 - Derived-point target Jacobians now evaluate only the target's transitive dependency chain and seed only relevant free points, substantially reducing solve time.
@@ -53,6 +59,8 @@ All notable changes to this project will be documented in this file.
   and numerical types under `kinematics.core.primitives`.
 - Replaced visualization-specific suspension methods and style-bearing core links
   with physical declarations in `core.elements` and `core.assembly`.
+- Removed package-level `kinematics.core` workflow re-exports and YAML loader
+  aliases; import workflows and adapters from their defining modules.
 - Suspension capabilities now come from the physical assembly instead of
   matching free-form suspension type strings in visualization code.
 - Removed legacy geometry construction and loader paths in favor of validated schemas, `build_suspension()`, `load_geometry()`, and `load_sweep()`.

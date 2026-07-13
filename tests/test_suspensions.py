@@ -14,7 +14,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from kinematics.cli.io.yaml import load_geometry
+from kinematics.cli.io.loaders import load_geometry
 from kinematics.core.elements import UprightElement
 from kinematics.core.primitives.enums import PointID, ShimType, Units
 from kinematics.core.primitives.geometry import Direction3, Point3

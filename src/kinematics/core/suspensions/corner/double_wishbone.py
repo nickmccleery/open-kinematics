@@ -18,8 +18,8 @@ from kinematics.core.constraints import (
     PointOnLineConstraint,
 )
 from kinematics.core.elements import (
+    ElementType,
     RigidLinkElement,
-    RigidLinkType,
     SuspensionElement,
     UprightElement,
     WheelElement,
@@ -345,25 +345,25 @@ class DoubleWishboneSuspension(Suspension):
         return (
             RigidLinkElement(
                 label="Upper Wishbone Front Leg",
-                type=RigidLinkType.WISHBONE_LEG,
+                type=ElementType.WISHBONE,
                 point_a=PointID.UPPER_WISHBONE_INBOARD_FRONT,
                 point_b=PointID.UPPER_WISHBONE_OUTBOARD,
             ),
             RigidLinkElement(
                 label="Upper Wishbone Rear Leg",
-                type=RigidLinkType.WISHBONE_LEG,
+                type=ElementType.WISHBONE,
                 point_a=PointID.UPPER_WISHBONE_INBOARD_REAR,
                 point_b=PointID.UPPER_WISHBONE_OUTBOARD,
             ),
             RigidLinkElement(
                 label="Lower Wishbone Front Leg",
-                type=RigidLinkType.WISHBONE_LEG,
+                type=ElementType.WISHBONE,
                 point_a=PointID.LOWER_WISHBONE_INBOARD_FRONT,
                 point_b=PointID.LOWER_WISHBONE_OUTBOARD,
             ),
             RigidLinkElement(
                 label="Lower Wishbone Rear Leg",
-                type=RigidLinkType.WISHBONE_LEG,
+                type=ElementType.WISHBONE,
                 point_a=PointID.LOWER_WISHBONE_INBOARD_REAR,
                 point_b=PointID.LOWER_WISHBONE_OUTBOARD,
             ),
@@ -386,13 +386,13 @@ class DoubleWishboneSuspension(Suspension):
             ),
             RigidLinkElement(
                 label="Track Rod",
-                type=RigidLinkType.TRACK_ROD,
+                type=ElementType.TRACK_ROD,
                 point_a=PointID.TRACKROD_INBOARD,
                 point_b=PointID.TRACKROD_OUTBOARD,
             ),
             RigidLinkElement(
                 label="Axle",
-                type=RigidLinkType.AXLE,
+                type=ElementType.AXLE,
                 point_a=PointID.AXLE_INBOARD,
                 point_b=PointID.AXLE_OUTBOARD,
             ),

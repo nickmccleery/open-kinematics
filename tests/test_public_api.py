@@ -7,18 +7,21 @@ PROJECT_ROOT = Path(__file__).parent.parent
 CORE_PACKAGE = PROJECT_ROOT / "src" / "kinematics" / "core"
 CLI_ONLY_DEPENDENCIES = ("matplotlib", "pyarrow", "typer", "yaml")
 PUBLIC_CORE_MODULES = {
-    "kinematics.core",
     "kinematics.core.assembly",
     "kinematics.core.elements",
     "kinematics.core.export",
+    "kinematics.core.metrics.main",
     "kinematics.core.metrics.registry",
     "kinematics.core.primitives.enums",
     "kinematics.core.primitives.geometry",
     "kinematics.core.primitives.point_ref",
+    "kinematics.core.presentation",
+    "kinematics.core.schema.geometry",
     "kinematics.core.schema.sweep",
     "kinematics.core.solver",
     "kinematics.core.state",
     "kinematics.core.suspensions.base",
+    "kinematics.core.suspensions.build",
     "kinematics.core.sweep",
     "kinematics.core.targeting",
 }
@@ -31,6 +34,48 @@ def test_core_import_succeeds_without_cli_dependencies() -> None:
         f"for name in ({blocked_modules},): sys.modules[name] = None\n"
         "import kinematics\n"
         "import kinematics.core\n"
+    )
+
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        cwd=PROJECT_ROOT,
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_low_level_core_import_does_not_load_solver_stack() -> None:
+    script = (
+        "import sys\n"
+        "from kinematics.core.primitives.enums import Axis\n"
+        "assert Axis.X.value == 0\n"
+        "assert 'scipy' not in sys.modules\n"
+        "assert 'kinematics.core.analysis' not in sys.modules\n"
+        "assert 'kinematics.core.solver' not in sys.modules\n"
+    )
+
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        cwd=PROJECT_ROOT,
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_cli_app_import_does_not_load_sweep_runtime() -> None:
+    script = (
+        "import sys\n"
+        "from kinematics.cli.app import app\n"
+        "assert app is not None\n"
+        "assert 'pyarrow' not in sys.modules\n"
+        "assert 'scipy' not in sys.modules\n"
+        "assert 'kinematics.cli.commands.sweep' not in sys.modules\n"
     )
 
     result = subprocess.run(
