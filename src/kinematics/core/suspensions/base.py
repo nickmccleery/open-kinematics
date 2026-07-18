@@ -43,7 +43,6 @@ class Suspension(ABC):
     This class implements the provider interface directly - no separate provider needed.
     """
 
-    TYPE_KEY: ClassVar[SuspensionType]
     REQUIRED_POINTS: ClassVar[frozenset[PointID]] = frozenset()
     OPTIONAL_POINTS: ClassVar[frozenset[PointID]] = frozenset()
     OUTPUT_POINTS: ClassVar[tuple[PointKey, ...]] = ()
@@ -79,14 +78,10 @@ class Suspension(ABC):
         """Return every authored point accepted by this suspension instance."""
         return self.required_points() | self.optional_points()
 
+    @abstractmethod
     def reported_type_key(self) -> SuspensionType:
-        """
-        Return the public geometry type identity exported with results.
-
-        Corner architectures identify by class; the generic axle composer
-        overrides this with its builder-supplied identity.
-        """
-        return self.TYPE_KEY
+        """Return the public geometry type identity exported with results."""
+        ...
 
     @abstractmethod
     def initial_state(self) -> SuspensionState:
@@ -232,7 +227,8 @@ class Suspension(ABC):
         if side is not None:
             raise ValueError(
                 f"Sweep target for '{point.name}' specifies side "
-                f"'{side.name.lower()}', but suspension type '{self.TYPE_KEY}' "
+                f"'{side.name.lower()}', but suspension type "
+                f"'{self.reported_type_key()}' "
                 "is a single corner and does not accept a side."
             )
         return point

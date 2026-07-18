@@ -78,9 +78,6 @@ class AxleSuspension(Suspension):
     """Two corner suspensions coupled by shared rack and axle mechanisms."""
 
     REQUIRED_POINTS: ClassVar[frozenset[PointID]] = frozenset()
-    # The composer serves every corner architecture, so its public identity
-    # is instance data supplied by the builder, not a class constant. The
-    # inherited TYPE_KEY class variable is deliberately left unset.
     type_key: SuspensionType = field(kw_only=True)
     corners: dict[Side, CornerSuspension] = field(default_factory=dict)
     anti_roll: AxleArb = field(default_factory=ArbNone, kw_only=True)

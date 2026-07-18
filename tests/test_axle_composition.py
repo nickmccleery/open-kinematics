@@ -62,6 +62,7 @@ class TrailingArmCorner(CornerSuspension):
     AXLE_INBOARD/AXLE_OUTBOARD points.
     """
 
+    TYPE_KEY: ClassVar[SuspensionType] = SuspensionType.DOUBLE_WISHBONE
     REQUIRED_POINTS: ClassVar[frozenset[PointID]] = frozenset(
         {
             CHASSIS_FRONT,

@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING, ClassVar, Sequence
 
-from kinematics.core.enums import PointID
+from kinematics.core.enums import PointID, SuspensionType
 from kinematics.core.metrics.main import compute_metrics_for_state
 from kinematics.core.state import SuspensionState
 from kinematics.core.suspensions.base import Suspension
@@ -28,6 +28,12 @@ class CornerSuspension(Suspension):
     multilink corner). The steering-axis pivots need not be free points: a
     MacPherson corner returns its fixed strut top as the upper pivot.
     """
+
+    TYPE_KEY: ClassVar[SuspensionType]
+
+    def reported_type_key(self) -> SuspensionType:
+        """Return the corner architecture identity."""
+        return self.TYPE_KEY
 
     @abstractmethod
     def free_points(self) -> Sequence[PointID]:

@@ -377,7 +377,7 @@ def _mirror_corner_config(config: C) -> C:
 
 def _check_shim_support(
     config: SuspensionConfig,
-    cls: type[Suspension],
+    cls: type[CornerSuspension],
 ) -> None:
     """Reject a camber shim config on an architecture without shim support."""
     if (
