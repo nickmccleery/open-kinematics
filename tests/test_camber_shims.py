@@ -463,7 +463,9 @@ def test_shim_preserves_trackrod_length(double_wishbone_geometry_file):
     )
 
 
-def test_backward_compatibility_no_shim(double_wishbone_geometry_file):
+def test_equal_shim_thickness_builds_complete_design_state(
+    double_wishbone_geometry_file,
+):
     """
     Test that when design_thickness == setup_thickness, there's no effect.
     """

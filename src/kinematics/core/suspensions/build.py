@@ -54,21 +54,6 @@ from kinematics.core.suspensions.corner.mechanisms import (
 )
 
 
-def build_suspension(spec: GeometrySpecBase) -> Suspension:
-    """Construct a suspension using the registered architecture definition."""
-    from kinematics.core.suspensions.registry import get_suspension_definition
-
-    definition = get_suspension_definition(spec.type, spec.scope)
-    if definition is None:
-        raise TypeError(f"Unsupported geometry spec type: {spec.type} ({spec.scope})")
-    if not isinstance(spec, definition.spec_type):
-        raise TypeError(
-            f"Type '{spec.type}' requires {definition.spec_type.__name__}, "
-            f"got {type(spec).__name__}."
-        )
-    return definition.build(spec)
-
-
 def build_double_wishbone(spec: GeometrySpecBase) -> Suspension:
     """Build one double-wishbone corner with composed mechanisms."""
     typed = cast(DoubleWishboneGeometrySpec, spec)

@@ -5,10 +5,8 @@ from typing import Any
 
 import yaml
 
-from kinematics.cli.io.schema_parser import parse_geometry_data
-from kinematics.core.schema.geometry import parse_geometry_spec
+from kinematics.core.input import build_suspension
 from kinematics.core.suspensions.base import Suspension
-from kinematics.core.suspensions.build import build_suspension
 
 
 def _read_yaml_mapping(path: Path, kind: str) -> dict[str, Any]:
@@ -31,11 +29,4 @@ def _read_yaml_mapping(path: Path, kind: str) -> dict[str, Any]:
 def load_geometry(path: Path) -> Suspension:
     """Load, validate, and build a suspension from a YAML geometry file."""
     data = _read_yaml_mapping(path, "Geometry")
-    if "config" not in data and "configuration" in data:
-        data["config"] = data.pop("configuration")
-    try:
-        parsed_data = parse_geometry_data(data)
-    except ValueError as error:
-        raise ValueError(f"Invalid geometry specification: {error}") from error
-    spec = parse_geometry_spec(parsed_data)
-    return build_suspension(spec)
+    return build_suspension(data)

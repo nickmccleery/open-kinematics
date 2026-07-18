@@ -38,7 +38,6 @@ class SuspensionDefinition:
     spec_type: type[GeometrySpecBase]
     build: SuspensionBuilder
     suspension_type: SuspensionClass
-    aliases: frozenset[str] = frozenset()
 
 
 SUSPENSION_DEFINITIONS = (
@@ -48,7 +47,6 @@ SUSPENSION_DEFINITIONS = (
         DoubleWishboneGeometrySpec,
         build_double_wishbone,
         DoubleWishboneSuspension,
-        DoubleWishboneSuspension.ALIASES,
     ),
     SuspensionDefinition(
         SuspensionType.DOUBLE_WISHBONE,
@@ -56,7 +54,6 @@ SUSPENSION_DEFINITIONS = (
         DoubleWishboneAxleGeometrySpec,
         build_double_wishbone_axle,
         AxleSuspension,
-        DoubleWishboneSuspension.ALIASES,
     ),
     SuspensionDefinition(
         SuspensionType.MACPHERSON,
@@ -64,7 +61,6 @@ SUSPENSION_DEFINITIONS = (
         MacPhersonGeometrySpec,
         build_macpherson,
         MacPhersonSuspension,
-        MacPhersonSuspension.ALIASES,
     ),
     SuspensionDefinition(
         SuspensionType.MACPHERSON,
@@ -72,15 +68,13 @@ SUSPENSION_DEFINITIONS = (
         MacPhersonAxleGeometrySpec,
         build_macpherson_axle,
         AxleSuspension,
-        MacPhersonSuspension.ALIASES,
     ),
 )
 
-_definitions_by_key: dict[tuple[str, Scope], SuspensionDefinition] = {}
-for definition in SUSPENSION_DEFINITIONS:
-    _definitions_by_key[(definition.type_key.value, definition.scope)] = definition
-    for alias in definition.aliases:
-        _definitions_by_key[(alias, definition.scope)] = definition
+_definitions_by_key = {
+    (definition.type_key.value, definition.scope): definition
+    for definition in SUSPENSION_DEFINITIONS
+}
 
 SUSPENSION_REGISTRY = MappingProxyType(_definitions_by_key)
 

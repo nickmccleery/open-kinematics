@@ -63,9 +63,6 @@ class DoubleWishboneSuspension(CornerSuspension):
     """Double-wishbone locating geometry with composed corner mechanisms."""
 
     TYPE_KEY: ClassVar[SuspensionType] = SuspensionType.DOUBLE_WISHBONE
-    ALIASES: ClassVar[frozenset[str]] = frozenset(
-        {"double_wishbone_front", "double_wishbone_rear"}
-    )
     REQUIRED_POINTS: ClassVar[frozenset[PointID]] = frozenset(
         {
             PointID.LOWER_WISHBONE_INBOARD_FRONT,

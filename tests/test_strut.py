@@ -125,28 +125,21 @@ def test_basic_type_does_not_accept_variant_points() -> None:
     assert PointID.STRUT_BOTTOM not in suspension.all_valid_points()
 
 
-def test_corner_registry_has_one_complete_definition_per_type() -> None:
+def test_corner_registry_has_one_complete_definition_per_architecture() -> None:
     expected_types = {
-        "double_wishbone",
-        "double_wishbone_front",
-        "double_wishbone_rear",
-        "macpherson",
-        "macpherson_strut",
-    }
-    canonical_types = {
         "double_wishbone",
         "macpherson",
     }
 
     assert set(list_supported_types()) == expected_types
     assert {definition.type_key for definition in SUSPENSION_DEFINITIONS} == (
-        canonical_types
+        expected_types
     )
     assert all(
         isinstance(definition.type_key, SuspensionType)
         for definition in SUSPENSION_DEFINITIONS
     )
-    for type_key in canonical_types:
+    for type_key in expected_types:
         definition = get_suspension_definition(type_key)
         assert definition is not None
         assert definition.suspension_type is get_suspension_class(type_key)
@@ -169,12 +162,3 @@ def test_coilover_topology_adds_moving_pickup_and_attachment_constraints() -> No
         )
         == 1
     )
-
-
-def test_legacy_configuration_key_remains_loadable(tmp_path: Path) -> None:
-    data = _read_geometry("geometry.yaml")
-    data["configuration"] = data.pop("config")
-
-    suspension = load_geometry(_write_geometry(tmp_path, data))
-
-    assert type(suspension) is DoubleWishboneSuspension

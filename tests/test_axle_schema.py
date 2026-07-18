@@ -1,11 +1,11 @@
 """Focused validation tests for axle geometry and side-qualified sweeps."""
 
 from pathlib import Path
+from typing import Any
 
 import pytest
+import yaml
 
-from kinematics.cli.io.loaders import _read_yaml_mapping
-from kinematics.cli.io.schema_parser import parse_enum, parse_geometry_data
 from kinematics.core.enums import (
     ActuationType,
     ArbType,
@@ -18,25 +18,31 @@ from kinematics.core.enums import (
     SuspensionType,
     TargetPositionMode,
 )
+from kinematics.core.input import build_suspension, parse_geometry_spec
 from kinematics.core.primitives.point_ref import Side
 from kinematics.core.schema.config import HeaveLinkConfig
+from kinematics.core.schema.decoding import parse_enum
 from kinematics.core.schema.geometry import (
     DoubleWishboneAxleGeometrySpec,
     DoubleWishboneGeometrySpec,
-    parse_geometry_spec,
 )
 from kinematics.core.schema.sweep import SweepSpec, TargetSpec, build_sweep_config
-from kinematics.core.suspensions.build import build_suspension
 from kinematics.core.targeting import PointTargetAxis
+
+
+def _read_yaml_mapping(path: Path, kind: str) -> dict[str, Any]:
+    """Read one test fixture as an ordinary decoded mapping."""
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        raise TypeError(f"{kind} fixture must contain a mapping")
+    return data
 
 
 def test_axle_geometry_uses_left_corner_as_mirror_source(
     test_data_dir: Path,
 ) -> None:
     spec = parse_geometry_spec(
-        parse_geometry_data(
-            _read_yaml_mapping(test_data_dir / "axle_geometry.yaml", "Geometry")
-        )
+        _read_yaml_mapping(test_data_dir / "axle_geometry.yaml", "Geometry")
     )
 
     assert isinstance(spec, DoubleWishboneAxleGeometrySpec)
@@ -53,9 +59,7 @@ def test_geometry_selectors_parse_as_enums_and_serialize_as_strings(
     test_data_dir: Path,
 ) -> None:
     spec = parse_geometry_spec(
-        parse_geometry_data(
-            _read_yaml_mapping(test_data_dir / "axle_geometry_rocker.yaml", "Geometry")
-        )
+        _read_yaml_mapping(test_data_dir / "axle_geometry_rocker.yaml", "Geometry")
     )
     assert isinstance(spec, DoubleWishboneAxleGeometrySpec)
 
@@ -81,11 +85,9 @@ def test_geometry_selectors_parse_as_enums_and_serialize_as_strings(
 
 def test_t_bar_selector_round_trips_without_heave_link(test_data_dir: Path) -> None:
     spec = parse_geometry_spec(
-        parse_geometry_data(
-            _read_yaml_mapping(
-                test_data_dir / "axle_geometry_t_bar.yaml",
-                "Geometry",
-            )
+        _read_yaml_mapping(
+            test_data_dir / "axle_geometry_t_bar.yaml",
+            "Geometry",
         )
     )
     assert isinstance(spec, DoubleWishboneAxleGeometrySpec)
@@ -104,7 +106,7 @@ def test_t_bar_requires_pushrod_rocker_actuation(test_data_dir: Path) -> None:
     data["axle_config"]["spring"]["type"] = "none"
 
     with pytest.raises(ValueError, match="requires pushrod-rocker actuation"):
-        parse_geometry_spec(parse_geometry_data(data))
+        parse_geometry_spec(data)
 
 
 def test_rocker_to_rocker_heave_link_selector_round_trips() -> None:
@@ -131,22 +133,28 @@ def test_core_schema_accepts_enum_objects() -> None:
     assert spec.mode is TargetPositionMode.ABSOLUTE
 
 
-def test_cli_enum_parser_is_case_sensitive() -> None:
+def test_core_enum_parser_is_case_sensitive() -> None:
     assert parse_enum(PointID, "wheel_center") is PointID.WHEEL_CENTER
 
     with pytest.raises(ValueError, match="Invalid PointID"):
         parse_enum(PointID, "WHEEL_CENTER")
 
 
-def test_core_schema_does_not_parse_serialized_enum_names() -> None:
-    with pytest.raises(ValueError):
-        TargetSpec.model_validate(
-            {
-                "point": "wheel_center",
-                "direction": {"axis": "z"},
-                "values": [0.0],
-            }
-        )
+def test_core_schema_parses_serialized_enum_names() -> None:
+    spec = TargetSpec.model_validate(
+        {
+            "point": "wheel_center",
+            "side": "left",
+            "mode": "absolute",
+            "direction": {"axis": "z"},
+            "values": [0.0],
+        }
+    )
+
+    assert spec.point is PointID.WHEEL_CENTER
+    assert spec.side is Side.LEFT
+    assert spec.mode is TargetPositionMode.ABSOLUTE
+    assert spec.direction.axis is Axis.Z
 
 
 def test_axle_geometry_requires_left_corner(test_data_dir: Path) -> None:
@@ -154,7 +162,7 @@ def test_axle_geometry_requires_left_corner(test_data_dir: Path) -> None:
     data["hardpoints"].pop("left")
 
     with pytest.raises(ValueError, match="left"):
-        parse_geometry_spec(parse_geometry_data(data))
+        parse_geometry_spec(data)
 
 
 def test_axle_geometry_requires_front_or_rear_position(test_data_dir: Path) -> None:
@@ -162,7 +170,7 @@ def test_axle_geometry_requires_front_or_rear_position(test_data_dir: Path) -> N
     data["axle_config"].pop("axle_position")
 
     with pytest.raises(ValueError, match="axle_position"):
-        parse_geometry_spec(parse_geometry_data(data))
+        parse_geometry_spec(data)
 
 
 @pytest.mark.parametrize("axle_position", ["front", "rear"])
@@ -173,11 +181,11 @@ def test_axle_position_accepts_front_or_rear(
     data = _read_yaml_mapping(test_data_dir / "axle_geometry.yaml", "Geometry")
     data["axle_config"]["axle_position"] = axle_position
 
-    spec = parse_geometry_spec(parse_geometry_data(data))
+    spec = parse_geometry_spec(data)
 
     assert isinstance(spec, DoubleWishboneAxleGeometrySpec)
     assert spec.axle_config.axle_position is AxlePosition(axle_position)
-    suspension = build_suspension(spec)
+    suspension = build_suspension(data)
     assert suspension.config is not None
     assert suspension.config.axle_position is AxlePosition(axle_position)
 
@@ -189,7 +197,7 @@ def test_right_setup_requires_explicit_right_hardpoints(
     data["axle_config"]["right_setup"] = {}
 
     with pytest.raises(ValueError, match="right_setup requires explicit"):
-        parse_geometry_spec(parse_geometry_data(data))
+        parse_geometry_spec(data)
 
 
 def test_axle_config_rejects_per_side_mechanisms(test_data_dir: Path) -> None:
@@ -201,23 +209,14 @@ def test_axle_config_rejects_per_side_mechanisms(test_data_dir: Path) -> None:
     }
 
     with pytest.raises(ValueError, match="Extra inputs are not permitted"):
-        parse_geometry_spec(parse_geometry_data(data))
-
-
-def test_legacy_axle_hardpoints_layout_is_rejected(test_data_dir: Path) -> None:
-    data = _read_yaml_mapping(test_data_dir / "axle_geometry.yaml", "Geometry")
-    left = data["hardpoints"].pop("left")
-    data["hardpoints"] = {"side": "left", "points": left}
-
-    with pytest.raises(ValueError, match="Extra inputs are not permitted"):
-        parse_geometry_spec(parse_geometry_data(data))
+        parse_geometry_spec(data)
 
 
 def test_standalone_corner_defaults_to_left(test_data_dir: Path) -> None:
     data = _read_yaml_mapping(test_data_dir / "geometry.yaml", "Geometry")
     data.pop("side")
 
-    spec = parse_geometry_spec(parse_geometry_data(data))
+    spec = parse_geometry_spec(data)
 
     assert isinstance(spec, DoubleWishboneGeometrySpec)
     assert spec.side is Side.LEFT
@@ -226,10 +225,8 @@ def test_standalone_corner_defaults_to_left(test_data_dir: Path) -> None:
 def test_axle_left_corner_rejects_right_handed_geometry(test_data_dir: Path) -> None:
     data = _read_yaml_mapping(test_data_dir / "axle_geometry.yaml", "Geometry")
     data["hardpoints"]["left"]["axle_outboard"]["y"] = -950.0
-    spec = parse_geometry_spec(parse_geometry_data(data))
-
     with pytest.raises(ValueError, match="Side 'left' requires AXLE_OUTBOARD Y > 0"):
-        build_suspension(spec)
+        build_suspension(data)
 
 
 @pytest.mark.parametrize("field", ["steered", "wheel"])
@@ -241,7 +238,7 @@ def test_axle_scoped_configuration_is_not_vehicle_configuration(
     data["vehicle_config"][field] = data["axle_config"].pop(field)
 
     with pytest.raises(ValueError, match="Extra inputs are not permitted"):
-        parse_geometry_spec(parse_geometry_data(data))
+        parse_geometry_spec(data)
 
 
 def test_side_target_requires_suspension_context() -> None:

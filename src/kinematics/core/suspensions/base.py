@@ -44,7 +44,6 @@ class Suspension(ABC):
     """
 
     TYPE_KEY: ClassVar[SuspensionType]
-    ALIASES: ClassVar[frozenset[str]] = frozenset()
     REQUIRED_POINTS: ClassVar[frozenset[PointID]] = frozenset()
     OPTIONAL_POINTS: ClassVar[frozenset[PointID]] = frozenset()
     OUTPUT_POINTS: ClassVar[tuple[PointKey, ...]] = ()
@@ -79,11 +78,6 @@ class Suspension(ABC):
     def all_valid_points(self) -> frozenset[PointID]:
         """Return every authored point accepted by this suspension instance."""
         return self.required_points() | self.optional_points()
-
-    @classmethod
-    def matches_type(cls, type_key: str) -> bool:
-        """Check if this class handles the given type key."""
-        return type_key == cls.TYPE_KEY.value or type_key in cls.ALIASES
 
     def reported_type_key(self) -> SuspensionType:
         """

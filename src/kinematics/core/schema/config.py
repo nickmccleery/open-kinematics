@@ -5,8 +5,8 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from kinematics.core.enums import ArbType, AxlePosition, HeaveLinkType
-from kinematics.core.primitives.constants import MM_PER_INCH
-from kinematics.core.primitives.geometry import Direction3, Point3
+from kinematics.core.primitives.constants import EPS_GEOMETRIC, MM_PER_INCH
+from kinematics.core.schema.decoding import Direction3Value, Point3Value
 
 
 class TireConfig(BaseModel):
@@ -55,16 +55,14 @@ class CamberShimConfig(BaseModel):
 
     model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True, extra="forbid")
 
-    shim_face_point_a: Point3
-    shim_face_point_b: Point3
-    shim_face_normal: Direction3
+    shim_face_point_a: Point3Value
+    shim_face_point_b: Point3Value
+    shim_face_normal: Direction3Value
     design_thickness: float
     setup_thickness: float
 
     @model_validator(mode="after")
     def validate_face_definition(self) -> "CamberShimConfig":
-        from kinematics.core.primitives.constants import EPS_GEOMETRIC
-
         datum_separation = (self.shim_face_point_b - self.shim_face_point_a).norm()
         if datum_separation < EPS_GEOMETRIC:
             raise ValueError("shim_face_point_a and shim_face_point_b must be distinct")
@@ -76,7 +74,7 @@ class VehicleConfig(BaseModel):
 
     model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True, extra="forbid")
 
-    cg_position: Point3
+    cg_position: Point3Value
     wheelbase: float
     front_brake_bias: float | None = None
     driven_axle: AxlePosition | None = None

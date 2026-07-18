@@ -84,7 +84,6 @@ class MacPhersonSuspension(CornerSuspension):
     """MacPherson strut locating geometry: lower arm, strut, and trackrod."""
 
     TYPE_KEY: ClassVar[SuspensionType] = SuspensionType.MACPHERSON
-    ALIASES: ClassVar[frozenset[str]] = frozenset({"macpherson_strut"})
     REQUIRED_POINTS: ClassVar[frozenset[PointID]] = frozenset(
         {
             PointID.LOWER_WISHBONE_INBOARD_FRONT,

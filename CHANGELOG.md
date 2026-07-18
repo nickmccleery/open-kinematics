@@ -46,8 +46,11 @@ All notable changes to this project will be documented in this file.
   derived-point, and rigid-body tests without CLI or visualization dependencies.
 - Derived-point target Jacobians now evaluate only the target's transitive dependency chain and seed only relevant free points, substantially reducing solve time.
 - Geometry parsing, validation, and construction now pass through
-  `kinematics.core.schema` and the suspension registry; filesystem access remains
+  the transport-neutral `kinematics.core.input` facade; filesystem access remains
   in `kinematics.cli.io`.
+- Core schemas now decode canonical enum names, coordinate mappings, and coordinate
+  sequences directly. The CLI schema-tree parser was removed, and malformed
+  coordinates report field-located validation errors instead of leaking `KeyError`.
 - Axle inputs now group data under `vehicle_config`, `axle_config`, and
   `hardpoints`. The axle configuration includes a required front/rear position,
   wheel and tire data, steering state, shared mechanisms, and one symmetric
@@ -70,11 +73,12 @@ All notable changes to this project will be documented in this file.
   and numerical types under `kinematics.core.primitives`.
 - Replaced visualization-specific suspension methods and style-bearing core links
   with physical declarations in `core.elements` and `core.assembly`.
-- Removed package-level `kinematics.core` workflow re-exports and YAML loader
-  aliases; import workflows and adapters from their defining modules.
+- Workflows and adapters are imported from their defining modules rather than
+  re-exported from `kinematics.core`.
 - Suspension capabilities now come from the physical assembly instead of
   matching free-form suspension type strings in visualization code.
-- Removed legacy geometry construction and loader paths in favor of validated schemas, `build_suspension()`, `load_geometry()`, and `load_sweep()`.
+- Suspension type selection accepts only the architecture keys `double_wishbone`
+  and `macpherson`.
 - Renamed `SweepFile` to `SweepSpec`.
 - Removed units from metric keys and changed flat axle corner columns from side prefixes to side suffixes, for example `left_camber_deg` to `camber_left`.
 - Replaced the flat axle configuration and corner blocks with explicit

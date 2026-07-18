@@ -111,15 +111,6 @@ class TestSuspensionBase:
         assert PointID.PUSHROD_OUTBOARD not in valid
         assert PointID.STRUT_BOTTOM not in valid
 
-    def test_matches_type(self):
-        """
-        Test exact, case-sensitive type matching.
-        """
-        assert DoubleWishboneSuspension.matches_type("double_wishbone")
-        assert not DoubleWishboneSuspension.matches_type("DOUBLE_WISHBONE")
-        assert DoubleWishboneSuspension.matches_type("double_wishbone_front")
-        assert not DoubleWishboneSuspension.matches_type("macpherson_strut")
-
 
 # Test DoubleWishboneSuspension
 
@@ -134,7 +125,6 @@ class TestDoubleWishboneSuspension:
         Test class-level attributes are correctly defined.
         """
         assert DoubleWishboneSuspension.TYPE_KEY == "double_wishbone"
-        assert "double_wishbone_front" in DoubleWishboneSuspension.ALIASES
         assert ShimType.OUTBOARD_CAMBER in DoubleWishboneSuspension.SUPPORTED_SHIMS
 
         # Check required points
@@ -308,8 +298,7 @@ class TestRegistry:
         Test listing supported types.
         """
         types = list_supported_types()
-        assert "double_wishbone" in types
-        assert "double_wishbone_front" in types
+        assert types == ["double_wishbone", "macpherson"]
 
     def test_get_suspension_class(self):
         """

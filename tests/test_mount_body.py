@@ -14,7 +14,6 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-from kinematics.cli.io.schema_parser import parse_geometry_data
 from kinematics.core.enums import (
     ActuationType,
     Axis,
@@ -22,15 +21,15 @@ from kinematics.core.enums import (
     PointID,
     TargetPositionMode,
 )
+from kinematics.core.input import build_suspension, parse_geometry_spec
 from kinematics.core.primitives.constants import TEST_TOLERANCE
 from kinematics.core.primitives.geometry import Point3
 from kinematics.core.primitives.point_ref import PointKey
 from kinematics.core.schema.geometry import (
     ActuationSpec,
     DoubleWishboneGeometrySpec,
-    parse_geometry_spec,
 )
-from kinematics.core.suspensions.build import build_actuation, build_suspension
+from kinematics.core.suspensions.build import build_actuation
 from kinematics.core.suspensions.corner import DoubleWishboneSuspension
 from kinematics.core.suspensions.corner.mechanisms import (
     ActuationDirect,
@@ -66,9 +65,7 @@ def _build_corner_with_mount(
             "design_thickness": 30.0,
             "setup_thickness": shim_setup_thickness,
         }
-    parsed = parse_geometry_data(data)
-    spec = parse_geometry_spec(parsed)
-    return build_suspension(spec)
+    return build_suspension(data)
 
 
 def _heave_sweep(displacements: tuple[float, ...]) -> SweepConfig:
@@ -126,8 +123,7 @@ class TestActuationMountSchema:
         with open(STRUT_GEOMETRY, "r", encoding="utf-8") as file:
             data = yaml.safe_load(file)
         data["actuation"]["mount"] = MountBody.UPRIGHT.value
-        parsed = parse_geometry_data(data)
-        spec = parse_geometry_spec(parsed)
+        spec = parse_geometry_spec(data)
         assert isinstance(spec, DoubleWishboneGeometrySpec)
         assert spec.actuation.mount is MountBody.UPRIGHT
 
@@ -136,11 +132,8 @@ class TestActuationMountSchema:
             data = yaml.safe_load(file)
         # Ensure no mount is present so the required field is genuinely missing.
         data["actuation"].pop("mount", None)
-        parsed = parse_geometry_data(data)
-        # parse_geometry_spec wraps pydantic errors as ValueError; pydantic's
-        # ValidationError is itself a ValueError subclass, so either is caught.
         with pytest.raises(ValueError):
-            parse_geometry_spec(parsed)
+            parse_geometry_spec(data)
 
 
 class TestBuildActuationMountMapping:

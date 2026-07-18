@@ -81,12 +81,10 @@ Python objects; callers own transport and filesystem behavior.
 
 ```python
 from kinematics.core.analysis import analyze_sweep
-from kinematics.core.schema.geometry import parse_geometry_spec
-from kinematics.core.schema.sweep import SweepSpec, build_sweep_config
-from kinematics.core.suspensions.build import build_suspension
+from kinematics.core.input import build_suspension, build_sweep
 
-suspension = build_suspension(parse_geometry_spec(geometry_data))
-sweep = build_sweep_config(SweepSpec.model_validate(sweep_data), suspension)
+suspension = build_suspension(geometry_data)
+sweep = build_sweep(sweep_data, suspension)
 analysis = analyze_sweep(suspension, sweep)
 ```
 

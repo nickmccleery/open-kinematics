@@ -23,7 +23,6 @@ from kinematics.core.schema.geometry import (
     GeometrySpecBase,
     MacPhersonAxleGeometrySpec,
     MacPhersonGeometrySpec,
-    parse_geometry_spec,
 )
 from kinematics.core.schema.sweep import (
     DirectionSpec,

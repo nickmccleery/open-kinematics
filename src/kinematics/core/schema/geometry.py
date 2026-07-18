@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal, Mapping
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -12,12 +12,10 @@ from kinematics.core.enums import (
     CornerSpringType,
     HeaveLinkType,
     MountBody,
-    PointID,
     Scope,
     SuspensionType,
     Units,
 )
-from kinematics.core.primitives.geometry import Point3
 from kinematics.core.primitives.point_ref import Side
 from kinematics.core.schema.config import (
     AxleConfig,
@@ -25,8 +23,9 @@ from kinematics.core.schema.config import (
     SuspensionConfig,
     VehicleConfig,
 )
+from kinematics.core.schema.decoding import Point3Value, PointIDValue, SideValue
 
-HardpointMap = dict[PointID, Point3]
+HardpointMap = dict[PointIDValue, Point3Value]
 
 
 class GeometrySpecBase(BaseModel):
@@ -49,7 +48,7 @@ class CornerGeometrySpecBase(GeometrySpecBase):
     """Fields required by every explicitly sided corner geometry."""
 
     scope: Literal[Scope.CORNER] = Scope.CORNER
-    side: Side = Side.LEFT
+    side: SideValue = Side.LEFT
     config: SuspensionConfig
 
     @model_validator(mode="after")
@@ -205,30 +204,3 @@ GeometrySpec = (
     | DoubleWishboneAxleGeometrySpec
     | MacPhersonAxleGeometrySpec
 )
-
-
-def parse_geometry_spec(data: Mapping[str, Any]) -> GeometrySpecBase:
-    """Validate a raw mapping as the selected architecture and scope."""
-    if "type" not in data:
-        raise ValueError("Geometry type not specified")
-
-    normalized = dict(data)
-    type_key = normalized["type"]
-    raw_scope = normalized.get("scope", Scope.CORNER)
-    try:
-        scope = Scope(raw_scope)
-    except ValueError as error:
-        raise ValueError(f"Unsupported geometry scope: '{raw_scope}'") from error
-    from kinematics.core.suspensions.registry import get_suspension_definition
-
-    definition = get_suspension_definition(type_key, scope)
-    if definition is None:
-        raise ValueError(
-            f"Unsupported geometry type: '{type_key}' with scope '{scope}'"
-        )
-    normalized["type"] = definition.type_key
-    normalized["scope"] = scope
-    try:
-        return definition.spec_type.model_validate(normalized)
-    except Exception as error:
-        raise ValueError(f"Invalid geometry specification: {error}") from error
